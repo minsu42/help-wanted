@@ -1,7 +1,7 @@
 # Story 004: 파견 판정 (마진 반비례 무작위)
 
-> **Day**: 1 | **Status**: Ready | **Layer**: Feature | **Type**: Logic
-> **Estimate**: 1.5h
+> **Day**: 1 | **Status**: Implemented — `/story-done` 대기 | **Layer**: Feature | **Type**: Logic
+> **Estimate**: 1.5h | **Last Updated**: 2026-08-08
 > **Spec**: `design/quick-specs/dispatch-resolution-2026-08-08.md` §2–3
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
 
@@ -14,17 +14,17 @@ MVP 핵심 가설이 검증되는 곳이다.
 
 ## Acceptance Criteria
 
-- [ ] `ratio = Σ(파티원 capability) / 실제 위험도`
-- [ ] `uncertainty = max(0, maxUncertainty × (1 − |ratio−1| / certaintyBand))`
-- [ ] `effective = ratio + rng.range(−uncertainty, +uncertainty)`
-- [ ] `effective ≥ successRatio` → `'success'` / `≥ injuryRatio` → `'injured'` / 그 외 `'dead'`
-- [ ] `ratio ≥ 1 + certaintyBand`이면 **항상** `'success'`
-- [ ] `ratio ≤ 1 − certaintyBand`이면 **항상** `'dead'`
-- [ ] `ratio == 1.0`에서 `'dead'`가 나오지 않는다
-- [ ] 사상자는 `1 / capability^casualtyBias` 가중으로 1명 선택된다
-- [ ] 같은 시드 + 같은 파티 + 같은 의뢰면 항상 같은 결과
-- [ ] 판정 근거(`ratio`, `uncertainty`, 실제 위험도, 파티 역량 합)를 결과 객체에 담아 반환한다
-- [ ] 모든 노브가 `balance.json`의 `dispatch` 섹션에서 읽힌다
+- [x] `ratio = Σ(파티원 capability) / 실제 위험도`
+- [x] `uncertainty = max(0, maxUncertainty × (1 − |ratio−1| / certaintyBand))`
+- [x] `effective = ratio + rng.range(−uncertainty, +uncertainty)`
+- [x] `effective ≥ successRatio` → `'success'` / `≥ injuryRatio` → `'injured'` / 그 외 `'dead'`
+- [x] `ratio ≥ 1 + certaintyBand`이면 **항상** `'success'`
+- [x] `ratio ≤ 1 − certaintyBand`이면 **항상** `'dead'`
+- [x] `ratio == 1.0`에서 `'dead'`가 나오지 않는다
+- [x] 사상자는 `1 / capability^casualtyBias` 가중으로 1명 선택된다
+- [x] 같은 시드 + 같은 파티 + 같은 의뢰면 항상 같은 결과
+- [x] 판정 근거(`ratio`, `uncertainty`, 실제 위험도, 파티 역량 합)를 결과 객체에 담아 반환한다
+- [x] 모든 노브가 `balance.json`의 `dispatch` 섹션에서 읽힌다
 
 ## Implementation Notes
 
@@ -65,8 +65,44 @@ MVP 핵심 가설이 검증되는 곳이다.
 
 ## Test Evidence
 
-`tests/unit/domain/dispatch.test.ts` — **필수 테스트 2번**
-**Status**: [ ] 미작성
+`tests/unit/domain/dispatch.test.ts` — **필수 테스트 2번**. 테스트 24개, 전부 통과
+(2026-08-08). 전체 스위트 113개 통과, `npx tsc --noEmit` 무경고.
+
+**Status**: [x] 작성 완료 · 통과
+
+## Implementation Deviations
+
+1. **`src/domain/weighted.ts` 신설.** 사상자 선택(`1/역량^bias`)이 의뢰 생성의
+   `knownBy` 추출(`근속^1.5`)과 같은 누적합 가중 추출이다. 10줄짜리지만 **복사해 두면
+   조용히 갈라진다** — 확률 코드의 미묘한 차이는 테스트가 통과하는 채로 분포만
+   어긋나므로 눈에 띄지 않는다. `contract.ts`의 비공개 함수를 여기로 옮기고 양쪽이
+   공유한다. `contract.ts` 테스트 30개 전부 여전히 통과.
+
+2. **`DispatchTarget`으로 입력을 좁혔다.** `Contract` 전체가 아니라
+   `Pick<Contract, 'realRisk'>`를 받는다. `statedRisk`가 **의도적으로 빠져 있어**
+   결과 판정이 공개 위험도에 손댈 수 없다 — 그 비대칭이 "내가 알고도 보냈다"는 문장을
+   성립시키므로 타입으로 지켰다. (story-003의 `NegotiationClient`와 같은 방식.)
+
+3. **입력 검증 추가** (AC 밖): 빈 파티, 실제 위험도 ≤ 0, 역량 ≤ 0이면 던진다.
+   특히 역량 0은 사상자 가중치 `1/0^1.5 = Infinity`가 되어 추출 분포를 조용히
+   망가뜨리므로 크게 터뜨린다. 테스트 3개로 고정.
+
+### 확인된 거동: 확정 구간의 부동소수 잔차
+
+`ratio`가 정확히 `1 ± certaintyBand`일 때 `uncertainty`가 비트 단위 0이 아니라
+약 5.6e-17이 나온다 (`distance / certaintyBand`가 1.0000000000000002가 되기 때문).
+
+**결과에는 영향이 없다.** 상단 경계는 ratio 1.4이고 성공 임계선이 1.0이라 1e-17의
+흔들림으로는 넘어갈 수 없고, 하단도 0.6 vs 0.75로 마찬가지다. AC가 보장하는 것은
+"항상 성공/사망"이고 그것은 100시드 × 2경계로 검증됐다. 테스트는 `toBeCloseTo(0, 12)`로
+잔차를 허용한다 — 임계값 스냅을 넣으면 근거 없는 엡실론 상수가 생기고, 얻는 것은
+없다.
+
+### 범위 밖으로 남긴 것 (스토리 명시대로)
+
+상태 전이(`onMission`/`injured`/`dead`), `trust`·`Memory` 갱신, 자금·명성 반영,
+배정 거부 규칙(`goal === 'survival'`)은 전부 호출자와 후속 스토리의 몫이다.
+`resolveDispatch`는 순수 함수로 남겼다.
 
 ## Dependencies
 
