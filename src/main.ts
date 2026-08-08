@@ -176,19 +176,37 @@ function swapTo(mount: (root: HTMLElement) => ScreenHandle): void {
  */
 function endDay(): void {
   const report = advanceDay(state, config);
+  pendingOutcomes.push(...report.resolved);
+  showNextOutcomeOr(showCounter);
+}
 
-  if (report.phase === 'ended') {
+/**
+ * 아직 플레이어에게 보여주지 않은 판정 결과들.
+ *
+ * 큐인 이유: 하루에 파견 여러 건이 동시에 만기될 수 있고, 그때 하나만 보여주면
+ * **나머지 사망이 조용히 지나간다.** 사람이 죽은 것을 통보 없이 넘기는 것은 이
+ * 게임에서 가장 하면 안 되는 일이다 — 결과 대조 화면이 존재하는 이유 자체가 그것이다.
+ */
+const pendingOutcomes: ResolvedDispatch[] = [];
+
+/**
+ * 남은 결과가 있으면 하나 보여주고, 없으면 `fallback`으로 간다.
+ *
+ * 회차 종료 판정이 결과 표시보다 **뒤에** 오는 것이 의도다. 15일차에 사람이 죽었으면
+ * 그 대조를 보고 나서 결산으로 가야 한다. 순서를 뒤집으면 마지막 날의 죽음만 유일하게
+ * 설명 없이 사라진다.
+ */
+function showNextOutcomeOr(fallback: () => void): void {
+  const next = pendingOutcomes.shift();
+  if (next !== undefined) {
+    showOutcome(next);
+    return;
+  }
+  if (state.phase === 'ended') {
     showEnding();
     return;
   }
-
-  const [first] = report.resolved;
-  if (first !== undefined) {
-    showOutcome(first);
-    return;
-  }
-
-  showCounter();
+  fallback();
 }
 
 /**
@@ -237,7 +255,8 @@ function showOutcome(resolved: ResolvedDispatch): void {
       knowledge: state.knowledge,
       rng: state.rng,
       text: textBank,
-      onContinue: showCounter,
+      // 남은 결과가 더 있으면 이어서 보여준다. 큐가 비면 창구(또는 결산)로.
+      onContinue: () => showNextOutcomeOr(showCounter),
     }),
   );
 }
@@ -331,20 +350,25 @@ function showDispatch(settlement: Settlement): void {
         gloryVolunteerRisk: balance.dispatch.gloryVolunteerRisk,
       },
       text: textBank,
-      onAdvanceDay: () => advanceDay(state, config),
-      onReturnToCounter: showCounter,
+      /**
+       * 배정 화면은 자기 파견의 결과를 그리려고 `DayReport`를 **즉시** 돌려받아야
+       * 하므로, 하루 넘기기가 `endDay`가 아니라 여기로 온다.
+       *
+       * 그래서 판정된 결과를 큐에 넣는 일을 여기서 직접 한다. 이걸 빠뜨리면
+       * **가장 흔한 경로(의뢰 수락 → 파견 → 결과)에서 결과 대조 화면이 통째로
+       * 건너뛰어진다** — 실력 성장의 유일한 피드백 채널이 정작 주 동선에서만
+       * 사라지는 셈이다.
+       */
+      onAdvanceDay: () => {
+        const report = advanceDay(state, config);
+        pendingOutcomes.push(...report.resolved);
+        return report;
+      },
+      // 배정 화면이 이미 자기 계약의 서술을 보여줬어도, 대조는 따로 보여준다 —
+      // "무슨 일이 일어났는가"와 "왜 그렇게 됐는가"는 다른 정보다.
+      onReturnToCounter: () => showNextOutcomeOr(showCounter),
     }),
   );
 }
-
-/**
- * 배정 화면은 자기 계약의 결과만 보여준 뒤 창구로 돌아간다.
- *
- * 그 화면의 `onAdvanceDay`가 `advanceDay`를 직접 부르는 것은 **자기 파견의 결과를
- * 그리기 위해 `DayReport`를 즉시 받아야 하기 때문**이다. 그래서 결과 대조 화면은
- * 배정 화면 경로에서는 뜨지 않고, 창구·홀에서 하루를 넘길 때(`endDay`) 뜬다.
- * 두 경로가 갈리는 것이 지금의 구조이며, story-017에서 배정 화면도 결과 대조를
- * 거치도록 합칠 여지가 있다.
- */
 
 showCounter();
