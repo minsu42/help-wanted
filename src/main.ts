@@ -64,6 +64,11 @@ const config: GameConfig = {
     certaintyBand: balance.dispatch.certaintyBand,
     casualtyBias: balance.dispatch.casualtyBias,
   },
+  economy: {
+    repOnSuccess: balance.dispatch.repOnSuccess,
+    repOnDeath: balance.dispatch.repOnDeath,
+    repInjuryPenalty: balance.dispatch.repInjuryPenalty,
+  },
 };
 
 /**

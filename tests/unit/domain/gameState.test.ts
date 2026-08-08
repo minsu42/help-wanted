@@ -58,6 +58,11 @@ const CONFIG: GameConfig = {
     certaintyBand: balance.dispatch.certaintyBand,
     casualtyBias: balance.dispatch.casualtyBias,
   },
+  economy: {
+    repOnSuccess: balance.dispatch.repOnSuccess,
+    repOnDeath: balance.dispatch.repOnDeath,
+    repInjuryPenalty: balance.dispatch.repInjuryPenalty,
+  },
 };
 
 const SEED = 2024;
@@ -76,6 +81,7 @@ function snapshot(state: GameState) {
     nextContractId: state.nextContractId,
     discoveredContacts: [...state.knowledge.discoveredContacts],
     revealedFacts: [...state.knowledge.revealedFacts],
+    knownWealth: [...state.knowledge.knownWealth],
   };
 }
 
@@ -406,6 +412,87 @@ describe("파견 결과가 명부에 반영된다", () => {
     const contract = state.openContracts[0];
 
     expect(() => dispatchParty(state, contract.id, [memberId])).toThrow(/배정할 수 없다/);
+  });
+});
+
+describe("경제가 일일 진행에 물려 있다", () => {
+  it("test_advance_payment_lands_in_funds_immediately", () => {
+    // 선불은 판정 없이 즉시 지갑에 들어온다 — 그것이 선불 축의 존재 이유다
+    const state = createGameState(SEED, CONFIG);
+    const before = state.funds;
+    const contract = state.openContracts[0];
+    const member = availableGuildMembers(state)[0];
+
+    dispatchParty(state, contract.id, [member.id], { advancePaid: 90, remainingReward: 60 });
+
+    expect(state.funds).toBe(before + 90);
+  });
+
+  it("test_reputation_moves_when_a_dispatch_resolves", () => {
+    // Arrange — 결과가 날 때까지 시드를 바꿔가며 회차를 만든다
+    for (let seed = 0; seed < 200; seed += 1) {
+      const state = createGameState(seed, CONFIG);
+      const contract = state.openContracts[0];
+      const member = availableGuildMembers(state)[0];
+      dispatchParty(state, contract.id, [member.id], { advancePaid: 0, remainingReward: 100 });
+      const reputationBefore = state.reputation;
+
+      let report = advanceDay(state, CONFIG);
+      while (report.resolved.length === 0 && state.phase === "playing") {
+        report = advanceDay(state, CONFIG);
+      }
+      if (report.resolved.length === 0) continue;
+
+      // Assert — 성공/부상은 오르고 사망은 내린다
+      const outcome = report.resolved[0].result.outcome;
+      if (outcome === "dead") expect(state.reputation).toBeLessThan(reputationBefore);
+      else expect(state.reputation).toBeGreaterThan(reputationBefore);
+      return;
+    }
+    throw new Error("판정이 나는 시드를 찾지 못했다");
+  });
+
+  it("test_death_never_pays_the_remaining_reward", () => {
+    for (let seed = 0; seed < 400; seed += 1) {
+      const state = createGameState(seed, CONFIG);
+      const contract = state.openContracts[0];
+      const member = availableGuildMembers(state)[0];
+      dispatchParty(state, contract.id, [member.id], { advancePaid: 0, remainingReward: 500 });
+      const fundsBefore = state.funds;
+
+      let report = advanceDay(state, CONFIG);
+      while (report.resolved.length === 0 && state.phase === "playing") {
+        report = advanceDay(state, CONFIG);
+      }
+      if (report.resolved[0]?.result.outcome !== "dead") continue;
+
+      // 사망이면 잔금은 없다. 선불로 받아둔 것만 남는다.
+      expect(state.funds).toBe(fundsBefore);
+      return;
+    }
+    throw new Error("사망이 나는 시드를 찾지 못했다");
+  });
+
+  it("test_unpaid_balance_permanently_records_the_client_wealth", () => {
+    // 한 번 떼이면 그 사람에게는 두 번 다시 속지 않는다
+    for (let seed = 0; seed < 400; seed += 1) {
+      const state = createGameState(seed, CONFIG);
+      const contract = state.openContracts[0];
+      const member = availableGuildMembers(state)[0];
+      dispatchParty(state, contract.id, [member.id], { advancePaid: 0, remainingReward: 200 });
+
+      let report = advanceDay(state, CONFIG);
+      while (report.resolved.length === 0 && state.phase === "playing") {
+        report = advanceDay(state, CONFIG);
+      }
+      if (state.knowledge.knownWealth.size === 0) continue;
+
+      expect(state.knowledge.knownWealth.get(contract.client.id)).toBe(contract.client.wealth);
+      // 사망은 wealth를 묻지 않았으므로 공개 대상이 아니다
+      expect(report.resolved[0].result.outcome).not.toBe("dead");
+      return;
+    }
+    throw new Error("미지급이 나는 시드를 찾지 못했다");
   });
 });
 

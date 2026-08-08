@@ -85,6 +85,11 @@ const GAME_CONFIG: GameConfig = {
     certaintyBand: balance.dispatch.certaintyBand,
     casualtyBias: balance.dispatch.casualtyBias,
   },
+  economy: {
+    repOnSuccess: balance.dispatch.repOnSuccess,
+    repOnDeath: balance.dispatch.repOnDeath,
+    repInjuryPenalty: balance.dispatch.repInjuryPenalty,
+  },
 };
 
 /** 공개 위험도와 실제 위험도가 확연히 다른 의뢰. 은폐 검증의 전제다. */

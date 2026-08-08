@@ -260,6 +260,14 @@ export interface PlayerKnowledge {
   readonly discoveredContacts: ReadonlySet<string>;
   /** 소문으로 얻은 숨은 정보의 id 집합 */
   readonly revealedFacts: ReadonlySet<string>;
+  /**
+   * 잔금을 떼이면서 들통난 의뢰인의 실제 지불 여력. `clientId → wealth`
+   *
+   * **한 번 떼이면 그 사람에게는 두 번 다시 속지 않는다.** 선불 축은 페이오프가 며칠
+   * 뒤에 오고 15일 회차에서 떼이는 경험이 두세 번뿐이라 학습이 느리다 — 그 완화책으로
+   * 이것만은 영구히 남는다. 소문으로 얻은 것이 아니라 **대가를 치르고 알게 된 것**이다.
+   */
+  readonly knownWealth: ReadonlyMap<string, number>;
 }
 
 /**
@@ -285,6 +293,8 @@ export interface GuildTier {
 export interface MutableKnowledge {
   readonly discoveredContacts: Set<string>;
   readonly revealedFacts: Set<string>;
+  /** 미지급으로 들통난 의뢰인의 실제 지불 여력. `clientId → wealth` */
+  readonly knownWealth: Map<string, number>;
 }
 
 /**

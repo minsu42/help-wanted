@@ -23,6 +23,7 @@
  */
 import { createContract, type ContractConfig } from './contract';
 import { resolveDispatch, type DispatchConfig, type DispatchResult } from './dispatch';
+import { receiveAdvance, resolveDailyEconomy, type EconomyConfig } from './economy';
 import type { NamePool } from './person';
 import { createWorldRoster, type RosterConfig } from './roster';
 import { createRng, type Rng } from './rng';
@@ -40,9 +41,16 @@ export interface ActiveDispatch {
   readonly resolveOnDay: number;
   /**
    * 협상에서 미리 받아둔 금액. **사망해도 남는다** — 선불 축의 존재 이유다.
-   * 자금 반영 자체는 Story 012의 몫이고 여기서는 실어 나르기만 한다.
+   * 파견 시점에 이미 자금에 들어간다.
    */
   readonly advancePaid: number;
+  /**
+   * 타결액에서 선불을 뺀 나머지. 의뢰를 완수해야 받고, 그때도 `wealth` 판정을 통과해야 한다.
+   *
+   * 사망이면 무조건 못 받는다. **선불로 받아둔 몫과 이것의 차이가 흥정에서 선불 축을
+   * 미는 이유 전부다.**
+   */
+  readonly remainingReward: number;
   /**
    * 실제 위험을 알고도 고지하지 않았는가.
    *
@@ -90,6 +98,7 @@ export interface GameConfig {
   readonly roster: RosterConfig;
   readonly contract: ContractConfig;
   readonly dispatch: DispatchConfig;
+  readonly economy: EconomyConfig;
   readonly names: NamePool;
 }
 
@@ -134,7 +143,11 @@ export function createGameState(seed: number, config: GameConfig): GameState {
     roster: createWorldRoster(rng, config.roster, config.names, usedNames),
     openContracts: [],
     activeDispatches: [],
-    knowledge: { discoveredContacts: new Set(), revealedFacts: new Set() },
+    knowledge: {
+      discoveredContacts: new Set(),
+      revealedFacts: new Set(),
+      knownWealth: new Map(),
+    },
     rng,
     usedNames,
     nextContractId: 0,
@@ -158,7 +171,11 @@ export function dispatchParty(
   state: GameState,
   contractId: string,
   partyIds: readonly string[],
-  options: { readonly advancePaid?: number; readonly concealedKnownRisk?: boolean } = {},
+  options: {
+    readonly advancePaid?: number;
+    readonly remainingReward?: number;
+    readonly concealedKnownRisk?: boolean;
+  } = {},
 ): ActiveDispatch {
   const contractIndex = state.openContracts.findIndex((contract) => contract.id === contractId);
   if (contractIndex === -1) {
@@ -190,14 +207,20 @@ export function dispatchParty(
   }
   state.openContracts.splice(contractIndex, 1);
 
+  const advancePaid = options.advancePaid ?? 0;
   const dispatch: ActiveDispatch = {
     contract,
     partyIds: [...partyIds],
     resolveOnDay: state.day + contract.durationDays,
-    advancePaid: options.advancePaid ?? 0,
+    advancePaid,
+    remainingReward: options.remainingReward ?? 0,
     concealedKnownRisk: options.concealedKnownRisk ?? false,
   };
   state.activeDispatches.push(dispatch);
+
+  // 선불은 파견과 동시에 지갑에 들어온다. 판정이 없다 — 그것이 선불 축의 존재 이유다.
+  state.funds = receiveAdvance(state.funds, advancePaid);
+
   return dispatch;
 }
 
@@ -219,6 +242,11 @@ export function advanceDay(state: GameState, config: GameConfig): DayReport {
 
   const resolved = resolveDueDispatches(state, config);
   const recovered = recoverInjured(state);
+
+  // 의뢰 생성보다 **먼저** 정산한다. 의뢰 난이도가 명성에서 나오므로, 오늘의 성과가
+  // 오늘 도착하는 의뢰에 반영되어야 "성공이 곧 위험 상승"이 하루 단위로 성립한다.
+  applyEconomy(state, resolved, config);
+
   const newContracts = refillContracts(state, config);
 
   if (state.day > config.totalDays) {
@@ -299,6 +327,33 @@ function applyOutcome(
 
   casualty.status = 'injured';
   casualty.recoversOnDay = state.day + config.injuredDays;
+}
+
+/**
+ * 오늘 판정된 파견들의 자금·명성을 반영하고, 떼인 의뢰인의 지불 여력을 영구 기록한다.
+ *
+ * 계산은 `economy.ts`(순수 함수)가 하고 여기서는 제자리에 적기만 한다 — 이 파일의
+ * "판정은 순수하게, 적용은 제자리에서" 경계를 그대로 따른다.
+ */
+function applyEconomy(
+  state: GameState,
+  resolved: readonly ResolvedDispatch[],
+  config: GameConfig,
+): void {
+  const settled = resolveDailyEconomy(
+    resolved,
+    state.funds,
+    state.reputation,
+    state.rng,
+    config.economy,
+  );
+
+  state.funds = settled.funds;
+  state.reputation = settled.reputation;
+
+  for (const reveal of settled.wealthReveals) {
+    state.knowledge.knownWealth.set(reveal.clientId, reveal.wealth);
+  }
 }
 
 /** 회복일이 된 부상자를 복귀시킨다. */

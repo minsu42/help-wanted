@@ -1,0 +1,216 @@
+/*
+ * 파견 화면 — 배정 명부와 결과.
+ *
+ * 창구(counter.css)와 같은 양피지 팔레트를 쓴다. 붉은 봉랍색(--seal)은 위험·사망·
+ * 결렬에만 쓰는 규칙을 그대로 지킨다 — 여기서는 배정 거부 사유와 사망 결과에만
+ * 나타난다. glory 강조는 위험/사망과 다른 신호(자원한다는 것이지 경고가 아니다)라서
+ * 일부러 seal을 쓰지 않았다.
+ */
+
+.dispatch {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.dispatch__header {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--ink-faint);
+  color: var(--paper);
+}
+
+.dispatch__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.75rem;
+  letter-spacing: 0.08em;
+}
+
+.dispatch__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin: 0;
+  padding: 1rem 1.25rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 2px;
+}
+
+.dispatch__facts div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.dispatch__facts dt {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+}
+
+.dispatch__facts dd {
+  margin: 0;
+  font-size: 1.0625rem;
+}
+
+.dispatch__message,
+.dispatch__waiting {
+  margin: 2rem 0;
+  color: var(--paper-dim);
+  text-align: center;
+}
+
+/* --- 명부 --- */
+
+.roster-list {
+  list-style: none;
+  margin: 1.5rem 0;
+  padding: 0;
+}
+
+.roster-list__empty {
+  margin: 2rem 0;
+  color: var(--paper-dim);
+  text-align: center;
+}
+
+.roster-row {
+  margin: 0.75rem 0;
+  padding: 0.875rem 1.25rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+}
+
+.roster-row--glory {
+  box-shadow: 0 0 0 2px var(--desk), 0 2px 8px rgb(0 0 0 / 25%);
+}
+
+.roster-row--refused {
+  opacity: 0.7;
+}
+
+.roster-row__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.roster-row--refused .roster-row__label {
+  cursor: not-allowed;
+}
+
+.roster-row__check {
+  accent-color: var(--desk);
+}
+
+.roster-row__name {
+  font-size: 1.0625rem;
+  letter-spacing: 0.03em;
+}
+
+.roster-row__grade {
+  padding: 0.125rem 0.5rem;
+  background: var(--desk);
+  color: var(--paper);
+  border-radius: 2px;
+  font-size: 0.8125rem;
+  letter-spacing: 0.05em;
+}
+
+.roster-row__traits {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+.roster-row__badge {
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--desk);
+  border-radius: 2px;
+  color: var(--desk);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.roster-row__reason {
+  margin: 0.5rem 0 0;
+  color: var(--seal);
+  font-size: 0.8125rem;
+}
+
+/* --- 액션 --- */
+
+.dispatch__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.dispatch__count {
+  color: var(--paper-dim);
+  font-size: 0.8125rem;
+}
+
+.dispatch__confirm,
+.dispatch__advance,
+.dispatch__return {
+  padding: 0.5rem 1.5rem;
+  background: var(--desk);
+  color: var(--paper);
+  border: none;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.dispatch__confirm:hover,
+.dispatch__advance:hover,
+.dispatch__return:hover {
+  background: var(--desk-dark);
+}
+
+.dispatch__confirm:disabled {
+  background: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+/* --- 결과 --- */
+
+.result-list {
+  list-style: none;
+  margin: 1.5rem 0;
+  padding: 0;
+}
+
+.result-row {
+  margin: 0.75rem 0;
+  padding: 0.875rem 1.25rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+}
+
+.result-row__name {
+  font-weight: bold;
+  letter-spacing: 0.03em;
+}
+
+.result-row__line {
+  margin: 0.375rem 0 0;
+  line-height: 1.6;
+}
+
+.result-row--dead {
+  color: var(--seal);
+}
+
+.result-row--dead .result-row__name {
+  color: var(--seal);
+}

@@ -31,12 +31,9 @@ import {
 } from '../../domain/negotiation';
 import { narrate, type TextBank } from '../../domain/text';
 import type { Contract } from '../../domain/types';
+import { escapeHtml, type ScreenHandle } from '../screen';
 
-/** 모든 화면 모듈이 돌려주는 것. */
-export interface ScreenHandle {
-  /** 리스너와 DOM을 정리한다. 두 번 불러도 안전하다 */
-  destroy(): void;
-}
+export type { ScreenHandle };
 
 /**
  * 위험 고지 축을 열 수 있는가.
@@ -353,18 +350,4 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
 
 function round(value: number): number {
   return Math.round(value);
-}
-
-/**
- * 이름은 생성된 것이지만 그대로 innerHTML에 넣지 않는다.
- *
- * `names.json`이 안전하다는 것은 **오늘의 사실**이지 구조적 보장이 아니다. 표를 늘리는
- * 사람이 이 함수의 존재를 모를 수 있다.
- */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }

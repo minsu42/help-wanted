@@ -109,6 +109,8 @@
     "casualtyBias": 1.5,
     "injuredDays": 3,
     "survivalRefusalRisk": 90,
+    "_gloryComment": "glory 모험가가 자원하는 위험도. survivalRefusalRisk와 일부러 다른 노브다 — 같은 값을 재사용하면 거부 임계값을 조정할 때 자원 표시가 조용히 따라 움직인다. 70~90 구간에서 '자원하는데 아무도 거부하지 않는' 밴드가 생기는 것이 의도다.",
+    "gloryVolunteerRisk": 70,
     "assignmentTrustThreshold": 0.15,
     "repOnSuccess": 2.5,
     "repOnDeath": 6,

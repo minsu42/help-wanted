@@ -1,6 +1,6 @@
 # Story 009: 소문 획득 판정 (신뢰·성격 필터·왜곡)
 
-> **Day**: 2 | **Status**: Ready | **Layer**: Feature | **Type**: Logic
+> **Day**: 2 | **Status**: Implemented — `/story-done` 대기 | **Layer**: Feature | **Type**: Logic
 > **Estimate**: 2h
 > **Spec**: `design/quick-specs/rumor-network-2026-08-08.md` §4–6
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
@@ -15,17 +15,17 @@
 
 ## Acceptance Criteria
 
-- [ ] 대화 시 ① 그 사람이 아는 **열린 의뢰의 의뢰인**이 `discoveredContacts`에 기록된다 — **신뢰 무관**
-- [ ] ② 사실 공개는 성격별 신뢰 임계값을 넘어야 한다 (`default` 0.4 / `cautious` 0.6 / `loyal` 0.2)
-- [ ] `Client.knownBy`에 없는 사람은 그 의뢰의 사실을 **절대** 말하지 않는다
-- [ ] `talkative`는 1회에 사실 2개, 그 외는 1개
-- [ ] `greedy`는 `greedyPrice`(20G)를 요구하고, 지불을 거절하면 침묵한다
-- [ ] `bitter`는 위험도를 `+traitDistortion` 만큼 높게, `boastful`은 낮게 전한다
-- [ ] 왜곡은 **표시값에만** 걸린다 — `revealedFacts`에는 사실 id가 그대로 들어간다
-- [ ] 획득한 사실마다 **누가 말했는지**를 보관한다 (결과 대조용)
-- [ ] 하루에 같은 사람과 두 번 대화할 수 없다
-- [ ] 의뢰가 종료되면 그 의뢰의 사실은 더 이상 조회되지 않는다
-- [ ] 같은 시드 + 같은 대화 순서면 항상 같은 사실이 나온다
+- [x] 대화 시 ① 그 사람이 아는 **열린 의뢰의 의뢰인**이 `discoveredContacts`에 기록된다 — **신뢰 무관**
+- [x] ② 사실 공개는 성격별 신뢰 임계값을 넘어야 한다 (`default` 0.4 / `cautious` 0.6 / `loyal` 0.2)
+- [x] `Client.knownBy`에 없는 사람은 그 의뢰의 사실을 **절대** 말하지 않는다
+- [x] `talkative`는 1회에 사실 2개, 그 외는 1개
+- [x] `greedy`는 `greedyPrice`(20G)를 요구하고, 지불을 거절하면 침묵한다
+- [x] `bitter`는 위험도를 `+traitDistortion` 만큼 높게, `boastful`은 낮게 전한다
+- [x] 왜곡은 **표시값에만** 걸린다 — `revealedFacts`에는 사실 id가 그대로 들어간다
+- [x] 획득한 사실마다 **누가 말했는지**를 보관한다 (결과 대조용)
+- [~] 하루에 같은 사람과 두 번 대화할 수 없다
+- [~] 의뢰가 종료되면 그 의뢰의 사실은 더 이상 조회되지 않는다
+- [x] 같은 시드 + 같은 대화 순서면 항상 같은 사실이 나온다
 
 ## Implementation Notes
 
@@ -70,7 +70,49 @@
 ## Test Evidence
 
 `tests/unit/domain/rumor.test.ts` — **필수 테스트 3번**
-**Status**: [ ] 미작성
+**Status**: [x] 작성 완료 · 통과 — 테스트 27개. 전체 스위트 247개 통과.
+
+## Implementation Deviations
+
+> 이 스토리는 **서브에이전트(gameplay-programmer)가 병렬로 구현**했고, 통합과 아래
+> 순서 변경은 메인 세션이 했다.
+
+### AC 9/11 — 두 항목은 호출자의 몫으로 남았다
+
+`resolveTalk`은 순수 함수이고 세션 상태를 모른다. 그래서:
+
+- **"하루에 같은 사람과 두 번 대화할 수 없다"** — 대화 이력을 들고 있어야 하므로
+  `GameState`가 할 일이다. Story 010(길드 홀)이 `talkedToday` 같은 집합을 두고 막는다.
+- **"의뢰가 종료되면 그 의뢰의 사실은 더 이상 조회되지 않는다"** — `resolveTalk`은
+  넘겨받은 `openContracts`만 본다. **호출자가 열린 의뢰만 넘기면 자동으로 성립**하지만
+  지금은 관례일 뿐 강제되지 않는다. Story 010 통합 시 확인할 것.
+
+### 통합 중 바꾼 것: 신뢰 게이트를 값 게이트보다 앞으로
+
+에이전트의 최초 구현은 **값을 치렀는데 신뢰가 모자라면 돈만 받고 침묵**했다.
+스펙이 두 게이트를 따로 정의하니 해석 자체는 타당했지만, **플레이어는 신뢰 수치를 볼 수
+없다.** 20G를 내고 아무 설명 없이 침묵을 사는 것은 컨셉의 1순위 리스크("창발이 무작위로
+느껴짐")를 정면으로 건드린다.
+
+순서를 뒤집어 신뢰를 먼저 본다. 부수 효과가 오히려 설계적으로 낫다 — **`greedy`가 값을
+요구한다는 것 자체가 "신뢰는 충분하다"는 읽을 수 있는 신호**가 된다. 성격 태그는 항상
+보이므로 플레이어는 "이 사람은 돈만 내면 말한다"를 배울 수 있다.
+`test_distrusting_greedy_person_does_not_take_the_money`와
+`test_greedy_person_who_trusts_you_does_take_the_money`가 양방향으로 고정한다.
+
+### 에이전트의 해석 판단 (확인 후 유지)
+
+1. **왜곡은 `realRisk`에만 건다.** 스펙 §5의 표가 "위험도"만 가리키고 `realWealth`
+   왜곡은 정의되어 있지 않다. `realWealth`는 항상 진짜 값으로 전해진다.
+2. **성격 태그가 둘 다 걸릴 때(`cautious`+`loyal`, `bitter`+`boastful`)는 `traits`
+   배열 순서상 먼저 오는 쪽.** `text.ts`의 `variantFor`와 같은 규칙이라 일관된다.
+3. **`RevealedFact`가 `statedValue`와 `actualValue`를 둘 다 싣는다.** 결과 대조
+   화면(Story 014)이 "당신은 카린의 말을 믿었다"를 쓰려면 대조할 두 값이 모두 필요하다.
+   `tellerId`도 같은 이유로 실린다.
+
+### 공유 파일 변경: 없음
+
+`balance.json`의 `rumor` 절에 필요한 노브 5개가 이미 전부 있었다.
 
 ## Dependencies
 
