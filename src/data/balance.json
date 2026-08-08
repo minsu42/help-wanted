@@ -29,6 +29,11 @@
     "guildInitialTrust": 0.5
   },
 
+  "session": {
+    "_comment": "15일 회차. 컨셉 문서의 MVP 정의에서 온다 — 짧아야 다시 하고, 다시 해야 정보의 가치를 배운다.",
+    "totalDays": 15
+  },
+
   "client": {
     "_comment": "의뢰인 생성. wealth/urgency는 0~1 균등 추출이라 노브가 없다 — 분포를 바꾸는 것은 밸런싱이 아니라 설계 변경이다.",
     "alternativeChance": 0.4,

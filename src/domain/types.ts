@@ -135,6 +135,13 @@ export interface Adventurer extends Person {
    */
   inGuild: boolean;
   /**
+   * 부상에서 회복해 `available`로 돌아오는 날. `injured`일 때만 값이 있다.
+   *
+   * 부상의 실질 비용은 아픈 것이 아니라 **그동안 길드 홀에 나오지 않는 것**이다 —
+   * 정보원이 며칠 비는 것이 진짜 대가다.
+   */
+  recoversOnDay?: number;
+  /**
    * 근속 연수. 의뢰 생성 시 {@link Client.knownBy}에 뽑힐 가중치가 된다.
    *
    * 베테랑이 죽으면 사람만 잃는 것이 아니라 정보망이 무너진다 — 그 긴장의 기계적
@@ -253,6 +260,31 @@ export interface PlayerKnowledge {
   readonly discoveredContacts: ReadonlySet<string>;
   /** 소문으로 얻은 숨은 정보의 id 집합 */
   readonly revealedFacts: ReadonlySet<string>;
+}
+
+/**
+ * 길드 등급 하나. `balance.json`의 `guildTiers` 룩업 테이블 한 행이다.
+ *
+ * **한 번의 구매가 세 가지를 준다.** 그중 `hallAttendanceMax`가 핵심이다 — 돈으로
+ * 힘이 아니라 **앎을 산다.** 사람이 더 드나들면 정보가 더 들어온다.
+ */
+export interface GuildTier {
+  readonly tier: number;
+  readonly rosterCap: number;
+  readonly hallAttendanceMax: number;
+  readonly concurrentContracts: number;
+  readonly cost: number;
+}
+
+/**
+ * {@link PlayerKnowledge}의 쓰기 가능한 형태. {@link GameState}만 이것을 들고 있다.
+ *
+ * 화면에는 {@link PlayerKnowledge}로 넘겨서 읽기 전용으로 보이게 한다 — UI가 실수로
+ * "알아낸 것"을 늘리지 못하게 하는 것이 이 두 타입이 나뉜 이유다.
+ */
+export interface MutableKnowledge {
+  readonly discoveredContacts: Set<string>;
+  readonly revealedFacts: Set<string>;
 }
 
 /**
