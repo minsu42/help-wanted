@@ -1,6 +1,6 @@
 # Story 008: 파견 배정 + 결과 화면 (최소판)
 
-> **Day**: 1 | **Status**: Ready | **Layer**: Presentation | **Type**: UI
+> **Day**: 1 | **Status**: Implemented — `/story-done` 대기 | **Layer**: Presentation | **Type**: UI
 > **Estimate**: 2h
 > **Spec**: `design/quick-specs/dispatch-resolution-2026-08-08.md` §1, §4
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
@@ -12,15 +12,15 @@
 
 ## Acceptance Criteria
 
-- [ ] 타결된 의뢰에 `available` 길드원을 1~`maxPartySize`명 배정할 수 있다
-- [ ] 각 모험가는 이름, **등급**(`gradeOf`), 성격 태그 2개, 상태로 표시된다
-- [ ] `goal === 'survival'`이고 공개 위험도 > `survivalRefusalRisk`면 배정을 거부하고 **사유를 보여준다**
-- [ ] `trust < assignmentTrustThreshold`면 거부한다
-- [ ] `goal === 'glory'`인 모험가는 고위험 의뢰에서 강조 표시된다
-- [ ] 배정 확정 시 전원 `onMission`이 되고 `durationDays`가 표시된다
-- [ ] 기간 경과 후 결과가 표시된다 — 성공/부상/사망, 누가 어떻게 됐는지
-- [ ] 사망은 붉은 봉랍색으로 표시된다
-- [ ] `capability` 숫자가 노출되지 않는다
+- [x] 타결된 의뢰에 `available` 길드원을 1~`maxPartySize`명 배정할 수 있다
+- [x] 각 모험가는 이름, **등급**(`gradeOf`), 성격 태그 2개, 상태로 표시된다
+- [x] `goal === 'survival'`이고 공개 위험도 > `survivalRefusalRisk`면 배정을 거부하고 **사유를 보여준다**
+- [x] `trust < assignmentTrustThreshold`면 거부한다
+- [x] `goal === 'glory'`인 모험가는 고위험 의뢰에서 강조 표시된다
+- [x] 배정 확정 시 전원 `onMission`이 되고 `durationDays`가 표시된다
+- [x] 기간 경과 후 결과가 표시된다 — 성공/부상/사망, 누가 어떻게 됐는지
+- [x] 사망은 붉은 봉랍색으로 표시된다
+- [x] `capability` 숫자가 노출되지 않는다
 
 ## Implementation Notes
 
@@ -59,7 +59,62 @@
 ## Test Evidence
 
 `production/qa/evidence/dispatch-screen-evidence.md`
-**Status**: [ ] 미작성
+**Status**: [x] 상호작용 테스트 27개 (`tests/unit/presentation/dispatchScreen.test.ts`).
+실브라우저로 창구 → 배정 → 대기 → 결과 → 창구 전 구간 확인. 전체 274개 통과,
+`npm run check`(타입+테스트+빌드) 통과.
+
+## Implementation Deviations
+
+> 이 스토리는 **서브에이전트(ui-programmer)가 병렬로 구현**했다. 아키텍처 결정 두 개와
+> 아래 버그 수정은 메인 세션이 했다.
+
+### 결정 1 — `advanceDay`를 화면이 직접 부르지 않는다
+
+에이전트는 `DispatchScreen`이 `advanceDay(state, config)`를 직접 부르는 안을 제시했고,
+그 부작용(다른 파견까지 조용히 판정되고 의뢰가 리필된다)까지 스스로 짚었다.
+**콜백 주입으로 뒤집었다** — `onAdvanceDay: () => DayReport`를 받고 실제 호출은
+`main.ts`가 한다.
+
+근거: 하루를 넘기는 것은 렌더가 아니라 **회차 진행**이고 프레젠테이션 계층이 소유할
+것이 아니다. Story 010(길드 홀)도 하루를 넘겨야 하므로, 두 화면이 각자 부르기 시작하면
+진행의 주인이 사라진다. 부수 이득으로 이 화면은 `GameConfig`를 몰라도 되고, 테스트가
+설정 전체를 조립하지 않고 스텁으로 시간을 몰 수 있다
+(`test_onAdvanceDay_stub_drives_time_without_any_gameConfig`).
+
+### 결정 2 — glory 강조에 새 노브를 뒀다
+
+에이전트는 `survivalRefusalRisk`(90)를 재사용하려 했다. `balance.json`에
+`dispatch.gloryVolunteerRisk: 70`을 새로 넣어 분리했다.
+
+근거: 하나는 **하드 게이트**(배정 거부)고 하나는 **힌트**(자원 표시)다. 같은 값을
+공유하면 밸런스 패스에서 거부 임계값을 조정할 때 자원 표시가 조용히 따라 움직인다.
+70~90 구간에 "자원하는데 아무도 거부하지 않는" 밴드가 생기는 것이 오히려 의도한 긴장이다.
+`test_glory_highlight_is_independent_of_survival_refusal_threshold`가 고정한다.
+
+### 실브라우저에서 잡은 버그 — `inGuild` 필터 누락
+
+배정 후보가 `status === 'available'`로만 걸러져 **월드 풀 22명이 전부 나왔다.**
+스펙은 *"`status === 'available'`인 **길드원**만"* 이다.
+
+**단위 테스트 26개가 전부 통과하는 상태였다** — 테스트 팩토리의 `inGuild` 기본값이
+`true`라서 조건이 한 번도 시험되지 않았다.
+
+그대로 뒀으면 **영입(Story 015)이 존재할 이유가 사라진다.** 135~330G를 내고 데려올
+필요 없이 아무나 보내면 되기 때문이다. 회귀 테스트
+`test_outsiders_are_never_assignable`을 추가했다.
+
+### 통합 중 정리한 것
+
+에이전트가 `types.ts`를 읽은 뒤 메인 세션이 `knownWealth`를 추가해서 테스트 파일에
+타입 오류가 남아 있었다. `GameState.roster`가 `readonly` 프로퍼티라 재할당이 막히는
+것도 함께 정리했다(제자리 교체 헬퍼 `setRoster`).
+
+### 밸런스 관찰 (Story 018로)
+
+첫 회차 1일차에 공개 위험도 29짜리 의뢰에 `한몫` 등급 1명을 보냈더니 사망했다.
+은폐폭이 최대 0.45라 실제 위험도가 표시값의 두 배 가까이 될 수 있고, 정원이 1명이면
+피할 방법이 없다. **설계대로 동작하는 것이지만 첫 경험으로는 가혹할 수 있다** —
+`concealmentMax` 또는 1일차 의뢰의 은폐폭 상한을 Day 3 밸런스 패스에서 볼 것.
 
 ## Dependencies
 

@@ -117,7 +117,11 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     roster: [],
     openContracts: [],
     activeDispatches: [],
-    knowledge: { discoveredContacts: new Set(), revealedFacts: new Set() },
+    knowledge: {
+      discoveredContacts: new Set(),
+      revealedFacts: new Set(),
+      knownWealth: new Map(),
+    },
     rng: createRng(1),
     usedNames: new Set(),
     nextContractId: 0,
@@ -144,8 +148,8 @@ function makeResult(overrides: Partial<DispatchResult> = {}): DispatchResult {
 
 let root: HTMLElement;
 let state: GameState;
-let onReturnToCounter: ReturnType<typeof vi.fn>;
-let onAdvanceDay: ReturnType<typeof vi.fn>;
+let onReturnToCounter: ReturnType<typeof vi.fn<() => void>>;
+let onAdvanceDay: ReturnType<typeof vi.fn<() => DayReport>>;
 
 beforeEach(() => {
   document.body.innerHTML = "";
@@ -153,9 +157,18 @@ beforeEach(() => {
   document.body.appendChild(root);
 
   state = makeState();
-  onReturnToCounter = vi.fn();
-  onAdvanceDay = vi.fn();
+  onReturnToCounter = vi.fn<() => void>();
+  onAdvanceDay = vi.fn<() => DayReport>();
 });
+
+
+/**
+ * `GameState.roster`는 readonly 프로퍼티다 — 명부가 유일한 사람 저장소이므로 통째로
+ * 갈아끼우지 못하게 되어 있다. 테스트에서는 제자리 교체로 같은 효과를 낸다.
+ */
+function setRoster(members: Adventurer[]): void {
+  state.roster.splice(0, state.roster.length, ...members);
+}
 
 function mount(settlement: Settlement, overrides: Partial<DispatchScreenDeps> = {}) {
   return mountDispatchScreen(root, {
@@ -194,12 +207,28 @@ describe("파견 화면 — 렌더", () => {
     const available1 = makeAdventurer();
     const available2 = makeAdventurer();
     const onMission = makeAdventurer({ status: "onMission" });
-    state.roster = [available1, available2, onMission];
+    setRoster([available1, available2, onMission]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
 
     expect(root.querySelectorAll(".roster-row")).toHaveLength(2);
+  });
+
+  it("test_outsiders_are_never_assignable", () => {
+    // 외부 모험가가 배정 후보에 섞이면 **영입(Story 015)이 존재할 이유가 사라진다** —
+    // 돈을 내고 데려올 필요 없이 아무나 보내면 되기 때문이다.
+    const contract = makeContract();
+    const member = makeAdventurer({ inGuild: true });
+    const outsider = makeAdventurer({ inGuild: false });
+    setRoster([member, outsider]);
+    state.openContracts = [contract];
+
+    mount(makeSettlement(contract));
+
+    const rows = root.querySelectorAll(".roster-row");
+    expect(rows).toHaveLength(1);
+    expect(root.innerHTML).not.toContain(outsider.name);
   });
 
   it("test_capability_number_never_appears_in_dom", () => {
@@ -209,7 +238,7 @@ describe("파견 화면 — 렌더", () => {
       makeAdventurer({ capability: 61 }),
       makeAdventurer({ capability: 77 }),
     ];
-    state.roster = members;
+    setRoster(members);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -223,7 +252,7 @@ describe("파견 화면 — 렌더", () => {
   it("test_grade_label_is_shown_instead_of_the_number", () => {
     const contract = makeContract();
     const veteran = makeAdventurer({ capability: 80 });
-    state.roster = [veteran];
+    setRoster([veteran]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -235,7 +264,7 @@ describe("파견 화면 — 렌더", () => {
     const client = makeClient({ name: '<img src=x onerror="alert(1)">' });
     const contract = makeContract({ client });
     const member = makeAdventurer({ name: '<script>evil()</script>' });
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -251,7 +280,7 @@ describe("파견 화면 — 배정 거부", () => {
   it("test_low_trust_member_is_disabled_with_a_reason", () => {
     const contract = makeContract();
     const distrustful = makeAdventurer({ trust: 0.1 });
-    state.roster = [distrustful];
+    setRoster([distrustful]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -263,7 +292,7 @@ describe("파견 화면 — 배정 거부", () => {
   it("test_survival_goal_refuses_high_risk_contract", () => {
     const contract = makeContract({ statedRisk: 95 }); // > survivalRefusalRisk(90)
     const survivor = makeAdventurer({ goal: "survival", trust: 0.9 });
-    state.roster = [survivor];
+    setRoster([survivor]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -275,7 +304,7 @@ describe("파견 화면 — 배정 거부", () => {
   it("test_survival_goal_accepts_low_risk_contract", () => {
     const contract = makeContract({ statedRisk: 50 }); // <= survivalRefusalRisk(90)
     const survivor = makeAdventurer({ goal: "survival", trust: 0.9 });
-    state.roster = [survivor];
+    setRoster([survivor]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -287,7 +316,7 @@ describe("파견 화면 — 배정 거부", () => {
     // UI 상태(체크됨)를 규칙보다 믿으면 안 된다 — disabled를 우회해도 selection에 안 실린다
     const contract = makeContract({ maxPartySize: 1 });
     const distrustful = makeAdventurer({ trust: 0.1 });
-    state.roster = [distrustful];
+    setRoster([distrustful]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -309,7 +338,7 @@ describe("파견 화면 — glory 강조 (힌트, 게이트 아님)", () => {
   it("test_glory_goal_is_highlighted_above_volunteer_threshold", () => {
     const contract = makeContract({ statedRisk: 95 }); // > gloryVolunteerRisk(70)
     const glorious = makeAdventurer({ goal: "glory", trust: 0.9 });
-    state.roster = [glorious];
+    setRoster([glorious]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -321,7 +350,7 @@ describe("파견 화면 — glory 강조 (힌트, 게이트 아님)", () => {
   it("test_glory_goal_is_not_highlighted_below_volunteer_threshold", () => {
     const contract = makeContract({ statedRisk: 50 }); // <= gloryVolunteerRisk(70)
     const glorious = makeAdventurer({ goal: "glory", trust: 0.9 });
-    state.roster = [glorious];
+    setRoster([glorious]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -334,7 +363,7 @@ describe("파견 화면 — glory 강조 (힌트, 게이트 아님)", () => {
     const contract = makeContract({ statedRisk: 80 });
     const glorious = makeAdventurer({ goal: "glory", trust: 0.9 });
     const survivor = makeAdventurer({ goal: "survival", trust: 0.9 });
-    state.roster = [glorious, survivor];
+    setRoster([glorious, survivor]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -351,7 +380,7 @@ describe("파견 화면 — 정원 상한", () => {
   it("test_third_selection_beyond_max_party_size_is_blocked", () => {
     const contract = makeContract({ maxPartySize: 2 });
     const [a, b, c] = [makeAdventurer(), makeAdventurer(), makeAdventurer()];
-    state.roster = [a, b, c];
+    setRoster([a, b, c]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -375,7 +404,7 @@ describe("파견 화면 — 배정 확정", () => {
   it("test_confirm_is_disabled_until_at_least_one_is_selected", () => {
     const contract = makeContract();
     const member = makeAdventurer();
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -388,7 +417,7 @@ describe("파견 화면 — 배정 확정", () => {
   it("test_confirm_click_with_no_selection_does_nothing", () => {
     const contract = makeContract();
     const member = makeAdventurer();
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -404,7 +433,7 @@ describe("파견 화면 — 배정 확정", () => {
   it("test_confirm_moves_selected_members_to_onMission_and_shows_duration", () => {
     const contract = makeContract({ durationDays: 3 });
     const member = makeAdventurer();
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -418,7 +447,7 @@ describe("파견 화면 — 배정 확정", () => {
   it("test_concealed_known_risk_is_true_when_real_risk_known_and_undisclosed", () => {
     const contract = makeContract();
     const member = makeAdventurer();
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
     state.knowledge.revealedFacts.add(`${contract.id}:realRisk`);
 
@@ -433,7 +462,7 @@ describe("파견 화면 — 배정 확정", () => {
   it("test_concealed_known_risk_is_false_when_disclosed", () => {
     const contract = makeContract();
     const member = makeAdventurer();
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
     state.knowledge.revealedFacts.add(`${contract.id}:realRisk`);
 
@@ -451,7 +480,7 @@ describe("파견 화면 — onAdvanceDay 스텁으로 시간 진행 몰기", () 
     // 시간 진행을 완전히 테스트가 통제한다.
     const contract = makeContract({ durationDays: 2 });
     const member = makeAdventurer();
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -476,7 +505,7 @@ describe("파견 화면 — onAdvanceDay 스텁으로 시간 진행 몰기", () 
   it("test_onAdvanceDay_resolution_for_a_different_contract_is_ignored", () => {
     const contract = makeContract();
     const member = makeAdventurer();
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -487,6 +516,7 @@ describe("파견 화면 — onAdvanceDay 스텁으로 시간 진행 몰기", () 
       contract: makeContract({ id: "ct-other" }),
       partyIds: ["adv-other"],
       resolveOnDay: 99,
+      remainingReward: 0,
       advancePaid: 0,
       concealedKnownRisk: false,
     };
@@ -501,7 +531,7 @@ describe("파견 화면 — onAdvanceDay 스텁으로 시간 진행 몰기", () 
   it("test_onAdvanceDay_throwing_is_caught_and_shown_as_ended", () => {
     const contract = makeContract();
     const member = makeAdventurer();
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -511,7 +541,6 @@ describe("파견 화면 — onAdvanceDay 스텁으로 시간 진행 몰기", () 
     onAdvanceDay.mockImplementationOnce(() => {
       throw new Error("이미 끝난 회차다");
     });
-    click("advance-day");
 
     expect(() => click("advance-day")).not.toThrow();
     expect(root.querySelector(".dispatch__return")).not.toBeNull();
@@ -522,7 +551,7 @@ describe("파견 화면 — 결과 렌더", () => {
   it("test_success_outcome_uses_narrate_and_is_not_dead_colored", () => {
     const contract = makeContract({ durationDays: 1 });
     const member = makeAdventurer({ name: "카린" });
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -542,7 +571,7 @@ describe("파견 화면 — 결과 렌더", () => {
   it("test_death_outcome_is_rendered_with_the_seal_class", () => {
     const contract = makeContract({ durationDays: 1, maxPartySize: 1 });
     const member = makeAdventurer({ name: "발더" });
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -566,7 +595,7 @@ describe("파견 화면 — 결과 렌더", () => {
     const contract = makeContract({ durationDays: 1, maxPartySize: 2 });
     const survivor = makeAdventurer({ name: "리아" });
     const casualty = makeAdventurer({ name: "톰" });
-    state.roster = [survivor, casualty];
+    setRoster([survivor, casualty]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -589,7 +618,7 @@ describe("파견 화면 — 결과 렌더", () => {
   it("test_return_button_invokes_the_injected_callback", () => {
     const contract = makeContract({ durationDays: 1 });
     const member = makeAdventurer();
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
 
     mount(makeSettlement(contract));
@@ -610,7 +639,7 @@ describe("파견 화면 — 수명", () => {
   it("test_destroy_clears_dom_and_detaches_listeners", () => {
     const contract = makeContract();
     const member = makeAdventurer();
-    state.roster = [member];
+    setRoster([member]);
     state.openContracts = [contract];
 
     const handle = mount(makeSettlement(contract));

@@ -156,8 +156,15 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
     return deps.state.roster.find((member) => member.id === id);
   }
 
+  /**
+   * 배정 후보 — **길드원 중** 지금 나갈 수 있는 사람.
+   *
+   * `inGuild` 조건이 빠지면 월드 풀 22명이 통째로 나오고, 그러면 **영입(Story 015)이
+   * 존재할 이유가 사라진다.** 돈을 내고 데려올 필요 없이 아무나 보내면 되기 때문이다.
+   * 외부 모험가는 길드 홀에서 대화해 정보를 얻는 대상이지 파견 대상이 아니다.
+   */
   function assignableMembers(): Adventurer[] {
-    return deps.state.roster.filter((member) => member.status === 'available');
+    return deps.state.roster.filter((member) => member.inGuild && member.status === 'available');
   }
 
   /**
@@ -200,8 +207,8 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
     try {
       const dispatched = dispatchParty(deps.state, contract.id, partyIds, {
         advancePaid: deps.settlement.advancePaid,
-        // story-012(경제) 통합 후 ActiveDispatch가 요구하는 필드. gameState.ts 쪽 타입
-        // 반영은 별도로 진행 중이라 지금은 tsc가 이 프로퍼티를 초과 속성으로 잡는다.
+        // 잔금. 완수해도 wealth 판정을 통과해야 받고 사망이면 못 받는다 — 선불과의
+        // 이 차이가 흥정에서 선불 축을 미는 이유 전부다 (story-012).
         remainingReward: deps.settlement.agreedReward - deps.settlement.advancePaid,
         concealedKnownRisk,
       });
