@@ -20,7 +20,7 @@
  *
  * 출처: `design/quick-specs/contract-negotiation-2026-08-08.md` §3–4
  */
-import type { Client } from './types';
+import type { Client, Contract, PlayerKnowledge } from './types';
 
 /**
  * 협상 판정이 실제로 보는 의뢰인의 부분.
@@ -147,6 +147,88 @@ export function evaluateOffer(
     ...measured,
     contestedAxis: contestedAxisOf(rewardBurden, advanceBurden),
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 위험 고지 축의 개폐 (Story 011)
+//
+// 이 축만 예외적이다 — 보상·선불은 정보 없이도 부를 수 있지만(불리할 뿐), 위험 고지는
+// 정보 없이는 축 자체가 존재하지 않는다. "정보 = 흥정력"이 여기서 코드가 된다.
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * 위험 고지 축의 개폐 판정에 필요한 계약의 부분.
+ *
+ * {@link Contract} 전체를 받지 않는 이유는 {@link NegotiationClient}와 같다 — 판정이
+ * 실제로 읽는 값이 이 세 필드뿐이라는 사실을 타입으로 못박는다.
+ */
+export type DisclosureContract = Pick<Contract, 'id' | 'statedRisk' | 'realRisk'>;
+
+/** 위험 고지 축의 개폐 판정에 필요한 플레이어 지식의 부분. */
+export type DisclosureKnowledge = Pick<PlayerKnowledge, 'revealedFacts'>;
+
+/**
+ * 축이 닫혀 있을 때의 사유. **두 사유는 게임적으로 전혀 다른 신호다**:
+ *
+ * - `'unknownRisk'` — 정보가 없다. 소문을 캐러 가라는 신호.
+ * - `'noGap'` — 사실은 알아냈지만 실제 위험도가 공개 위험도를 넘지 않는다. *"들은 그대로다,
+ *   정직한 의뢰인이다"* — 이것도 정보다. 안심하고 진행해도 된다는 뜻이며, 세상에 정직한
+ *   의뢰인이 섞여 있다는 것을 플레이어에게 가르친다.
+ *
+ * **표시 문구는 여기서 결정하지 않는다.** 도메인 계층은 한국어 UI 문구를 소유하지
+ * 않는다 — 이 사유 코드를 받은 프레젠테이션 계층이 문구를 붙인다.
+ */
+export type DisclosureReason = 'unknownRisk' | 'noGap';
+
+/**
+ * {@link canDisclose}의 판정 결과. 판별 유니온이다 — `allowed`로 좁히면 `false` 분기에서만
+ * `reason`이 존재한다.
+ */
+export type DisclosureGate =
+  | { readonly allowed: true }
+  | { readonly allowed: false; readonly reason: DisclosureReason };
+
+/**
+ * 위험 고지 축을 열 수 있는가.
+ *
+ * 두 조건이 **모두** 참이어야 연다:
+ * ① 실제 위험도 사실(`` `${contract.id}:realRisk` ``)을 소문으로 얻었다
+ * ② 실제 위험도가 공개 위험도보다 크다 — 숨긴 것이 있어야 고지할 것도 있다
+ *
+ * 게이트는 사실을 **얻었는지**만 보고 **어떤 값을 들었는지**는 보지 않는다 — `boastful`
+ * 의뢰인이 왜곡해서 실제보다 낮은 값을 흘렸어도, 사실 자체는 얻었으므로 축은 열린다.
+ * 왜곡은 흥정에서 플레이어가 무엇을 믿고 베팅하는지의 문제이지, 게이트가 열리고
+ * 닫히는 문제가 아니다.
+ *
+ * `concealment`가 0인 정직한 의뢰인은 애초에 `realRisk === statedRisk`이므로, 사실을
+ * 알아냈어도 이 함수는 `'noGap'`을 돌려준다 — 축은 열리지 않는다.
+ */
+export function canDisclose(
+  contract: DisclosureContract,
+  knowledge: DisclosureKnowledge,
+): DisclosureGate {
+  if (!knowledge.revealedFacts.has(`${contract.id}:realRisk`)) {
+    return { allowed: false, reason: 'unknownRisk' };
+  }
+  if (contract.realRisk <= contract.statedRisk) {
+    return { allowed: false, reason: 'noGap' };
+  }
+  return { allowed: true };
+}
+
+/**
+ * 실제 위험을 알고도 고지하지 않은 채 타결했는가 — 침묵 표식.
+ *
+ * `ActiveDispatch.concealedKnownRisk`(Story 013이 trust 하락폭을 가르는 데 쓴다)에
+ * 들어갈 값을 계산한다. **축이 열려 있지 않았다면 플레이어는 몰랐다는 뜻이므로 무조건
+ * `false`다** — 몰라서 못 알려준 것과 알고도 숨긴 것은 다른 죄다.
+ */
+export function concealedKnownRisk(
+  contract: DisclosureContract,
+  knowledge: DisclosureKnowledge,
+  disclosed: boolean,
+): boolean {
+  return canDisclose(contract, knowledge).allowed && !disclosed;
 }
 
 /**

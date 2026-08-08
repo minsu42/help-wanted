@@ -26,17 +26,21 @@ Day 2 저녁에 일정이 밀려 있으면 **가장 먼저 잘라낸다.** 잘�
 ## Acceptance Criteria
 
 ### 영입
-- [ ] **홀에 와 있는 외부 모험가**만 영입 대상으로 표시된다
-- [ ] `cost = costBase + costPerCapability×capability + costPerTenure×tenureYears`
-- [ ] 지불 시 `inGuild = true`, 자금이 `cost`만큼 감소, `trust = recruit.initialTrust`(0.25)
-- [ ] 자금 부족 또는 **정원 초과**면 버튼이 비활성이고 사유가 표시된다
-- [ ] 영입 직후, 그가 `knownBy`에 포함된 열린 의뢰의 사실이 조회 가능해진다
+- [ ] **홀에 와 있는 외부 모험가**만 영입 대상으로 표시된다 (UI — 다음 웨이브)
+- [x] `cost = costBase + costPerCapability×capability + costPerTenure×tenureYears`
+- [x] 지불 시 `inGuild = true`, 자금이 `cost`만큼 감소, `trust = recruit.initialTrust`(0.25)
+- [ ] 자금 부족 또는 **정원 초과**면 버튼이 비활성이고 사유가 표시된다 (도메인 쪽 사유
+      코드 판정은 `checkRecruit`로 완료. 버튼 비활성화·문구 표시는 UI — 다음 웨이브)
+- [x] 영입 직후, 그가 `knownBy`에 포함된 열린 의뢰의 사실이 조회 가능해진다
 
 ### 길드 확장
-- [ ] 등급을 올리면 정원·홀 출석 최대·동시 의뢰가 **동시에** 갱신된다 (`guildTiers` 테이블)
-- [ ] 등급 3에서 더 이상 올릴 수 없다
-- [ ] 자금 부족 시 버튼이 비활성이다
-- [ ] 등급 상승 효과는 **다음 날부터** 반영된다
+- [x] 등급을 올리면 정원·홀 출석 최대·동시 의뢰가 **동시에** 갱신된다 (`guildTiers` 테이블)
+- [x] 등급 3에서 더 이상 올릴 수 없다
+- [ ] 자금 부족 시 버튼이 비활성이다 (도메인 쪽 사유 코드 판정은 `checkExpand`로 완료.
+      버튼 비활성화는 UI — 다음 웨이브)
+- [x] 등급 상승 효과는 **다음 날부터** 반영된다 (`expandGuild`는 `guildTier`/`funds`만
+      바꾸며, "다음 날부터"는 `gameState.ts`의 `advanceDay` 호출 순서가 이미 보장한다 —
+      `expandGuild` 자체의 doc 주석에 근거를 남겼다)
 
 ## Implementation Notes
 
@@ -75,9 +79,9 @@ Day 2 저녁에 일정이 밀려 있으면 **가장 먼저 잘라낸다.** 잘�
 
 ## Test Evidence
 
-`tests/unit/domain/guild.test.ts` (비용·정원) +
+`tests/unit/domain/guild.test.ts` (비용·정원·등급 규칙 — 21개 테스트, 전부 통과) +
 `production/qa/evidence/recruit-expand-evidence.md` (UI)
-**Status**: [ ] 미작성
+**Status**: [ ] 미작성 (도메인 절반 완료 — UI 몫 대기)
 
 ## Dependencies
 

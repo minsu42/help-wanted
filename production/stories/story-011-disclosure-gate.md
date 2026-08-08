@@ -14,14 +14,23 @@
 
 ## Acceptance Criteria
 
-- [ ] 위험 고지 축은 다음 **두 조건이 모두** 참일 때만 열린다:
+- [x] 위험 고지 축은 다음 **두 조건이 모두** 참일 때만 열린다:
       ① `PlayerKnowledge.revealedFacts`에 `` `${contractId}:realRisk` ``가 있다
       ② **실제 위험도 > 공개 위험도**
-- [ ] 조건 미충족 시 축이 비활성이고, **어느 조건이 미충족인지에 따라 다른 사유**가 표시된다
+- [x] 조건 미충족 시 축이 비활성이고, **어느 조건이 미충족인지에 따라 다른 사유**가 표시된다
+      (`canDisclose`가 `'unknownRisk'` | `'noGap'` 사유 코드를 반환한다. 실제 UI 표시
+      문구 매핑은 프레젠테이션 계층 배선 — 이 스토리는 도메인 판정만 소유한다)
 - [ ] 축을 켜면 `evaluateOffer`에 `disclosed = true`가 전달되어 tolerance가 `disclosureBonus`만큼 넓어진다
-- [ ] 왜곡된 값을 받았어도 축은 열린다 (게이트는 획득 여부로만 판정)
-- [ ] 은폐폭이 0인 정직한 의뢰인의 의뢰에서는, 사실을 알아도 축이 열리지 않는다
-- [ ] 실제 위험을 **알고도 고지하지 않은** 계약에 표식을 남긴다 (Story 013의 `wasDeceived` 판정용)
+      — `evaluateOffer`의 이 동작 자체는 Story 003에서 이미 구현/검증됨
+      (`test_disclosure_widens_tolerance_by_exactly_the_bonus`). 이 스토리는 `canDisclose`의
+      결과를 실제로 `Offer.discloseRisk`에 배선하는 지점(`main.ts`/`CounterScreen.ts`)은
+      건드리지 않았다 — 소유 파일 범위 밖이라 배선은 요청자에게 위임
+- [x] 왜곡된 값을 받았어도 축은 열린다 (게이트는 획득 여부로만 판정)
+- [x] 은폐폭이 0인 정직한 의뢰인의 의뢰에서는, 사실을 알아도 축이 열리지 않는다
+- [x] 실제 위험을 **알고도 고지하지 않은** 계약에 표식을 남긴다 (Story 013의 `wasDeceived` 판정용)
+      — `concealedKnownRisk` 순수 함수로 구현. `DispatchScreen.ts`가 같은 로직을
+      인라인으로 이미 구현해 두었으나 격차 조건(②)을 검사하지 않는다 — 배선 시 이 함수로
+      교체 권장 (보고서 참조)
 
 ## Implementation Notes
 
@@ -61,7 +70,8 @@
 ## Test Evidence
 
 `tests/unit/domain/disclosure.test.ts`
-**Status**: [ ] 미작성
+**Status**: [x] 작성 완료 — 10개 테스트, 전부 통과
+(`npx vitest run tests/unit/domain/disclosure.test.ts tests/unit/domain/negotiation.test.ts` → 34/34 통과, 기존 negotiation 테스트 무손상)
 
 ## Dependencies
 

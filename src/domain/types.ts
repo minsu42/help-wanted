@@ -250,6 +250,26 @@ export interface Contract {
 }
 
 /**
+ * 소문으로 들은 사실 하나의 **상세**. 결과 대조 화면이 좌변을 그리는 데 쓴다.
+ *
+ * {@link PlayerKnowledge.revealedFacts}가 "얻었는가"만 답하는 반면 이것은 "무엇을
+ * 얼마로 들었고 누가 말했는가"를 답한다. 둘을 나눠 두는 이유는 소비처가 다르기 때문이다 —
+ * 위험 고지 축의 개폐(`canDisclose`)는 획득 여부만 보면 되고 왜곡값을 알 필요가 없다.
+ *
+ * **`tellerId`가 이 타입의 존재 이유다.** 성격 필터를 학습 가능하게 만드는 유일한
+ * 연결이며, `boastful`에게 속았다는 것을 결과 화면에서 알아야 다음에 깎아 듣는다.
+ * 화자를 기록하지 않으면 왜곡은 그냥 무작위로 느껴지고, 그것이 이 게임의 1순위
+ * 설계 리스크다.
+ */
+export interface HeardRumor {
+  /** 성격 필터를 거친, 플레이어가 실제로 들은 값 */
+  readonly statedValue: number;
+  readonly tellerId: string;
+  /** 들은 날. 나중에 "사흘 전에 들었다" 같은 서술에 쓸 수 있다 */
+  readonly day: number;
+}
+
+/**
  * 플레이어가 실제로 알아낸 것. 결과 대조 화면의 **좌변**이다.
  *
  * 진실({@link Person} 계열, 의뢰의 실제 정보)의 부분집합만 담는다. 여기 없는 것은
@@ -260,6 +280,14 @@ export interface PlayerKnowledge {
   readonly discoveredContacts: ReadonlySet<string>;
   /** 소문으로 얻은 숨은 정보의 id 집합 */
   readonly revealedFacts: ReadonlySet<string>;
+  /**
+   * 들은 사실의 상세. 키는 {@link revealedFacts}와 같은 사실 id다.
+   *
+   * **두 필드는 항상 같이 쓴다** — 소문을 얻는 곳(길드 홀 대화)에서 한 번에 둘 다
+   * 기록한다. 하나만 채우면 축은 열리는데 결과 화면에 화자가 안 나오거나(또는 그 반대)
+   * 조용히 어긋난다.
+   */
+  readonly heardFacts: ReadonlyMap<string, HeardRumor>;
   /**
    * 잔금을 떼이면서 들통난 의뢰인의 실제 지불 여력. `clientId → wealth`
    *
@@ -293,6 +321,8 @@ export interface GuildTier {
 export interface MutableKnowledge {
   readonly discoveredContacts: Set<string>;
   readonly revealedFacts: Set<string>;
+  /** 들은 사실의 상세. `revealedFacts`와 **항상 같이** 채운다 */
+  readonly heardFacts: Map<string, HeardRumor>;
   /** 미지급으로 들통난 의뢰인의 실제 지불 여력. `clientId → wealth` */
   readonly knownWealth: Map<string, number>;
 }

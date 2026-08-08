@@ -63,6 +63,18 @@ const CONFIG: GameConfig = {
     repOnDeath: balance.dispatch.repOnDeath,
     repInjuryPenalty: balance.dispatch.repInjuryPenalty,
   },
+  reputation: {
+    trustOnSurvive: balance.rumor.trustOnSurvive,
+    trustOnWound: balance.rumor.trustOnWound,
+    trustOnDeath: balance.rumor.trustOnDeath,
+    trustOnDeceit: balance.rumor.trustOnDeceit,
+    dangerThreshold: balance.rumor.dangerMemoryThreshold,
+  },
+  hall: {
+    hallAttendanceMin: balance.rumor.hallAttendanceMin,
+    visitorMin: balance.rumor.visitorMin,
+    visitorMax: balance.rumor.visitorMax,
+  },
 };
 
 const SEED = 2024;

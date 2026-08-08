@@ -97,6 +97,8 @@
     "trustOnWound": -0.1,
     "trustOnDeath": -0.15,
     "trustOnDeceit": -0.35,
+    "_dangerMemoryComment": "이 위험도 이상의 의뢰에 보내지면 sentToDanger로 기억한다. dispatch.gloryVolunteerRisk(70)를 재사용하지 않는 이유는 그 노브의 주석과 같다 — 자원 임계값을 튜닝할 때 기억 임계값이 조용히 따라 움직인다. scaling.riskBase(35)와 70 사이에 두어 회차 초반은 sentSafe, 명성이 오를수록 sentToDanger가 늘어나는 곡선을 의도했다.",
+    "dangerMemoryThreshold": 60,
     "reputationForFreeRumor": 40
   },
 
@@ -123,6 +125,12 @@
     "costPerCapability": 2,
     "costPerTenure": 15,
     "initialTrust": 0.25
+  },
+
+  "ending": {
+    "_comment": "결산 화면의 명성 구간 경계. 미만이면 low, 이상이면 high, 사이는 mid. 15일 총수입 곡선상 '좋은 회차'가 50~60에 닿으므로 high=60은 최상급 회차만 도달한다 — story-018 밸런스 패스에서 3종이 실제로 다 나오는지 확인하고 조정할 것.",
+    "reputationLow": 20,
+    "reputationHigh": 60
   },
 
   "guildTiers": [

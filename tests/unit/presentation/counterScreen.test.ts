@@ -90,6 +90,18 @@ const GAME_CONFIG: GameConfig = {
     repOnDeath: balance.dispatch.repOnDeath,
     repInjuryPenalty: balance.dispatch.repInjuryPenalty,
   },
+  reputation: {
+    trustOnSurvive: balance.rumor.trustOnSurvive,
+    trustOnWound: balance.rumor.trustOnWound,
+    trustOnDeath: balance.rumor.trustOnDeath,
+    trustOnDeceit: balance.rumor.trustOnDeceit,
+    dangerThreshold: balance.rumor.dangerMemoryThreshold,
+  },
+  hall: {
+    hallAttendanceMin: balance.rumor.hallAttendanceMin,
+    visitorMin: balance.rumor.visitorMin,
+    visitorMax: balance.rumor.visitorMax,
+  },
 };
 
 /** 공개 위험도와 실제 위험도가 확연히 다른 의뢰. 은폐 검증의 전제다. */

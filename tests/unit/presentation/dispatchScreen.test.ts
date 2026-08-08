@@ -120,12 +120,15 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     knowledge: {
       discoveredContacts: new Set(),
       revealedFacts: new Set(),
+      heardFacts: new Map(),
       knownWealth: new Map(),
     },
     rng: createRng(1),
     usedNames: new Set(),
     nextContractId: 0,
     offersMade: {},
+    hallAttendance: { guildMemberIds: [], visitorIds: [] },
+    talkedToday: new Set(),
     ...overrides,
   };
 }
@@ -470,6 +473,30 @@ describe("파견 화면 — 배정 확정", () => {
     toggle(member.id, true);
     click("confirm");
 
+    expect(state.activeDispatches[0].concealedKnownRisk).toBe(false);
+  });
+
+  // 회귀 테스트 — 이 화면이 `revealedFacts`만 보고 판정하던 버그를 고정한다.
+  // 숨긴 것이 없는 의뢰인에게는 고지할 것도 없으므로 침묵이 성립하지 않는다.
+  // 이 케이스가 비어 있어서 27개가 전부 통과하는 상태로 버그가 살아 있었다.
+  it("test_dispatch_screen_honest_client_known_risk_is_not_concealment", () => {
+    // Arrange — 정직한 의뢰인: 숨긴 것이 없어 실제 == 공개다
+    const contract = makeContract({ statedRisk: 50, realRisk: 50, concealment: 0 });
+    const member = makeAdventurer();
+    setRoster([member]);
+    state.openContracts = [contract];
+    state.knowledge.revealedFacts.add(`${contract.id}:realRisk`);
+
+    // Act — 사실을 알고 있고 고지하지 않은 채 타결한다
+    mount(
+      makeSettlement(contract, {
+        offer: { rewardMultiplier: 1, advanceRatio: 0, discloseRisk: false },
+      }),
+    );
+    toggle(member.id, true);
+    click("confirm");
+
+    // Assert — 속인 것이 아니다. trust 대폭 하락이 발동하면 안 된다
     expect(state.activeDispatches[0].concealedKnownRisk).toBe(false);
   });
 });

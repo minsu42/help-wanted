@@ -14,17 +14,24 @@
 
 ## Acceptance Criteria
 
-- [ ] 파견 결과에 따라 `trust`가 갱신된다: 생존 `+0.05`, 부상 `−0.10`, 사망 `−0.15`(생존 길드원 전체에게)
-- [ ] **`knewRiskButConcealed`인 계약에서 사망이 나면 `−0.35`**가 추가 적용된다
-- [ ] `trust`는 0~1 범위로 클램프된다
-- [ ] `Memory`가 기록된다:
+- [x] 파견 결과에 따라 `trust`가 갱신된다: 생존 `+0.05`, 부상 `−0.10`, 사망 `−0.15`(파견에 나갔던 생존 파티원 전체에게 — 범위 해석은 구현 노트 참고)
+- [x] **`knewRiskButConcealed`인 계약에서 사망이 나면 `−0.35`**가 추가 적용된다
+- [x] `trust`는 0~1 범위로 클램프된다
+- [x] `Memory`가 기록된다:
       파티 전원에게 `sentToDanger` 또는 `sentSafe`(공개 위험도 기준),
       결과에 따라 `survived` / `wounded`,
       생존자 전원에게 `lostComrade`(`subjectId` = 사망자),
       침묵했으면 `wasDeceived`
-- [ ] `Memory`는 덧붙이기만 하고 지우지 않는다
-- [ ] 신뢰가 임계값 아래로 내려간 사람은 다음 날부터 소문을 말하지 않는다 (Story 009와 연결)
-- [ ] 사망자 본인에게는 `Memory`를 기록하지 않는다
+- [x] `Memory`는 덧붙이기만 하고 지우지 않는다 (함수가 대상 person의 기존 `memories`를
+      아예 인자로 받지 않으므로 구조적으로 지울 수 없다 — 호출자가 반환된
+      `MemoryUpdate`를 `push`만 하면 된다)
+- [x] 신뢰가 임계값 아래로 내려간 사람은 다음 날부터 소문을 말하지 않는다 (Story 009와 연결) —
+      `tests/integration/trustMemory.test.ts`가 `rumor.ts`의 실제 `resolveTalk`로 검증
+- [x] 사망자 본인에게는 `Memory`를 기록하지 않는다
+
+**구현 노트**: "생존 길드원 전체에게"를 길드 명부 전체가 아니라 "그 파견에 실제로
+나갔던 생존 파티원 전체"로 해석했다 — 근거는 `src/domain/reputation.ts` 파일
+상단 주석 참고. `gameState.ts` 배선 시 이 해석에 동의하는지 확인이 필요하다.
 
 ## Implementation Notes
 
@@ -64,7 +71,7 @@
 ## Test Evidence
 
 `tests/integration/trustMemory.test.ts`
-**Status**: [ ] 미작성
+**Status**: [x] 작성 완료, 11개 테스트 전부 통과 (`npx vitest run tests/integration/trustMemory.test.ts`)
 
 ## Dependencies
 

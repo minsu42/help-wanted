@@ -24,6 +24,8 @@
 import { createContract, type ContractConfig } from './contract';
 import { resolveDispatch, type DispatchConfig, type DispatchResult } from './dispatch';
 import { receiveAdvance, resolveDailyEconomy, type EconomyConfig } from './economy';
+import { resolveHallAttendance, type HallAttendance } from './hall';
+import { resolveDispatchAftermath, type ReputationConfig } from './reputation';
 import type { NamePool } from './person';
 import { createWorldRoster, type RosterConfig } from './roster';
 import { createRng, type Rng } from './rng';
@@ -86,6 +88,23 @@ export interface GameState {
    * 긴장시키는 전부이므로 세션 상태로 둔다.
    */
   offersMade: Record<string, number>;
+  /**
+   * 오늘 길드 홀에 있는 사람들. **하루에 한 번만 뽑아 여기 고정한다.**
+   *
+   * 화면이 재렌더될 때마다 `resolveHallAttendance`를 다시 부르면 같은 날인데 출석자가
+   * 바뀐다. 결과를 {@link DayReport}가 아니라 여기 두는 이유도 같다 — `DayReport`는
+   * `advanceDay` 한 번의 반환값이라 홀을 나갔다 다시 들어오면 다시 읽을 방법이 없고,
+   * 화면은 `roster`나 `openContracts`처럼 매 렌더마다 상태를 읽어야 한다.
+   */
+  hallAttendance: HallAttendance;
+  /**
+   * 오늘 이미 대화한 사람의 id.
+   *
+   * {@link GameState.offersMade}와 정확히 같은 이유로 화면이 아니라 여기 있다 — 화면에
+   * 두면 **길드 홀을 나갔다 들어오는 것만으로 재대화 금지를 우회할 수 있다.** 하루의
+   * 정보 획득량 상한이 이 게임의 희소성 자체이므로 세션 상태로 둔다.
+   */
+  talkedToday: Set<string>;
 }
 
 /** 회차 하나를 굴리는 데 필요한 모든 수치. `balance.json`과 `names.json`에서 온다. */
@@ -99,6 +118,19 @@ export interface GameConfig {
   readonly contract: ContractConfig;
   readonly dispatch: DispatchConfig;
   readonly economy: EconomyConfig;
+  readonly reputation: ReputationConfig;
+  /**
+   * 홀 출석 수치 중 **등급표에서 오지 않는 것들만.**
+   *
+   * `hallAttendanceMax`가 여기 없는 것이 의도다 — 그 값은 현재 길드 등급
+   * (`GuildTier.hallAttendanceMax`)에서 오므로 매일 달라질 수 있고, 설정에 박아 두면
+   * 확장을 사도 홀이 넓어지지 않는다. 두 출처를 합치는 일은 호출 지점이 한다.
+   */
+  readonly hall: {
+    readonly hallAttendanceMin: number;
+    readonly visitorMin: number;
+    readonly visitorMax: number;
+  };
   readonly names: NamePool;
 }
 
@@ -146,15 +178,22 @@ export function createGameState(seed: number, config: GameConfig): GameState {
     knowledge: {
       discoveredContacts: new Set(),
       revealedFacts: new Set(),
+      heardFacts: new Map(),
       knownWealth: new Map(),
     },
     rng,
     usedNames,
     nextContractId: 0,
     offersMade: {},
+    // 1일차 홀은 여기서 채운다. `advanceDay`는 2일차부터 도는 함수이므로 거기에만
+    // 출석 판정을 두면 첫날 홀이 비어 있고, 플레이어가 정보를 캘 창이 없는 상태로
+    // 첫 흥정을 하게 된다.
+    hallAttendance: { guildMemberIds: [], visitorIds: [] },
+    talkedToday: new Set(),
   };
 
   refillContracts(state, config);
+  rollHallAttendance(state, config);
   return state;
 }
 
@@ -241,7 +280,14 @@ export function advanceDay(state: GameState, config: GameConfig): DayReport {
   state.day += 1;
 
   const resolved = resolveDueDispatches(state, config);
+  applyReputationEffects(state, resolved, config);
   const recovered = recoverInjured(state);
+
+  // 파견 판정과 부상 회복 **뒤**에 뽑는다. 오늘 돌아온 사람과 오늘 회복한 사람이
+  // 오늘의 홀 출석 후보가 되어야 하기 때문이다. 등급 상한을 이 시점에 읽는 것이
+  // "확장은 다음 날부터 반영된다"를 공짜로 만든다 — 등급을 올린 날의 advanceDay는
+  // 이미 지나갔으므로 다음 호출에서야 새 상한이 적용된다.
+  rollHallAttendance(state, config);
 
   // 의뢰 생성보다 **먼저** 정산한다. 의뢰 난이도가 명성에서 나오므로, 오늘의 성과가
   // 오늘 도착하는 의뢰에 반영되어야 "성공이 곧 위험 상승"이 하루 단위로 성립한다.
@@ -254,6 +300,27 @@ export function advanceDay(state: GameState, config: GameConfig): DayReport {
   }
 
   return { day: state.day, resolved, recovered, newContracts, phase: state.phase };
+}
+
+/**
+ * 오늘의 홀 출석자를 뽑아 상태에 고정하고, "오늘 대화한 사람"을 비운다.
+ *
+ * 두 일이 한 함수에 있는 이유: 새 출석자 명단과 빈 대화 기록은 **같은 사건**이다.
+ * 따로 두면 한쪽만 부르는 실수가 나고, 그러면 어제 대화한 사람과 오늘 온 사람이
+ * 어긋난 상태로 화면에 나간다.
+ *
+ * `hallAttendanceMax`만 등급표에서 오고 나머지는 `balance.json`에서 온다 — 두 출처를
+ * 합치는 일이 `hall.ts`가 아니라 여기 있는 이유는, 그 파일이 어느 쪽이 설정이고 어느
+ * 쪽이 등급표인지 몰라도 되게 하기 위해서다.
+ */
+function rollHallAttendance(state: GameState, config: GameConfig): void {
+  state.hallAttendance = resolveHallAttendance(state.roster, state.rng, {
+    hallAttendanceMin: config.hall.hallAttendanceMin,
+    hallAttendanceMax: currentTier(state, config).hallAttendanceMax,
+    visitorMin: config.hall.visitorMin,
+    visitorMax: config.hall.visitorMax,
+  });
+  state.talkedToday = new Set();
 }
 
 /** 현재 등급의 룩업 테이블 행. */
@@ -353,6 +420,39 @@ function applyEconomy(
 
   for (const reveal of settled.wealthReveals) {
     state.knowledge.knownWealth.set(reveal.clientId, reveal.wealth);
+  }
+}
+
+/**
+ * 오늘 판정된 파견들의 `trust`·`Memory`를 명부에 적는다.
+ *
+ * `applyEconomy`와 나란히 두는 것이 이 파일의 관례다 — 계산은 `reputation.ts`(순수
+ * 함수)가 하고 여기서는 제자리에 적기만 한다. `resolveDueDispatches` 안에 넣지 않은
+ * 이유: 그 함수는 "누가 어떤 상태가 되었는가"만 책임지고, 신뢰가 어떻게 번지는지는
+ * 완전히 다른 규칙이다. 섞으면 파견 판정을 읽는 사람이 신뢰 공식까지 알아야 한다.
+ */
+function applyReputationEffects(
+  state: GameState,
+  resolved: readonly ResolvedDispatch[],
+  config: GameConfig,
+): void {
+  for (const { dispatch, result } of resolved) {
+    const party = dispatch.partyIds.map((id) => requireMember(state, id));
+    const aftermath = resolveDispatchAftermath(
+      party,
+      result,
+      dispatch.contract.statedRisk,
+      dispatch.concealedKnownRisk,
+      state.day,
+      config.reputation,
+    );
+
+    for (const update of aftermath.trustUpdates) {
+      requireMember(state, update.personId).trust = update.trust;
+    }
+    for (const update of aftermath.memoryUpdates) {
+      requireMember(state, update.personId).memories.push(update.memory);
+    }
   }
 }
 

@@ -28,6 +28,7 @@
  */
 import { dispatchParty, type DayReport, type GameState } from '../../domain/gameState';
 import type { DispatchOutcome, DispatchResult } from '../../domain/dispatch';
+import { concealedKnownRisk } from '../../domain/negotiation';
 import { narrate, type TextBank } from '../../domain/text';
 import { gradeOf, type Adventurer, type Contract, type GradeThresholds } from '../../domain/types';
 import { escapeHtml, GOAL_LABELS, GRADE_LABELS, TRAIT_LABELS, type ScreenHandle } from '../screen';
@@ -200,9 +201,16 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
     if (anyBlocked) return;
 
     // 실제 위험을 알고도 계약서에 적지 않았는가 — Story 013의 trust 하락폭이 이 값을 읽는다.
-    const concealedKnownRisk =
-      deps.state.knowledge.revealedFacts.has(`${contract.id}:realRisk`) &&
-      !deps.settlement.offer.discloseRisk;
+    //
+    // 판정을 `negotiation.ts`에 맡기는 이유: 여기서 직접 `revealedFacts`만 보면
+    // **정직한 의뢰인(`concealment === 0`)이 침묵으로 오판된다.** 숨긴 것이 없으면
+    // 고지할 것도 없으므로 속인 것이 아니다. 위험 고지 축의 개폐 규칙과 침묵 표식은
+    // 같은 두 조건을 쓰며, 그 규칙이 사는 곳은 도메인이다.
+    const wasConcealed = concealedKnownRisk(
+      contract,
+      deps.state.knowledge,
+      deps.settlement.offer.discloseRisk,
+    );
 
     try {
       const dispatched = dispatchParty(deps.state, contract.id, partyIds, {
@@ -210,7 +218,7 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
         // 잔금. 완수해도 wealth 판정을 통과해야 받고 사망이면 못 받는다 — 선불과의
         // 이 차이가 흥정에서 선불 축을 미는 이유 전부다 (story-012).
         remainingReward: deps.settlement.agreedReward - deps.settlement.advancePaid,
-        concealedKnownRisk,
+        concealedKnownRisk: wasConcealed,
       });
       confirmedPartyIds = dispatched.partyIds;
       resolveOnDay = dispatched.resolveOnDay;

@@ -1,0 +1,230 @@
+import { describe, expect, it } from "vitest";
+import balance from "../../src/data/balance.json";
+import type { DispatchOutcome } from "../../src/domain/dispatch";
+import {
+  resolveDispatchAftermath,
+  type AftermathOutcome,
+  type DispatchAftermath,
+  type ReputationConfig,
+  type ReputationTarget,
+} from "../../src/domain/reputation";
+import { createRng } from "../../src/domain/rng";
+import { resolveTalk, type RumorConfig, type RumorContract, type RumorTalker } from "../../src/domain/rumor";
+import type { Memory } from "../../src/domain/types";
+
+/**
+ * story-013: 신뢰·기억 갱신.
+ *
+ * 마지막 케이스("신뢰 하락이 소문을 막는다")가 이 파일이 unit이 아니라 integration인
+ * 이유다 — `reputation.ts`가 낮춘 trust를 `rumor.ts`의 실제 함수(`resolveTalk`)에
+ * 흘려 넣어 소문이 막히는지까지 확인한다.
+ */
+
+/** 설정은 balance.json에서 조립한다 — 수치가 파일에서 온다는 것의 증거다. */
+const CONFIG: ReputationConfig = {
+  trustOnSurvive: balance.rumor.trustOnSurvive,
+  trustOnWound: balance.rumor.trustOnWound,
+  trustOnDeath: balance.rumor.trustOnDeath,
+  trustOnDeceit: balance.rumor.trustOnDeceit,
+  // balance.json에 "이 정도 공개 위험도면 위험하다고 기억한다"는 의미의 전용 노브가
+  // 아직 없다. dispatch.gloryVolunteerRisk(명예 추구자가 자원하기 시작하는 위험도)가
+  // "이 정도면 위험하다고 인식되는 지점"이라는 의미상 가장 가까운 기존 값이라 재사용한다.
+  // 최종 배선 노브는 보고서를 참고할 것.
+  dangerThreshold: balance.dispatch.gloryVolunteerRisk,
+};
+
+const RUMOR_CONFIG: RumorConfig = {
+  trustThresholdDefault: balance.rumor.trustThresholdDefault,
+  trustThresholdCautious: balance.rumor.trustThresholdCautious,
+  trustThresholdLoyal: balance.rumor.trustThresholdLoyal,
+  traitDistortion: balance.rumor.traitDistortion,
+  greedyPrice: balance.rumor.greedyPrice,
+};
+
+const DAY = 5;
+
+function member(id: string, trust: number): ReputationTarget {
+  return { id, trust };
+}
+
+function outcomeOf(outcome: DispatchOutcome, casualtyId?: string): AftermathOutcome {
+  return { outcome, casualtyId };
+}
+
+function trustOf(aftermath: DispatchAftermath, personId: string): number | undefined {
+  return aftermath.trustUpdates.find((update) => update.personId === personId)?.trust;
+}
+
+function memoriesOf(aftermath: DispatchAftermath, personId: string): Memory[] {
+  return aftermath.memoryUpdates
+    .filter((update) => update.personId === personId)
+    .map((update) => update.memory);
+}
+
+describe("resolveDispatchAftermath — trust", () => {
+  it("test_reputation_concealed_death_penalty_exceeds_plain_death_penalty", () => {
+    // Arrange — 동일한 사망 사건, concealedKnownRisk만 다르다
+    const startingTrust = 0.7;
+    const party = [member("adv-survivor", startingTrust), member("adv-victim", startingTrust)];
+    const result = outcomeOf("dead", "adv-victim");
+
+    // Act
+    const concealed = resolveDispatchAftermath(party, result, 50, true, DAY, CONFIG);
+    const plain = resolveDispatchAftermath(party, result, 50, false, DAY, CONFIG);
+
+    // Assert — -0.50 vs -0.15
+    expect(trustOf(concealed, "adv-survivor")).toBeCloseTo(startingTrust - 0.5, 10);
+    expect(trustOf(plain, "adv-survivor")).toBeCloseTo(startingTrust - 0.15, 10);
+    expect(trustOf(concealed, "adv-survivor")!).toBeLessThan(trustOf(plain, "adv-survivor")!);
+  });
+
+  it("test_reputation_clamps_at_floor_zero", () => {
+    // Given: trust 0.1에서 침묵 후 사망(-0.50)
+    const party = [member("adv-survivor", 0.1), member("adv-victim", 0.5)];
+    const result = outcomeOf("dead", "adv-victim");
+
+    const aftermath = resolveDispatchAftermath(party, result, 50, true, DAY, CONFIG);
+
+    // Then: 음수로 내려가지 않는다
+    expect(trustOf(aftermath, "adv-survivor")).toBe(0);
+  });
+
+  it("test_reputation_clamps_at_ceiling_one", () => {
+    // Edge: trust 0.98에서 생존(+0.05) → 1.0
+    const party = [member("adv-1", 0.98)];
+    const result = outcomeOf("success");
+
+    const aftermath = resolveDispatchAftermath(party, result, 50, false, DAY, CONFIG);
+
+    expect(trustOf(aftermath, "adv-1")).toBe(1);
+  });
+
+  it("test_reputation_wounded_member_receives_trustOnWound", () => {
+    const party = [member("adv-wounded", 0.5)];
+    const result = outcomeOf("injured", "adv-wounded");
+
+    const aftermath = resolveDispatchAftermath(party, result, 50, false, DAY, CONFIG);
+
+    expect(trustOf(aftermath, "adv-wounded")).toBeCloseTo(0.5 + balance.rumor.trustOnWound, 10);
+  });
+});
+
+describe("resolveDispatchAftermath — memory: 동료 상실", () => {
+  it("test_memory_lostComrade_recorded_to_every_survivor_with_victim_subjectId", () => {
+    // Given: 3인 파티에서 1명 사망
+    const party = [member("adv-1", 0.5), member("adv-2", 0.5), member("adv-victim", 0.5)];
+    const result = outcomeOf("dead", "adv-victim");
+
+    // Act
+    const aftermath = resolveDispatchAftermath(party, result, 50, false, DAY, CONFIG);
+
+    // Then: 생존 2명에게 lostComrade, subjectId는 사망자 id
+    for (const survivorId of ["adv-1", "adv-2"]) {
+      const lostComrade = memoriesOf(aftermath, survivorId).find(
+        (memory) => memory.kind === "lostComrade",
+      );
+      expect(lostComrade).toBeDefined();
+      expect(lostComrade?.subjectId).toBe("adv-victim");
+    }
+  });
+
+  it("test_memory_lostComrade_absent_for_solo_party_death", () => {
+    // Edge: 1인 파티에서 사망 시 lostComrade가 아무에게도 안 남는다
+    const party = [member("adv-solo", 0.5)];
+    const result = outcomeOf("dead", "adv-solo");
+
+    const aftermath = resolveDispatchAftermath(party, result, 50, false, DAY, CONFIG);
+
+    const anyLostComrade = aftermath.memoryUpdates.some(
+      (update) => update.memory.kind === "lostComrade",
+    );
+    expect(anyLostComrade).toBe(false);
+  });
+});
+
+describe("resolveDispatchAftermath — memory: 사망자 본인", () => {
+  it("test_memory_and_trust_absent_for_the_deceased", () => {
+    const party = [member("adv-1", 0.5), member("adv-victim", 0.5)];
+    const result = outcomeOf("dead", "adv-victim");
+
+    const aftermath = resolveDispatchAftermath(party, result, 50, true, DAY, CONFIG);
+
+    expect(trustOf(aftermath, "adv-victim")).toBeUndefined();
+    expect(memoriesOf(aftermath, "adv-victim")).toEqual([]);
+  });
+});
+
+describe("resolveDispatchAftermath — memory: 공개 위험도 / 침묵", () => {
+  it("test_memory_sentToDanger_when_statedRisk_meets_threshold", () => {
+    const party = [member("adv-1", 0.5)];
+    const result = outcomeOf("success");
+
+    const aftermath = resolveDispatchAftermath(
+      party,
+      result,
+      CONFIG.dangerThreshold,
+      false,
+      DAY,
+      CONFIG,
+    );
+
+    expect(memoriesOf(aftermath, "adv-1").map((memory) => memory.kind)).toContain(
+      "sentToDanger",
+    );
+  });
+
+  it("test_memory_sentSafe_when_statedRisk_below_threshold", () => {
+    const party = [member("adv-1", 0.5)];
+    const result = outcomeOf("success");
+
+    const aftermath = resolveDispatchAftermath(
+      party,
+      result,
+      CONFIG.dangerThreshold - 1,
+      false,
+      DAY,
+      CONFIG,
+    );
+
+    expect(memoriesOf(aftermath, "adv-1").map((memory) => memory.kind)).toContain("sentSafe");
+  });
+
+  it("test_memory_wasDeceived_recorded_regardless_of_outcome_when_concealed", () => {
+    // 침묵은 생존/부상/사망과 무관하게 항상 기록된다
+    const party = [member("adv-1", 0.5)];
+    const result = outcomeOf("success");
+
+    const aftermath = resolveDispatchAftermath(party, result, 50, true, DAY, CONFIG);
+
+    expect(memoriesOf(aftermath, "adv-1").map((memory) => memory.kind)).toContain("wasDeceived");
+  });
+});
+
+describe("신뢰 하락이 소문을 막는다 (integration: reputation → rumor)", () => {
+  it("test_trust_drop_from_concealed_death_blocks_resolveTalk_disclosure", () => {
+    // Given: cautious(임계 0.6)이고 trust 0.65인 정보원이 같은 파견에서 살아 돌아왔고,
+    // 그 파견은 실제 위험을 알고도 숨긴 채 보낸 것이었으며 동료가 죽었다.
+    const talkerId = "adv-informant";
+    const party = [member(talkerId, 0.65), member("adv-victim", 0.65)];
+    const result = outcomeOf("dead", "adv-victim");
+
+    // Act — story-013 판정: trust가 0.65 - 0.50 = 0.15로 떨어진다
+    const aftermath = resolveDispatchAftermath(party, result, 50, true, DAY, CONFIG);
+    const newTrust = trustOf(aftermath, talkerId);
+    expect(newTrust).toBeCloseTo(0.15, 10);
+
+    // Assert — 그 낮아진 trust로 다음 날 대화하면 알고 있는 사실을 말하지 않는다
+    const talker: RumorTalker = { id: talkerId, traits: ["cautious", "loyal"], trust: newTrust! };
+    const contract: RumorContract = {
+      realRisk: 80,
+      facts: [{ id: "ct-1:realRisk", contractId: "ct-1", kind: "realRisk" }],
+      client: { id: "client-1", knownBy: [talkerId], wealth: 0.5 },
+    };
+
+    const talkResult = resolveTalk(talker, [contract], createRng(1), RUMOR_CONFIG);
+
+    // 인맥 공개(①)는 신뢰와 무관하게 여전히 일어난다 — 막히는 것은 사실(②)뿐이다
+    expect(talkResult.discoveredContactKeys).toEqual([`${talkerId}->client-1`]);
+    expect(talkResult.revealedFacts).toEqual([]);
+  });
+});
