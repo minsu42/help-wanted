@@ -1,0 +1,47 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # 개발 환경과 같은 node 24(npm 11)를 쓴다. npm 10과 npm 11은 같은
+          # package-lock.json에서 서로 다른 의존성 트리를 계산해서, 버전이
+          # 갈리면 락 파일이 멀쩡해도 npm ci가 거부한다.
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # 테스트 파일이 아직 없는 단계에서도 통과해야 한다 (--passWithNoTests는
+      # package.json의 test 스크립트에 들어 있다). 이것 없이는 첫 배포가 깨진다.
+      - run: npm run test
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

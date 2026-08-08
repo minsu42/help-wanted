@@ -1,0 +1,34 @@
+# === 빌드 산출물 ===
+node_modules/
+dist/
+
+# === 로컬 전용: 개발 도구 설정 ===
+# Claude Code 스킬·에이전트 정의(프로젝트 템플릿). 로컬에서만 쓰고 저장소에는 올리지
+# 않는다 — 파일 211개가 게임 소스를 가린다. AI 활용 내역은 제출물 4번 문서로 낸다.
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+
+# === 로컬 전용: 세션 상태 ===
+production/
+
+# === 에디터 / OS ===
+.vs/
+.vscode/settings.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# === 로그 / 캐시 ===
+*.log
+*.tmp
+.npm/
+
+# === 비밀 ===
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
