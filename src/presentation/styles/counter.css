@@ -1,0 +1,190 @@
+/*
+ * 창구 화면 — 양피지 카드와 세 개의 축.
+ *
+ * 붉은 봉랍색(--seal)은 위험·사망·결렬에만 쓴다. 여기서는 결렬 문구와 잠긴 축의
+ * 사유에만 나타난다. 아껴야 그 색이 의미를 갖는다.
+ */
+
+.counter {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.counter__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--ink-faint);
+  color: var(--paper);
+}
+
+.counter__day {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: 0.08em;
+}
+
+.counter__funds {
+  margin: 0;
+  color: var(--paper-dim);
+  letter-spacing: 0.05em;
+}
+
+.counter__empty,
+.counter__broken {
+  margin: 2rem 0;
+  color: var(--paper-dim);
+  text-align: center;
+}
+
+.counter__broken {
+  color: var(--seal);
+}
+
+/* --- 의뢰 카드 --- */
+
+.contract-card {
+  margin: 1.5rem 0;
+  padding: 1.5rem 1.75rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 2px;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 35%);
+}
+
+.contract-card--settled {
+  background: var(--paper-dim);
+}
+
+.contract-card__client {
+  margin: 0 0 0.75rem;
+  font-size: 1.375rem;
+  letter-spacing: 0.05em;
+}
+
+.contract-card__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin: 0 0 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px dashed var(--ink-faint);
+}
+
+.contract-card__facts div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.contract-card__facts dt {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+}
+
+.contract-card__facts dd {
+  margin: 0;
+  font-size: 1.0625rem;
+}
+
+/* --- 세 개의 축 --- */
+
+.axis {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto;
+  align-items: center;
+  gap: 0.875rem;
+  margin: 0.625rem 0;
+}
+
+.axis--toggle {
+  grid-template-columns: 4.5rem auto 1fr;
+}
+
+.axis__label {
+  color: var(--ink-faint);
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+}
+
+.axis__slider {
+  width: 100%;
+  accent-color: var(--desk);
+}
+
+.axis__value {
+  min-width: 9rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.axis__check {
+  accent-color: var(--desk);
+}
+
+.axis__hint {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+/*
+ * 잠긴 축의 사유. 그냥 회색이면 플레이어가 버그로 읽으므로 사유를 눈에 띄게 둔다 —
+ * 소문을 캐러 갈 이유가 여기서 생긴다.
+ */
+.axis--locked .axis__label {
+  opacity: 0.5;
+}
+
+.axis__hint--locked {
+  color: var(--seal);
+}
+
+/* --- 제안 --- */
+
+.contract-card__reply {
+  margin: 1.25rem 0 0;
+  padding: 0.75rem 1rem;
+  background: rgb(0 0 0 / 5%);
+  border-left: 3px solid var(--ink-faint);
+  line-height: 1.6;
+}
+
+.contract-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.contract-card__offer {
+  padding: 0.5rem 1.5rem;
+  background: var(--desk);
+  color: var(--paper);
+  border: none;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.contract-card__offer:hover {
+  background: var(--desk-dark);
+}
+
+.contract-card__attempts {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+.contract-card__stamp {
+  margin: 1.25rem 0 0;
+  color: var(--seal);
+  font-size: 1.125rem;
+  letter-spacing: 0.3em;
+  text-align: right;
+}

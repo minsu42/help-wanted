@@ -70,6 +70,14 @@ export interface GameState {
   readonly usedNames: Set<string>;
   /** 다음 의뢰에 붙일 번호. 의뢰 id가 회차 안에서 유일해야 한다 */
   nextContractId: number;
+  /**
+   * 의뢰별로 이미 내민 제안 횟수.
+   *
+   * 화면이 아니라 여기 있는 이유: 창구를 나갔다 들어오면 초기화되는 곳에 두면
+   * **재진입으로 결렬 규칙을 우회할 수 있다.** `maxOffers`가 2인 것이 흥정을
+   * 긴장시키는 전부이므로 세션 상태로 둔다.
+   */
+  offersMade: Record<string, number>;
 }
 
 /** 회차 하나를 굴리는 데 필요한 모든 수치. `balance.json`과 `names.json`에서 온다. */
@@ -130,6 +138,7 @@ export function createGameState(seed: number, config: GameConfig): GameState {
     rng,
     usedNames,
     nextContractId: 0,
+    offersMade: {},
   };
 
   refillContracts(state, config);

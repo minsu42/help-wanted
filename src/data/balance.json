@@ -72,7 +72,11 @@
     "urgencyWeight": 0.6,
     "alternativePenalty": 0.25,
     "disclosureBonus": 0.4,
-    "maxOffers": 2
+    "maxOffers": 2,
+    "_offerComment": "플레이어가 창구에서 부를 수 있는 범위. 상한이 곧 욕심의 한계이므로 밸런스 값이다.",
+    "offerRewardMin": 0.5,
+    "offerRewardMax": 3.0,
+    "offerStep": 0.05
   },
 
   "rumor": {

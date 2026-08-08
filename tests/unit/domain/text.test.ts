@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import namesData from "../../../src/data/names.json";
 import textData from "../../../src/data/text.json";
 import { createRng } from "../../../src/domain/rng";
 import { narrate, render, type TextBank } from "../../../src/domain/text";
@@ -56,6 +57,56 @@ describe("render", () => {
 
   it("test_unused_vars_are_ignored", () => {
     expect(render("{name}", { name: "카린", unused: "무시됨" })).toBe("카린");
+  });
+});
+
+describe("render — 조사", () => {
+  it("test_particle_follows_the_final_consonant_of_the_name", () => {
+    // 받침 있음(린) → 이 / 없음(더) → 가. 고정하면 "발더이"가 화면에 나간다.
+    expect(render("{name|이/가} 왔다", { name: "카린" })).toBe("카린이 왔다");
+    expect(render("{name|이/가} 왔다", { name: "니카 발더" })).toBe("니카 발더가 왔다");
+  });
+
+  it("test_all_three_particle_pairs_work", () => {
+    expect(render("{n|은/는}", { n: "요한" })).toBe("요한은");
+    expect(render("{n|은/는}", { n: "리터" })).toBe("리터는");
+    expect(render("{n|을/를}", { n: "그림" })).toBe("그림을");
+    expect(render("{n|을/를}", { n: "뮐러" })).toBe("뮐러를");
+  });
+
+  it("test_every_generated_name_gets_a_grammatical_particle", () => {
+    // names.json 조합 전체가 대상이다 — 한 조합만 어색해도 심사에서 눈에 띈다
+    for (const given of namesData.given) {
+      for (const family of namesData.family) {
+        const rendered = render("{name|이/가}", { name: `${given} ${family}` });
+        const particle = rendered.slice(-1);
+        expect(["이", "가"]).toContain(particle);
+        expect(rendered.slice(0, -1)).toBe(`${given} ${family}`);
+      }
+    }
+  });
+
+  it("test_number_particle_follows_the_sino_korean_reading", () => {
+    // 87 → 팔십칠(ㄹ) → 은 / 82 → 팔십이(받침 없음) → 는
+    expect(render("{risk|은/는}", { risk: 87 })).toBe("87은");
+    expect(render("{risk|은/는}", { risk: 82 })).toBe("82는");
+    expect(render("{risk|이/가}", { risk: 100 })).toBe("100이");
+    expect(render("{risk|이/가}", { risk: 105 })).toBe("105가");
+  });
+
+  it("test_non_hangul_non_digit_falls_back_to_no_final_consonant", () => {
+    // 던지는 것보다 문장이 나가는 편이 낫다
+    expect(render("{n|은/는}", { n: "Karin" })).toBe("Karin는");
+  });
+
+  it("test_malformed_particle_spec_throws", () => {
+    // 오타를 조용히 넘기면 화면에서 발견된다
+    expect(() => render("{n|은}", { n: "카린" })).toThrow(/조사/);
+    expect(() => render("{n|은/는/를}", { n: "카린" })).toThrow(/조사/);
+  });
+
+  it("test_particle_placeholder_still_throws_on_missing_value", () => {
+    expect(() => render("{name|이/가} 왔다", {})).toThrow(/name/);
   });
 });
 
@@ -176,7 +227,7 @@ describe("text.json 데이터 무결성", () => {
 
       for (const lines of Object.values(entry.lines)) {
         for (const line of lines) {
-          for (const [, key] of line.matchAll(/\{(\w+)\}/g)) {
+          for (const [, key] of line.matchAll(/\{(\w+)(?:\|[^}]+)?\}/g)) {
             expect(declared.has(key), `${name}의 "${line}"이 미선언 {${key}}를 쓴다`).toBe(true);
           }
         }

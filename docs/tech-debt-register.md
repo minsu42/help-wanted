@@ -22,6 +22,19 @@
   필요하다. 바꾸려면 가중치를 `(tenureYears + 1)^exponent`로 옮기면 된다.
   출처: `production/stories/story-002-contract-generation.md`
 
+## 문서 불일치
+
+- **2026-08-08** (story-007 빌드 중 발견): **`package.json`의 Vite가 `^7.3.6`인데
+  `docs/engine-reference/web/VERSION.md`는 "Vite 5.4로 고정"이라고 적고 있다.**
+  그 문서는 5.4 고정을 근거로 Risk Level을 LOW로 매기고, 버전을 올리면 즉시 HIGH가
+  된다고 경고한다 — 실제로는 이미 올라가 있다.
+
+  빌드·테스트·배포는 정상 동작하므로 **당장의 위험은 없다**(193 테스트 통과, 프로덕션
+  빌드 129ms, 번들 9.8KB gzip). 다만 `^`가 붙어 있어 다음 설치에서 또 올라갈 수 있고,
+  그때는 조용히 깨질 수 있다. 마감 후 둘 중 하나로 정리할 것 — VERSION.md를 실제
+  버전으로 갱신하거나, package.json을 문서대로 되돌리거나. **지금 건드리면 3일 예산에
+  "빌드 설정 디버깅"이 들어온다.**
+
 ## Deferred — 의식적으로 미룬 확장
 
 - **2026-08-08 — LLM 서술 레이어 (story-019 이후 검토).** 대사를 런타임에 LLM으로

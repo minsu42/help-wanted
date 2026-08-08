@@ -39,10 +39,24 @@ export interface TextBank {
 /** 어느 성격에도 걸리지 않을 때 쓰는 어휘 집합의 키. */
 const FALLBACK_VARIANT = 'default';
 
-const PLACEHOLDER = /\{(\w+)\}/g;
+/** `{key}` 또는 조사를 붙이는 `{key|은/는}`. */
+const PLACEHOLDER = /\{(\w+)(?:\|([^}]+))?\}/g;
+
+const HANGUL_FIRST = 0xac00;
+const HANGUL_LAST = 0xd7a3;
+const JONGSEONG_COUNT = 28;
 
 /**
  * `{key}` 자리표시자를 값으로 바꾼다.
+ *
+ * ## 조사 형태 `{name|은/는}`
+ *
+ * 한국어는 앞 글자의 받침에 따라 조사가 갈린다. `{name}은`으로 고정하면 **"발더은"**
+ * 같은 것이 화면에 나가고, 이름이 생성되는 게임이라 어떤 조합이 나올지 미리 알 수도
+ * 없다. 앞쪽이 받침 있는 값, 뒤쪽이 없는 값이다 — `은/는`, `이/가`, `을/를`.
+ *
+ * 이것 하나만 예외로 둔다. 조건 분기나 반복까지 넣으면 템플릿 엔진을 만드는 일이
+ * 되지만, 조사는 **문법이라 회피할 방법이 없다.**
  *
  * 빈 문자열은 **정상 값이다** — 누락과 구분한다. 값을 일부러 비우는 경우가 있고,
  * 그것까지 막으면 호출자가 공백 한 칸을 넣는 우회를 하게 된다.
@@ -50,13 +64,55 @@ const PLACEHOLDER = /\{(\w+)\}/g;
  * @throws 템플릿이 요구하는 자리표시자에 값이 없을 때
  */
 export function render(template: string, vars: TemplateVars): string {
-  return template.replace(PLACEHOLDER, (_match, key: string) => {
+  return template.replace(PLACEHOLDER, (_match, key: string, particles?: string) => {
     const value = vars[key];
     if (value === undefined) {
       throw new Error(`자리표시자 {${key}}에 넣을 값이 없다 — "${template}"`);
     }
-    return String(value);
+
+    const text = String(value);
+    return particles === undefined ? text : text + particleFor(text, particles, template);
   });
+}
+
+/**
+ * `받침있음/받침없음` 형태에서 맞는 조사를 고른다.
+ *
+ * @throws 형태가 `가/나` 두 갈래가 아닐 때 — 오타를 조용히 넘기면 화면에서 발견된다
+ */
+function particleFor(value: string, spec: string, template: string): string {
+  const options = spec.split('/');
+  if (options.length !== 2) {
+    throw new Error(`조사는 "받침있음/받침없음" 두 갈래여야 한다 — "{...|${spec}}" in "${template}"`);
+  }
+  return endsWithConsonant(value) ? options[0] : options[1];
+}
+
+/**
+ * 숫자로 끝날 때 받침이 있는 자릿수.
+ *
+ * 조사는 **읽는 소리**를 따르므로 마지막 자릿수의 한자음으로 판정한다 —
+ * 일(ㄹ)·삼(ㅁ)·육(ㄱ)·칠(ㄹ)·팔(ㄹ)·영(ㅇ)은 받침이 있고, 이·사·오·구는 없다.
+ * 위험도와 자금이 늘 숫자로 나가므로 이 표가 없으면 "87는"이 화면에 뜬다.
+ */
+const DIGITS_WITH_FINAL_CONSONANT = new Set(['0', '1', '3', '6', '7', '8']);
+
+/**
+ * 마지막 글자에 받침이 있는가.
+ *
+ * 한글도 숫자도 아니면(라틴 문자·빈 문자열) 받침 없음으로 본다. 그때 던지는 것보다
+ * 문장이 나가는 편이 낫다 — 조사 하나가 어색한 것과 화면이 비는 것은 무게가 다르다.
+ */
+function endsWithConsonant(value: string): boolean {
+  const last = value.trimEnd().slice(-1);
+  if (last === '') return false;
+
+  if (last >= '0' && last <= '9') return DIGITS_WITH_FINAL_CONSONANT.has(last);
+
+  const code = last.charCodeAt(0);
+  if (code < HANGUL_FIRST || code > HANGUL_LAST) return false;
+
+  return (code - HANGUL_FIRST) % JONGSEONG_COUNT !== 0;
 }
 
 /**
