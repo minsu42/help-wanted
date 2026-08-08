@@ -1,0 +1,242 @@
+/*
+ * 길드 홀 화면 — 양피지 카드, 창구·파견 화면과 같은 팔레트.
+ *
+ * **이 화면에는 `--seal`(붉은 봉랍)을 쓰지 않는다.** 자금 부족·정원 초과·최고 등급
+ * 도달은 위험도 사망도 결렬도 아니다 — 그냥 "아직 안 된다"이므로 `--ink-faint`로만
+ * 표시한다. 봉랍색을 여기서 쓰기 시작하면 창구 화면에서 그 색이 갖는 "위험" 신호가
+ * 흐려진다.
+ */
+
+.hall {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.hall__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--ink-faint);
+  color: var(--paper);
+}
+
+.hall__day {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: 0.08em;
+}
+
+.hall__funds {
+  margin: 0;
+  color: var(--paper-dim);
+  letter-spacing: 0.05em;
+}
+
+.hall__section-title {
+  margin: 1.75rem 0 0.75rem;
+  color: var(--paper-dim);
+  font-size: 1.125rem;
+  letter-spacing: 0.08em;
+}
+
+/* --- 출석자 명단 --- */
+
+.hall-person-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hall-person-list__empty {
+  margin: 2rem 0;
+  color: var(--paper-dim);
+  text-align: center;
+}
+
+.hall-person {
+  margin: 0.875rem 0;
+  padding: 1rem 1.25rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+}
+
+.hall-person--talked {
+  opacity: 0.8;
+}
+
+/*
+ * 길드원/외부인 구분 — 영입 판단이 이 구분에서 나온다. 왼쪽 테두리 색으로만
+ * 갈라서, 위험 신호(--seal)와 겹치지 않는 은은한 표식을 쓴다.
+ */
+.hall-person--guild {
+  border-left: 3px solid var(--desk);
+}
+
+.hall-person--visitor {
+  border-left: 3px dashed var(--ink-faint);
+}
+
+.hall-person__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hall-person__name {
+  font-size: 1.0625rem;
+  letter-spacing: 0.03em;
+}
+
+.hall-person__grade {
+  padding: 0.125rem 0.5rem;
+  background: var(--desk);
+  color: var(--paper);
+  border-radius: 2px;
+  font-size: 0.8125rem;
+  letter-spacing: 0.05em;
+}
+
+.hall-person__affiliation {
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--ink-faint);
+  border-radius: 2px;
+  color: var(--ink-faint);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.hall-person--visitor .hall-person__affiliation {
+  font-style: italic;
+}
+
+.hall-person__traits {
+  margin: 0.375rem 0 0;
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+.hall-person__contacts {
+  margin: 0.375rem 0 0;
+  font-size: 0.875rem;
+}
+
+.hall-person__status {
+  margin: 0.75rem 0 0;
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+  font-style: italic;
+}
+
+.hall-person__reply,
+.hall-person__recruit-message {
+  margin: 0.5rem 0 0;
+  padding: 0.625rem 0.875rem;
+  background: rgb(0 0 0 / 5%);
+  border-left: 3px solid var(--ink-faint);
+  line-height: 1.6;
+}
+
+.hall-person__actions,
+.hall-person__recruit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.hall-person__talk,
+.hall-person__recruit-button,
+.hall-expand__button {
+  padding: 0.5rem 1.25rem;
+  background: var(--desk);
+  color: var(--paper);
+  border: none;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.hall-person__talk:hover,
+.hall-person__recruit-button:hover,
+.hall-expand__button:hover {
+  background: var(--desk-dark);
+}
+
+.hall-person__talk:disabled,
+.hall-person__recruit-button:disabled,
+.hall-expand__button:disabled {
+  background: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+.hall-person__recruit-reason {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+/* --- 길드 확장 --- */
+
+.hall-expand {
+  margin-top: 1.75rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 2px;
+}
+
+.hall-expand__info {
+  margin: 0 0 0.875rem;
+  color: var(--ink-faint);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.hall-expand__hint {
+  margin: 0.5rem 0 0;
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+.hall-expand__reason {
+  margin: 0.375rem 0 0;
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+/* --- 하단 액션 --- */
+
+.hall__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.hall__return,
+.hall__end-day {
+  padding: 0.5rem 1.5rem;
+  background: var(--desk);
+  color: var(--paper);
+  border: none;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.hall__return:hover,
+.hall__end-day:hover {
+  background: var(--desk-dark);
+}

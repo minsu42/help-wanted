@@ -151,6 +151,8 @@ const LOCKED: DisclosureStatus = {
 let root: HTMLElement;
 let state: GameState;
 let onSettled: ReturnType<typeof vi.fn>;
+let onVisitHall: ReturnType<typeof vi.fn<() => void>>;
+let onEndDay: ReturnType<typeof vi.fn<() => void>>;
 
 beforeEach(() => {
   document.body.innerHTML = "";
@@ -159,6 +161,8 @@ beforeEach(() => {
 
   state = createGameState(1234, GAME_CONFIG);
   onSettled = vi.fn();
+  onVisitHall = vi.fn<() => void>();
+  onEndDay = vi.fn<() => void>();
 });
 
 function mount(overrides: Partial<CounterScreenDeps> = {}) {
@@ -169,9 +173,33 @@ function mount(overrides: Partial<CounterScreenDeps> = {}) {
     text: textBank,
     disclosureStatus: () => LOCKED,
     onSettled: onSettled as unknown as (settlement: Settlement) => void,
+    onVisitHall,
+    onEndDay,
     ...overrides,
   });
 }
+
+describe("창구 화면 — 나가는 문", () => {
+  it("test_counter_visit_hall_button_calls_the_callback_once", () => {
+    // 홀로 가는 문이 창구에만 있다 — 이 버튼이 없으면 정보를 캘 방법이 없고
+    // "정보 = 흥정력"의 앞쪽 절반에 도달하지 못한다
+    mount();
+
+    root.querySelector<HTMLButtonElement>('[data-action="visit-hall"]')?.click();
+
+    expect(onVisitHall).toHaveBeenCalledTimes(1);
+    expect(onEndDay).not.toHaveBeenCalled();
+  });
+
+  it("test_counter_end_day_button_calls_the_callback_once", () => {
+    mount();
+
+    root.querySelector<HTMLButtonElement>('[data-action="end-day"]')?.click();
+
+    expect(onEndDay).toHaveBeenCalledTimes(1);
+    expect(onVisitHall).not.toHaveBeenCalled();
+  });
+});
 
 /** 단일 의뢰만 남긴다 — 판정을 예측 가능하게 만든다. */
 function withSingleContract(client: Client = makeClient()): Contract {

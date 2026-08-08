@@ -26,11 +26,7 @@ const CONFIG: ReputationConfig = {
   trustOnWound: balance.rumor.trustOnWound,
   trustOnDeath: balance.rumor.trustOnDeath,
   trustOnDeceit: balance.rumor.trustOnDeceit,
-  // balance.json에 "이 정도 공개 위험도면 위험하다고 기억한다"는 의미의 전용 노브가
-  // 아직 없다. dispatch.gloryVolunteerRisk(명예 추구자가 자원하기 시작하는 위험도)가
-  // "이 정도면 위험하다고 인식되는 지점"이라는 의미상 가장 가까운 기존 값이라 재사용한다.
-  // 최종 배선 노브는 보고서를 참고할 것.
-  dangerThreshold: balance.dispatch.gloryVolunteerRisk,
+  dangerThreshold: balance.rumor.dangerMemoryThreshold,
 };
 
 const RUMOR_CONFIG: RumorConfig = {
@@ -69,8 +65,8 @@ describe("resolveDispatchAftermath — trust", () => {
     const result = outcomeOf("dead", "adv-victim");
 
     // Act
-    const concealed = resolveDispatchAftermath(party, result, 50, true, DAY, CONFIG);
-    const plain = resolveDispatchAftermath(party, result, 50, false, DAY, CONFIG);
+    const concealed = resolveDispatchAftermath(party, [], result, 50, true, DAY, CONFIG);
+    const plain = resolveDispatchAftermath(party, [], result, 50, false, DAY, CONFIG);
 
     // Assert — -0.50 vs -0.15
     expect(trustOf(concealed, "adv-survivor")).toBeCloseTo(startingTrust - 0.5, 10);
@@ -83,7 +79,7 @@ describe("resolveDispatchAftermath — trust", () => {
     const party = [member("adv-survivor", 0.1), member("adv-victim", 0.5)];
     const result = outcomeOf("dead", "adv-victim");
 
-    const aftermath = resolveDispatchAftermath(party, result, 50, true, DAY, CONFIG);
+    const aftermath = resolveDispatchAftermath(party, [], result, 50, true, DAY, CONFIG);
 
     // Then: 음수로 내려가지 않는다
     expect(trustOf(aftermath, "adv-survivor")).toBe(0);
@@ -94,7 +90,7 @@ describe("resolveDispatchAftermath — trust", () => {
     const party = [member("adv-1", 0.98)];
     const result = outcomeOf("success");
 
-    const aftermath = resolveDispatchAftermath(party, result, 50, false, DAY, CONFIG);
+    const aftermath = resolveDispatchAftermath(party, [], result, 50, false, DAY, CONFIG);
 
     expect(trustOf(aftermath, "adv-1")).toBe(1);
   });
@@ -103,7 +99,7 @@ describe("resolveDispatchAftermath — trust", () => {
     const party = [member("adv-wounded", 0.5)];
     const result = outcomeOf("injured", "adv-wounded");
 
-    const aftermath = resolveDispatchAftermath(party, result, 50, false, DAY, CONFIG);
+    const aftermath = resolveDispatchAftermath(party, [], result, 50, false, DAY, CONFIG);
 
     expect(trustOf(aftermath, "adv-wounded")).toBeCloseTo(0.5 + balance.rumor.trustOnWound, 10);
   });
@@ -116,7 +112,7 @@ describe("resolveDispatchAftermath — memory: 동료 상실", () => {
     const result = outcomeOf("dead", "adv-victim");
 
     // Act
-    const aftermath = resolveDispatchAftermath(party, result, 50, false, DAY, CONFIG);
+    const aftermath = resolveDispatchAftermath(party, [], result, 50, false, DAY, CONFIG);
 
     // Then: 생존 2명에게 lostComrade, subjectId는 사망자 id
     for (const survivorId of ["adv-1", "adv-2"]) {
@@ -133,7 +129,7 @@ describe("resolveDispatchAftermath — memory: 동료 상실", () => {
     const party = [member("adv-solo", 0.5)];
     const result = outcomeOf("dead", "adv-solo");
 
-    const aftermath = resolveDispatchAftermath(party, result, 50, false, DAY, CONFIG);
+    const aftermath = resolveDispatchAftermath(party, [], result, 50, false, DAY, CONFIG);
 
     const anyLostComrade = aftermath.memoryUpdates.some(
       (update) => update.memory.kind === "lostComrade",
@@ -147,7 +143,7 @@ describe("resolveDispatchAftermath — memory: 사망자 본인", () => {
     const party = [member("adv-1", 0.5), member("adv-victim", 0.5)];
     const result = outcomeOf("dead", "adv-victim");
 
-    const aftermath = resolveDispatchAftermath(party, result, 50, true, DAY, CONFIG);
+    const aftermath = resolveDispatchAftermath(party, [], result, 50, true, DAY, CONFIG);
 
     expect(trustOf(aftermath, "adv-victim")).toBeUndefined();
     expect(memoriesOf(aftermath, "adv-victim")).toEqual([]);
@@ -161,6 +157,7 @@ describe("resolveDispatchAftermath — memory: 공개 위험도 / 침묵", () =>
 
     const aftermath = resolveDispatchAftermath(
       party,
+      [],
       result,
       CONFIG.dangerThreshold,
       false,
@@ -179,6 +176,7 @@ describe("resolveDispatchAftermath — memory: 공개 위험도 / 침묵", () =>
 
     const aftermath = resolveDispatchAftermath(
       party,
+      [],
       result,
       CONFIG.dangerThreshold - 1,
       false,
@@ -194,7 +192,7 @@ describe("resolveDispatchAftermath — memory: 공개 위험도 / 침묵", () =>
     const party = [member("adv-1", 0.5)];
     const result = outcomeOf("success");
 
-    const aftermath = resolveDispatchAftermath(party, result, 50, true, DAY, CONFIG);
+    const aftermath = resolveDispatchAftermath(party, [], result, 50, true, DAY, CONFIG);
 
     expect(memoriesOf(aftermath, "adv-1").map((memory) => memory.kind)).toContain("wasDeceived");
   });
@@ -209,7 +207,7 @@ describe("신뢰 하락이 소문을 막는다 (integration: reputation → rumo
     const result = outcomeOf("dead", "adv-victim");
 
     // Act — story-013 판정: trust가 0.65 - 0.50 = 0.15로 떨어진다
-    const aftermath = resolveDispatchAftermath(party, result, 50, true, DAY, CONFIG);
+    const aftermath = resolveDispatchAftermath(party, [], result, 50, true, DAY, CONFIG);
     const newTrust = trustOf(aftermath, talkerId);
     expect(newTrust).toBeCloseTo(0.15, 10);
 
@@ -226,5 +224,80 @@ describe("신뢰 하락이 소문을 막는다 (integration: reputation → rumo
     // 인맥 공개(①)는 신뢰와 무관하게 여전히 일어난다 — 막히는 것은 사실(②)뿐이다
     expect(talkResult.discoveredContactKeys).toEqual([`${talkerId}->client-1`]);
     expect(talkResult.revealedFacts).toEqual([]);
+  });
+});
+
+/**
+ * 사망의 trust 범위는 길드 전체다 (스토리 AC: "생존 **길드원** 전체에게").
+ *
+ * 이것이 착취를 억제하는 유일한 기계적 장치이므로, 파티원 한둘만 깎으면 압력이
+ * 성립하지 않는다. 반면 `Memory`는 파티에만 남는다 — 소식을 들은 것과 거기 있었던
+ * 것은 다르다.
+ */
+describe("resolveDispatchAftermath — 사망은 길드 전체로 번진다", () => {
+  it("test_reputation_death_lowers_trust_of_guild_members_outside_the_party", () => {
+    // Arrange
+    const party = [member("adv-survivor", 0.7), member("adv-victim", 0.7)];
+    const bystanders = [member("adv-home-1", 0.7), member("adv-home-2", 0.7)];
+    const result = outcomeOf("dead", "adv-victim");
+
+    // Act
+    const aftermath = resolveDispatchAftermath(party, bystanders, result, 50, false, DAY, CONFIG);
+
+    // Assert — 나가지 않은 길드원도 같은 폭으로 떨어진다
+    expect(trustOf(aftermath, "adv-home-1")).toBeCloseTo(0.7 + CONFIG.trustOnDeath, 10);
+    expect(trustOf(aftermath, "adv-home-2")).toBeCloseTo(0.7 + CONFIG.trustOnDeath, 10);
+  });
+
+  it("test_reputation_concealed_death_penalty_also_spreads_to_the_whole_guild", () => {
+    // 은폐의 대가가 정보망 전체를 조인다는 것이 이 설계의 핵심이다
+    const party = [member("adv-victim", 0.9)];
+    const bystanders = [member("adv-home", 0.9)];
+    const result = outcomeOf("dead", "adv-victim");
+
+    const aftermath = resolveDispatchAftermath(party, bystanders, result, 50, true, DAY, CONFIG);
+
+    const expected = 0.9 + CONFIG.trustOnDeath + CONFIG.trustOnDeceit;
+    expect(trustOf(aftermath, "adv-home")).toBeCloseTo(expected, 10);
+  });
+
+  it("test_reputation_bystanders_receive_no_memory_only_trust", () => {
+    // lostComrade는 거기 있었던 사람의 경험이다 — 소식을 들은 사람에게 붙으면
+    // 1인 파티 엣지 케이스("아무에게도 안 남는다")의 의미가 무너진다
+    const party = [member("adv-victim", 0.7)];
+    const bystanders = [member("adv-home", 0.7)];
+    const result = outcomeOf("dead", "adv-victim");
+
+    const aftermath = resolveDispatchAftermath(party, bystanders, result, 50, true, DAY, CONFIG);
+
+    expect(memoriesOf(aftermath, "adv-home")).toHaveLength(0);
+    expect(trustOf(aftermath, "adv-home")).toBeDefined();
+  });
+
+  it("test_reputation_non_death_outcomes_do_not_spread_outside_the_party", () => {
+    // 무사히 다녀온 일과 부상은 소식거리가 아니다 — 파티 밖은 그대로다
+    const bystanders = [member("adv-home", 0.5)];
+
+    const survived = resolveDispatchAftermath(
+      [member("adv-1", 0.5)],
+      bystanders,
+      outcomeOf("success"),
+      50,
+      false,
+      DAY,
+      CONFIG,
+    );
+    const wounded = resolveDispatchAftermath(
+      [member("adv-1", 0.5)],
+      bystanders,
+      outcomeOf("injured", "adv-1"),
+      50,
+      false,
+      DAY,
+      CONFIG,
+    );
+
+    expect(trustOf(survived, "adv-home")).toBeUndefined();
+    expect(trustOf(wounded, "adv-home")).toBeUndefined();
   });
 });

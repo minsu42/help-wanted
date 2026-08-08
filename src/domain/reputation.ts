@@ -22,17 +22,21 @@
  * 답하고, 그 답이 신뢰와 기억에 어떻게 번지는지는 완전히 다른 규칙이다. 섞으면
  * 파견 판정 테스트가 신뢰 공식까지 알아야 하게 된다.
  *
- * ## 범위는 파티다, 길드 전체가 아니다
+ * ## 사망의 trust 범위는 길드 전체, `Memory` 범위는 파티다
  *
- * 스토리 문서의 "생존 길드원 전체에게"라는 표현을 길드 명부 전체로 읽지 않았다.
- * 그렇게 읽으면 이 판정이 roster 전체를 요구하게 되어 "판정은 좁은 타입만 본다"는
- * 이 코드베이스의 경계가 무너지고, `Memory`의 `lostComrade` 범위(스토리의 1인 파티
- * 엣지 케이스 — "아무에게도 안 남는다")와도 모순된다. 실제로 소문이 막히는 경로
- * (`rumor.ts`의 `trustThresholdFor`)는 **그 사람 개인의 `trust`값**만 보므로, 파견에
- * 실제로 나갔던 당사자들의 `trust`만 내려도 "이 사람은 이제 입을 다문다"가 정확히
- * 성립한다. 정보망이 "전체적으로" 조이는 것처럼 보이는 이유는 이런 사건이 반복될수록
- * 침묵하는 사람이 하나씩 늘어나기 때문이지, 사건 하나가 파티 밖 사람들의 `trust`까지
- * 건드려서가 아니다. 이 해석이 스펙의 의도와 다르다면 게임 디자이너 확인이 필요하다.
+ * 두 범위가 다른 것이 의도다. 스토리 AC가 사망에 대해서만 "생존 **길드원** 전체에게"
+ * 라고 적고 있고, Implementation Notes도 "한 번의 은폐가 정보망 **전체**를 눈에 띄게
+ * 조인다"고 한다 — 이것이 착취를 억제하는 유일한 기계적 장치이므로, 파티원 한둘의
+ * `trust`만 깎으면 그 압력이 성립하지 않는다. 사람이 죽었다는 소식은 홀에 퍼진다.
+ *
+ * 반면 `Memory`는 파티에만 남는다. `lostComrade`의 1인 파티 엣지 케이스("아무에게도
+ * 안 남는다")가 그것을 못박는다 — 동료를 잃은 것은 거기 있었던 사람의 경험이고,
+ * 소식을 들은 것과는 다르다.
+ *
+ * 그래서 이 함수는 파티와 **파티 밖 생존 길드원**({@link bystanders})을 따로 받는다.
+ * 후자는 trust 변동만 받고 `Memory`는 받지 않는다. 인자를 나눠 받는 대신 roster
+ * 전체를 넘기게 하지 않는 이유는 "판정은 좁은 타입만 본다"는 경계를 지키기 위해서다 —
+ * 누가 길드원이고 누가 살아 있는지 거르는 일은 호출자(`gameState.ts`)가 한다.
  *
  * ## 사망자는 이 판정 이후 존재하지 않는 사람이다
  *
@@ -133,8 +137,13 @@ export function applyTrust(trust: number, delta: number): number {
  * 4. `sentToDanger`/`sentSafe`를 공개 위험도로 기록한다.
  * 5. 침묵했으면 `wasDeceived`를 추가한다 — 결과와 무관하게 항상 기록된다.
  * 6. 사망 사건이면 생존자 전원에게 `lostComrade`(`subjectId` = 사망자)를 추가한다.
+ * 7. **사망 사건이면 파티 밖 생존 길드원도 같은 trust 델타를 받는다** — `Memory`는
+ *    받지 않는다. 사망이 아닌 결과는 파티 밖으로 번지지 않는다(무사히 다녀온 일은
+ *    소식거리가 아니다).
  *
  * @param party 파견에 나갔던 전원(사상자 포함)의 id·현재 trust
+ * @param bystanders 파견에 나가지 않은 **살아 있는 길드원**. 사망 사건일 때만 쓰인다.
+ *   사망자와 파티원을 여기 넣지 말 것 — 이중 적용된다
  * @param result 파견 판정 결과 중 `outcome`·`casualtyId`만
  * @param statedRisk 이 의뢰의 공개 위험도. `Memory`의 `sentToDanger`/`sentSafe`를 가른다
  * @param concealedKnownRisk 실제 위험을 알고도 고지하지 않았는가
@@ -143,6 +152,7 @@ export function applyTrust(trust: number, delta: number): number {
  */
 export function resolveDispatchAftermath(
   party: readonly ReputationTarget[],
+  bystanders: readonly ReputationTarget[],
   result: AftermathOutcome,
   statedRisk: number,
   concealedKnownRisk: boolean,
@@ -184,6 +194,18 @@ export function resolveDispatchAftermath(
       memoryUpdates.push({
         personId: member.id,
         memory: { day, kind: 'lostComrade', subjectId: result.casualtyId },
+      });
+    }
+  }
+
+  // 사망 소식만 파티 밖으로 번진다. `Memory`는 붙이지 않는다 — 소식을 들은 것과
+  // 거기 있었던 것은 다르며, 그 차이가 `lostComrade`의 의미를 지킨다.
+  if (casualtyDied) {
+    const deathDelta = config.trustOnDeath + (concealedKnownRisk ? config.trustOnDeceit : 0);
+    for (const bystander of bystanders) {
+      trustUpdates.push({
+        personId: bystander.id,
+        trust: applyTrust(bystander.trust, deathDelta),
       });
     }
   }

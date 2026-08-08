@@ -438,8 +438,19 @@ function applyReputationEffects(
 ): void {
   for (const { dispatch, result } of resolved) {
     const party = dispatch.partyIds.map((id) => requireMember(state, id));
+    const partyIds = new Set(dispatch.partyIds);
+
+    // 사망 소식을 듣는 사람들 — 살아 있는 길드원 중 이번 파견에 나가지 않은 이들.
+    // 외부 모험가는 제외한다(길드 소식이 도는 곳은 홀이고, 그들은 소속이 아니다).
+    // 거르는 일이 여기 있는 이유: `reputation.ts`는 누가 길드원인지 몰라야 한다.
+    const bystanders = state.roster.filter(
+      (person) =>
+        person.inGuild && person.status !== 'dead' && !partyIds.has(person.id),
+    );
+
     const aftermath = resolveDispatchAftermath(
       party,
+      bystanders,
       result,
       dispatch.contract.statedRisk,
       dispatch.concealedKnownRisk,

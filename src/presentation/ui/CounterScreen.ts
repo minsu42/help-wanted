@@ -62,6 +62,16 @@ export interface CounterScreenDeps {
   readonly disclosureStatus: (contract: Contract) => DisclosureStatus;
   /** 타결되면 호출된다. 배정 화면(Story 008)이 이어받는다 */
   readonly onSettled: (settlement: Settlement) => void;
+  /**
+   * 길드 홀로 간다. **창구가 홀로 가는 유일한 문이다** — 정보를 캐는 창이 여기서만
+   * 열리므로, 이 버튼이 없으면 "정보 = 흥정력"의 앞쪽 절반에 도달할 방법이 없다.
+   */
+  readonly onVisitHall: () => void;
+  /**
+   * 하루를 마감한다. 실제 `advanceDay` 호출과 이후 화면 전환은 main.ts가 한다 —
+   * 이 화면은 회차 진행의 전역 효과를 소유하지 않는다.
+   */
+  readonly onEndDay: () => void;
 }
 
 /** 타결된 계약. 배정 화면이 이것을 받아 파견으로 넘긴다. */
@@ -160,6 +170,14 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
     const contractId = button.dataset.contract;
     if (button.dataset.action === 'offer' && contractId !== undefined) {
       submitOffer(contractId);
+      return;
+    }
+    if (button.dataset.action === 'visit-hall') {
+      deps.onVisitHall();
+      return;
+    }
+    if (button.dataset.action === 'end-day') {
+      deps.onEndDay();
     }
   }
 
@@ -266,6 +284,10 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
         </header>
         ${broken}
         ${cards === '' ? '<p class="counter__empty">오늘은 더 이상 찾아온 사람이 없다.</p>' : cards}
+        <footer class="counter__actions">
+          <button type="button" class="counter__nav" data-action="visit-hall">길드 홀에 가본다</button>
+          <button type="button" class="counter__nav" data-action="end-day">하루를 마감한다</button>
+        </footer>
       </section>
     `;
   }
