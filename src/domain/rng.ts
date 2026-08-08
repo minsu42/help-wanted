@@ -13,6 +13,13 @@ export interface Rng {
   next(): number;
   /** min 이상 max 이하의 정수 */
   int(min: number, max: number): number;
+  /**
+   * min 이상 max **미만**의 실수.
+   *
+   * `int`과 달리 상한을 포함하지 않는다. 연속값이라 경계 하나가 게임에 의미를 갖지
+   * 않고, 반열린 구간이어야 여러 구간을 이어 붙일 때 겹치지 않기 때문이다.
+   */
+  range(min: number, max: number): number;
   /** 확률 p(0~1)로 참 */
   chance(p: number): boolean;
   /** 배열에서 하나를 고른다. 빈 배열이면 던진다 */
@@ -35,6 +42,10 @@ export function createRng(seed: number): Rng {
     int(min: number, max: number): number {
       if (max < min) throw new Error(`int(${min}, ${max}): max가 min보다 작다`);
       return min + Math.floor(next() * (max - min + 1));
+    },
+    range(min: number, max: number): number {
+      if (max < min) throw new Error(`range(${min}, ${max}): max가 min보다 작다`);
+      return min + next() * (max - min);
     },
     chance(p: number): boolean {
       return next() < p;

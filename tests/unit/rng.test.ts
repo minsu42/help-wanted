@@ -50,6 +50,35 @@ describe("createRng", () => {
     expect(() => rng.int(7, 3)).toThrow();
   });
 
+  it("test_range_stays_within_half_open_bounds", () => {
+    const rng = createRng(SEED);
+    for (let i = 0; i < 1000; i += 1) {
+      const value = rng.range(0.2, 0.8);
+      expect(value).toBeGreaterThanOrEqual(0.2);
+      expect(value).toBeLessThan(0.8);
+    }
+  });
+
+  it("test_range_accepts_negative_bounds", () => {
+    // 위험도 흔들림이 ±riskSpread 형태로 이 경로를 쓴다
+    const rng = createRng(SEED);
+    for (let i = 0; i < 1000; i += 1) {
+      const value = rng.range(-0.2, 0.2);
+      expect(value).toBeGreaterThanOrEqual(-0.2);
+      expect(value).toBeLessThan(0.2);
+    }
+  });
+
+  it("test_range_with_equal_bounds_returns_that_value", () => {
+    const rng = createRng(SEED);
+    expect(rng.range(0.5, 0.5)).toBe(0.5);
+  });
+
+  it("test_range_with_inverted_bounds_throws", () => {
+    const rng = createRng(SEED);
+    expect(() => rng.range(0.8, 0.2)).toThrow();
+  });
+
   it("test_chance_zero_never_true_and_one_always_true", () => {
     const rng = createRng(SEED);
     for (let i = 0; i < 100; i += 1) {

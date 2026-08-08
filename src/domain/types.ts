@@ -41,6 +41,21 @@ export type Trait =
   | 'boastful'; // 허풍스럽다 — 부풀린다
 
 /**
+ * {@link Trait}의 런타임 전체 목록. 생성기가 여기서 뽑는다.
+ *
+ * 유니온 타입은 컴파일 타임에만 존재하므로 뽑기용 배열이 따로 필요하다. 태그를
+ * 추가하면 위 유니온과 이 배열을 **둘 다** 고쳐야 한다.
+ */
+export const TRAITS: readonly Trait[] = [
+  'talkative',
+  'cautious',
+  'greedy',
+  'loyal',
+  'bitter',
+  'boastful',
+];
+
+/**
  * 인물이 원하는 것. 하나만 가진다.
  *
  * 장식이 아니라 실제로 행동을 바꾼다 — 파견 배정을 거부하거나, 조건을 요구하거나,
@@ -51,6 +66,9 @@ export type Goal =
   | 'glory' // 위험한 의뢰에 자원한다
   | 'survival' // 고위험 배정을 거부하거나 위험 수당을 요구한다
   | 'revenge'; // 특정 의뢰 종류에 우선 자원한다
+
+/** {@link Goal}의 런타임 전체 목록. {@link TRAITS}와 같은 이유로 존재한다. */
+export const GOALS: readonly Goal[] = ['money', 'glory', 'survival', 'revenge'];
 
 /**
  * 장부에 적히는 역량 등급. **플레이어가 보는 유일한 역량 표현이다.**
@@ -149,6 +167,79 @@ export interface Client extends Person {
    * {@link PlayerKnowledge.discoveredContacts}에 쌓인다.
    */
   readonly knownBy: readonly string[];
+}
+
+/**
+ * 소문으로 얻을 수 있는 사실의 종류.
+ *
+ * `urgency`와 `hasAlternative`는 **여기 없다.** 그 둘은 흥정 중 의뢰인의 반박이
+ * 알려준다 ("선불은 도저히 안 되겠소"). 정보원이 둘로 나뉘어 있어야 홀에서의 대화만으로
+ * 모든 것이 풀리지 않는다.
+ */
+export type FactKind =
+  | 'realRisk' // 실제 위험도 — 흥정의 위험 고지 축을 연다
+  | 'realWealth'; // 실제 지불 여력 — 선불이냐 보상이냐를 가른다
+
+/** {@link FactKind}의 런타임 전체 목록. {@link TRAITS}와 같은 이유로 존재한다. */
+export const FACT_KINDS: readonly FactKind[] = ['realRisk', 'realWealth'];
+
+/**
+ * 정보의 단위. 의뢰 하나에 몇 개씩 붙는다.
+ *
+ * **별도의 만료 로직이 없다.** 사실은 의뢰에 매달려 있으므로 의뢰가 타결되거나
+ * 결렬되면 함께 사라진다 — "정보에는 유통기한이 있다"가 공짜로 성립한다.
+ */
+export interface Fact {
+  /** `` `${contractId}:${kind}` `` 형식. 협상 쪽과 합의된 규약이다 */
+  readonly id: string;
+  readonly contractId: string;
+  readonly kind: FactKind;
+}
+
+/**
+ * 하나의 의뢰. **숨은 진실 시스템의 실체가 이 타입이다.**
+ *
+ * {@link statedRisk}와 {@link realRisk}가 갈라져 있는 것이 이 게임 전체의 정보 경제를
+ * 굴린다. 격차가 0이면 소문이 무의미해지고, 너무 크면 도박이 된다.
+ */
+export interface Contract {
+  readonly id: string;
+  readonly client: Client;
+  /**
+   * 의뢰인이 **주장하는** 위험도. 플레이어가 처음부터 보는 유일한 위험 표현이다.
+   *
+   * 보상·파티 정원·소요 일수가 전부 이 값에서 나온다. 의뢰인은 자기가 인정한 위험만큼만
+   * 값을 부르기 때문이다 — 실제 위험을 알아내 고지하면 더 받아낼 수 있는 경제적 근거가
+   * 정확히 여기서 성립한다.
+   */
+  readonly statedRisk: number;
+  /**
+   * 실제 위험도. 파견 판정이 쓰는 진실. **렌더링 금지.**
+   *
+   * 소문으로 `realRisk` 사실을 얻으면 성격 필터를 거친 값이 보이고, 진짜 값은 결과
+   * 대조 화면에서만 드러난다.
+   */
+  readonly realRisk: number;
+  /**
+   * 의뢰인이 숨긴 비율. `statedRisk = realRisk × (1 − concealment)`.
+   *
+   * 0에 가까우면 **정직한 의뢰인**이다. 그때는 위험 고지 축이 열리지 않고, 소문은
+   * "들은 그대로다"라는 다른 종류의 정보를 준다.
+   */
+  readonly concealment: number;
+  /** 흥정 전 기본 보상. {@link statedRisk} 기준이다 */
+  readonly baseReward: number;
+  readonly maxPartySize: number;
+  readonly durationDays: number;
+  /**
+   * 명성 범위를 넘는 고보상·고위험 의뢰인가.
+   *
+   * *"이 숲이 위험하다는 걸 알고도 보상이 좋아서 신입을 보냈다"* 를 만드는 장치다.
+   * 감당 가능한 것만 오면 그 문장은 나오지 않는다.
+   */
+  readonly isTemptation: boolean;
+  /** 이 의뢰에 심긴 사실들. 소문으로 얻어야 열린다 */
+  readonly facts: readonly Fact[];
 }
 
 /**

@@ -25,7 +25,14 @@
   "world": {
     "_comment": "월드 풀 22명 중 시작 시 8명이 길드원. 나머지는 외부 모험가.",
     "worldRosterSize": 22,
-    "startingGuildSize": 8
+    "startingGuildSize": 8,
+    "guildInitialTrust": 0.5
+  },
+
+  "client": {
+    "_comment": "의뢰인 생성. wealth/urgency는 0~1 균등 추출이라 노브가 없다 — 분포를 바꾸는 것은 밸런싱이 아니라 설계 변경이다.",
+    "alternativeChance": 0.4,
+    "initialTrust": 0.3
   },
 
   "economy": {
