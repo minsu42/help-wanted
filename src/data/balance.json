@@ -1,0 +1,133 @@
+{
+  "_comment": "모든 밸런스 숫자는 이 파일에만 있다. 코드에 상수를 박지 않는다. 근거는 design/quick-specs/*.md 의 Tuning Knobs 절.",
+
+  "scales": {
+    "_comment": "단위 정의. 다른 모든 값이 이 스케일 위에 놓인다.",
+    "capability": "0~100 (생성 범위 15~90). gradeThresholds와 같은 축",
+    "risk": "0~200. 파티 1~3인의 capability 합과 직접 비교된다",
+    "reputation": "0~100, 시작 10",
+    "funds": "G. 시작 200G"
+  },
+
+  "adventurer": {
+    "_comment": "capability는 화면에 나가지 않는다. gradeOf()를 통과한 등급만 표시한다.",
+    "gradeThresholds": {
+      "steady": 25,
+      "skilled": 50,
+      "veteran": 75
+    },
+    "capabilityMin": 15,
+    "capabilityMax": 90,
+    "tenureYearsMin": 0,
+    "tenureYearsMax": 8
+  },
+
+  "world": {
+    "_comment": "월드 풀 22명 중 시작 시 8명이 길드원. 나머지는 외부 모험가.",
+    "worldRosterSize": 22,
+    "startingGuildSize": 8
+  },
+
+  "economy": {
+    "startingFunds": 200,
+    "startingReputation": 10,
+    "rewardPerRisk": 1.5
+  },
+
+  "scaling": {
+    "_comment": "명성이 압력(의뢰가 온다), 길드 규모가 대응력(감당한다). 둘이 경주한다.",
+    "riskBase": 35,
+    "riskPerReputation": 1.35,
+    "riskSpread": 0.2,
+    "concealmentMin": 0.0,
+    "concealmentMax": 0.45,
+    "temptationChance": 0.3,
+    "temptationRiskMultiplier": 1.6,
+    "temptationRewardMultiplier": 2.0,
+    "partySizeRiskDivisor": 60,
+    "maxPartySizeCap": 3,
+    "durationRiskDivisor": 50,
+    "durationDaysMin": 1,
+    "durationDaysMax": 4
+  },
+
+  "negotiation": {
+    "_comment": "수용 판정은 결정론이다. 난수가 들어가면 정보가 흥정력이 되지 못한다.",
+    "wReward": 1.0,
+    "wAdvance": 0.8,
+    "toleranceBase": 0.35,
+    "wealthWeight": 0.5,
+    "urgencyWeight": 0.6,
+    "alternativePenalty": 0.25,
+    "disclosureBonus": 0.4,
+    "maxOffers": 2
+  },
+
+  "rumor": {
+    "_comment": "hallAttendanceMax는 길드 등급에서 온다 — guildTiers를 참조할 것. 아래 값은 등급 1 기준 하한.",
+    "hallAttendanceMin": 3,
+    "visitorMin": 0,
+    "visitorMax": 2,
+    "factsPerContract": 2,
+    "knownByMin": 1,
+    "knownByMax": 2,
+    "tenureWeightExponent": 1.5,
+    "trustThresholdDefault": 0.4,
+    "trustThresholdCautious": 0.6,
+    "trustThresholdLoyal": 0.2,
+    "traitDistortion": 0.15,
+    "greedyPrice": 20,
+    "trustOnSurvive": 0.05,
+    "trustOnWound": -0.1,
+    "trustOnDeath": -0.15,
+    "trustOnDeceit": -0.35,
+    "reputationForFreeRumor": 40
+  },
+
+  "dispatch": {
+    "_comment": "마진에 반비례하는 무작위. 여유 있으면 확정, 아슬아슬하면 도박.",
+    "successRatio": 1.0,
+    "injuryRatio": 0.75,
+    "maxUncertainty": 0.25,
+    "certaintyBand": 0.4,
+    "casualtyBias": 1.5,
+    "injuredDays": 3,
+    "survivalRefusalRisk": 90,
+    "assignmentTrustThreshold": 0.15,
+    "repOnSuccess": 2.5,
+    "repOnDeath": 6,
+    "repInjuryPenalty": 0.6
+  },
+
+  "recruit": {
+    "_comment": "cost = base + perCapability×capability + perTenure×tenureYears. 신입 약 135G, 베테랑 약 330G.",
+    "costBase": 80,
+    "costPerCapability": 2,
+    "costPerTenure": 15,
+    "initialTrust": 0.25
+  },
+
+  "guildTiers": [
+    {
+      "tier": 1,
+      "rosterCap": 8,
+      "hallAttendanceMax": 4,
+      "concurrentContracts": 2,
+      "cost": 0
+    },
+    {
+      "tier": 2,
+      "rosterCap": 10,
+      "hallAttendanceMax": 5,
+      "concurrentContracts": 3,
+      "cost": 400
+    },
+    {
+      "tier": 3,
+      "rosterCap": 12,
+      "hallAttendanceMax": 6,
+      "concurrentContracts": 4,
+      "cost": 900
+    }
+  ]
+}
