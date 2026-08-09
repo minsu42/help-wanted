@@ -13,7 +13,7 @@ import textBank from "../../../src/data/text.json";
 import { createRng } from "../../../src/domain/rng";
 import { render } from "../../../src/domain/text";
 import type { DispatchResult } from "../../../src/domain/dispatch";
-import type { Adventurer, Client, Contract, GradeThresholds, PlayerKnowledge } from "../../../src/domain/types";
+import type { Adventurer, Client, Contract, GradeThresholds } from "../../../src/domain/types";
 import {
   mountOutcomeScreen,
   type HeardFact,
@@ -97,16 +97,6 @@ function makeHeardFact(overrides: Partial<HeardFact> = {}): HeardFact {
   };
 }
 
-function makeKnowledge(overrides: Partial<PlayerKnowledge> = {}): PlayerKnowledge {
-  return {
-    discoveredContacts: new Set(),
-    revealedFacts: new Set(),
-    heardFacts: new Map(),
-    knownWealth: new Map(),
-    ...overrides,
-  };
-}
-
 let root: HTMLElement;
 let onContinue: ReturnType<typeof vi.fn>;
 
@@ -122,7 +112,6 @@ function mount(outcome: ResolvedOutcome, overrides: Partial<OutcomeScreenDeps> =
     outcome,
     gradeThresholds: GRADE_THRESHOLDS,
     certaintyBand: CERTAINTY_BAND,
-    knowledge: makeKnowledge(),
     rng: createRng(1),
     text: textBank,
     onContinue: onContinue as unknown as () => void,
@@ -242,11 +231,13 @@ describe("결과 대조 화면 — 차이 강조", () => {
   });
 });
 
-describe("결과 대조 화면 — 미지급", () => {
-  it("test_unpaid_remainder_shows_red_banner_and_discloses_wealth", () => {
+// 2026-08-09 — 「미지급」 절이 여기 있었다. 잔금 미지급 판정이 폐기되면서
+// (`roadmap.md` P0 항목 2) 검사할 규칙이 사라졌으므로 삭제하고, 남은 두 갈래를
+// 아래가 대신 고정한다. 완수 여부 하나가 지급 여부 전부다.
+describe("결과 대조 화면 — 보상 지급", () => {
+  it("test_completed_dispatch_reports_the_reward_arrived", () => {
     // Arrange
-    const client = makeClient({ wealth: 0.2 });
-    const contract = makeContract(client);
+    const contract = makeContract(makeClient({ wealth: 0.2 }));
     const outcome: ResolvedOutcome = {
       contract,
       result: makeResult({ outcome: "success" }),
@@ -254,33 +245,30 @@ describe("결과 대조 화면 — 미지급", () => {
       concealedKnownRisk: false,
       heardFacts: [],
     };
-    const knowledge = makeKnowledge({ knownWealth: new Map([[CLIENT_ID, 0.2]]) });
 
-    // Act
-    mount(outcome, { knowledge });
+    // Act — wealth가 낮아도 완수했으면 전액 들어온다
+    mount(outcome);
 
     // Assert
-    const banner = root.querySelector(".outcome__payment--unpaid");
-    expect(banner).not.toBeNull();
-    expect(banner?.textContent ?? "").toContain("20%");
+    expect(root.querySelector(".outcome__payment")?.textContent ?? "").toContain("예정대로");
   });
 
-  it("test_paid_settlement_shows_no_unpaid_banner", () => {
+  it("test_death_reports_no_reward_arrived", () => {
     // Arrange
     const contract = makeContract(makeClient());
     const outcome: ResolvedOutcome = {
       contract,
-      result: makeResult({ outcome: "success" }),
+      result: makeResult({ outcome: "dead", casualtyId: "adv-1" }),
       party: [makeAdventurer()],
       concealedKnownRisk: false,
       heardFacts: [],
     };
 
     // Act
-    mount(outcome); // knownWealth가 비어 있다 — 이번엔 떼이지 않았다
+    mount(outcome);
 
     // Assert
-    expect(root.querySelector(".outcome__payment--unpaid")).toBeNull();
+    expect(root.querySelector(".outcome__payment")?.textContent ?? "").toContain("완수하지 못해");
   });
 });
 

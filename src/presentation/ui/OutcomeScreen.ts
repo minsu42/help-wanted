@@ -50,7 +50,6 @@ import type {
   Contract,
   FactKind,
   GradeThresholds,
-  PlayerKnowledge,
   Trait,
 } from '../../domain/types';
 import { gradeOf } from '../../domain/types';
@@ -102,8 +101,6 @@ export interface OutcomeScreenDeps {
    * 정의해 둔 값과 이 화면의 "여유/도박/무모" 경계가 정확히 같은 개념이기 때문이다.
    */
   readonly certaintyBand: number;
-  /** 미지급 영구 기록을 읽기 위한 것. `GameState.knowledge`를 그대로 넘기면 된다 */
-  readonly knowledge: PlayerKnowledge;
   /** 사망 서술(`resultDead`/`lostComrade`) 조립에 쓴다. `GameState.rng`를 넘긴다 */
   readonly rng: Rng;
   readonly text: TextBank;
@@ -209,7 +206,7 @@ export function mountOutcomeScreen(root: HTMLElement, deps: OutcomeScreenDeps): 
           ${renderRealSide(contract)}
         </div>
         ${renderRationale(party, result)}
-        ${renderPayment(contract, result)}
+        ${renderPayment(result)}
         ${renderDeath(party, result)}
         <footer class="outcome__actions">
           <button class="outcome__continue" type="button" data-action="continue">창구로 돌아간다</button>
@@ -353,29 +350,21 @@ export function mountOutcomeScreen(root: HTMLElement, deps: OutcomeScreenDeps): 
     `;
   }
 
-  function nonPaymentRevealed(contract: Contract, result: DispatchResult): boolean {
-    // dead는 wealth와 무관하게 무조건 미지급이므로 economy.ts가 아예 공개하지 않는다
-    // (economy.ts 문서 참고) — 그러니 dead에서는 이 배너 대신 "완수 못 함" 문구를 쓴다.
-    if (result.outcome === 'dead') return false;
-    return deps.knowledge.knownWealth.has(contract.client.id);
-  }
-
-  function renderPayment(contract: Contract, result: DispatchResult): string {
+  /**
+   * 보상이 들어왔는가.
+   *
+   * > 2026-08-09 개정 — 잔금 미지급 판정이 폐기되면서(`roadmap.md` P0 항목 2) 이
+   * > 함수의 세 갈래가 둘로 줄었다. 사라진 것은 *"완수했으나 의뢰인이 못 냈다"*는
+   * > 경우이며, 그와 함께 `wealth` 영구 공개 배너도 없어졌다. 남은 실패 경로는
+   * > 결렬(창구)과 사망(파견) 둘뿐이다.
+   * >
+   * > "잔금"이라는 낱말도 함께 지웠다 — 선불이 있을 때만 뜻이 통하는 말이다.
+   */
+  function renderPayment(result: DispatchResult): string {
     if (result.outcome === 'dead') {
-      return `<p class="outcome__payment">완수하지 못해 잔금이 들어오지 않는다.</p>`;
+      return `<p class="outcome__payment">완수하지 못해 보상이 들어오지 않는다.</p>`;
     }
-
-    if (nonPaymentRevealed(contract, result)) {
-      return `
-        <p class="outcome__payment outcome__payment--unpaid">
-          잔금을 받지 못했다. ${escapeHtml(contract.client.name)}의 실제 지불 여력
-          (${formatWealth(contract.client.wealth)})이 드러났다 — 앞으로 이 의뢰인을
-          다시 만나면 이 값을 잊지 않는다.
-        </p>
-      `;
-    }
-
-    return `<p class="outcome__payment">잔금이 예정대로 들어왔다.</p>`;
+    return `<p class="outcome__payment">보상이 예정대로 들어왔다.</p>`;
   }
 
   function renderDeath(party: readonly Adventurer[], result: DispatchResult): string {

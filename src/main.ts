@@ -253,7 +253,6 @@ function showOutcome(resolved: ResolvedDispatch): void {
       },
       gradeThresholds: balance.adventurer.gradeThresholds,
       certaintyBand: balance.dispatch.certaintyBand,
-      knowledge: state.knowledge,
       rng: state.rng,
       text: textBank,
       // 남은 결과가 더 있으면 이어서 보여준다. 큐가 비면 창구(또는 결산)로.
@@ -310,7 +309,6 @@ function showCounter(): void {
       state,
       negotiation: {
         wReward: balance.negotiation.wReward,
-        wAdvance: balance.negotiation.wAdvance,
         toleranceBase: balance.negotiation.toleranceBase,
         wealthWeight: balance.negotiation.wealthWeight,
         urgencyWeight: balance.negotiation.urgencyWeight,

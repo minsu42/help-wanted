@@ -100,9 +100,8 @@ function makeContract(overrides: Partial<Contract> = {}): Contract {
 function makeSettlement(contract: Contract, overrides: Partial<Settlement> = {}): Settlement {
   return {
     contract,
-    offer: { rewardMultiplier: 1, advanceRatio: 0.3, discloseRisk: false },
+    offer: { rewardMultiplier: 1, discloseRisk: false },
     agreedReward: contract.baseReward,
-    advancePaid: contract.baseReward * 0.3,
     ...overrides,
   };
 }
@@ -121,7 +120,6 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       discoveredContacts: new Set(),
       revealedFacts: new Set(),
       heardFacts: new Map(),
-      knownWealth: new Map(),
     },
     rng: createRng(1),
     usedNames: new Set(),
@@ -454,7 +452,7 @@ describe("파견 화면 — 배정 확정", () => {
     state.openContracts = [contract];
     state.knowledge.revealedFacts.add(`${contract.id}:realRisk`);
 
-    mount(makeSettlement(contract, { offer: { rewardMultiplier: 1, advanceRatio: 0, discloseRisk: false } }));
+    mount(makeSettlement(contract, { offer: { rewardMultiplier: 1, discloseRisk: false } }));
     toggle(member.id, true);
     click("confirm");
 
@@ -469,7 +467,7 @@ describe("파견 화면 — 배정 확정", () => {
     state.openContracts = [contract];
     state.knowledge.revealedFacts.add(`${contract.id}:realRisk`);
 
-    mount(makeSettlement(contract, { offer: { rewardMultiplier: 1, advanceRatio: 0, discloseRisk: true } }));
+    mount(makeSettlement(contract, { offer: { rewardMultiplier: 1, discloseRisk: true } }));
     toggle(member.id, true);
     click("confirm");
 
@@ -490,7 +488,7 @@ describe("파견 화면 — 배정 확정", () => {
     // Act — 사실을 알고 있고 고지하지 않은 채 타결한다
     mount(
       makeSettlement(contract, {
-        offer: { rewardMultiplier: 1, advanceRatio: 0, discloseRisk: false },
+        offer: { rewardMultiplier: 1, discloseRisk: false },
       }),
     );
     toggle(member.id, true);
@@ -543,8 +541,7 @@ describe("파견 화면 — onAdvanceDay 스텁으로 시간 진행 몰기", () 
       contract: makeContract({ id: "ct-other" }),
       partyIds: ["adv-other"],
       resolveOnDay: 99,
-      remainingReward: 0,
-      advancePaid: 0,
+      agreedReward: 0,
       concealedKnownRisk: false,
     };
     onAdvanceDay.mockReturnValueOnce(

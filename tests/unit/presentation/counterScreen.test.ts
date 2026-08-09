@@ -29,7 +29,6 @@ import {
 
 const NEGOTIATION: NegotiationConfig = {
   wReward: balance.negotiation.wReward,
-  wAdvance: balance.negotiation.wAdvance,
   toleranceBase: balance.negotiation.toleranceBase,
   wealthWeight: balance.negotiation.wealthWeight,
   urgencyWeight: balance.negotiation.urgencyWeight,
@@ -388,17 +387,9 @@ describe("창구 화면 — 흥정", () => {
     expect(state.offersMade[CONTRACT_ID]).toBe(1);
   });
 
-  it("test_rejected_offer_shows_the_contested_axis_line", () => {
-    // 선불 기여도가 압도적인 제안 → 선불 축이 지목되어야 한다
-    const contract = withSingleContract(makeClient(STUBBORN));
-    mount();
-
-    playMove("askAdvanceHalf");
-
-    expect(linesFor("counterAdvance", contract.client.name).has(clientLine())).toBe(true);
-    expect(linesFor("counterReward", contract.client.name).has(clientLine())).toBe(false);
-  });
-
+  // 2026-08-09 — 여기 있던 test_rejected_offer_shows_the_contested_axis_line은 삭제했다.
+  // 축이 보상 하나뿐이라 "선불이 아니라 보상이 지목된다"를 잴 대상이 없다. 아래 두 개가
+  // 남은 규칙(반박은 언제나 보상 축)을 고정한다.
   it("test_rejected_offer_contests_reward_when_reward_dominates", () => {
     const contract = withSingleContract(makeClient(STUBBORN));
     mount();
@@ -406,26 +397,24 @@ describe("창구 화면 — 흥정", () => {
     playMove("pressRewardHard");
 
     expect(linesFor("counterReward", contract.client.name).has(clientLine())).toBe(true);
-    expect(linesFor("counterAdvance", contract.client.name).has(clientLine())).toBe(false);
   });
 
   it("test_contested_axis_is_marked_on_the_terms", () => {
-    // 의뢰인의 말과 숫자가 같은 축을 가리켜야 "저 사람은 현금이 없다"가 읽힌다
+    // 의뢰인의 말과 숫자가 같은 축을 가리켜야 반박이 다음 수의 근거가 된다
     withSingleContract(makeClient(STUBBORN));
     mount();
 
-    playMove("askAdvanceHalf");
+    playMove("pressRewardHard");
 
     const contested = root.querySelector(".terms__item--contested")?.textContent ?? "";
-    expect(contested).toContain("선불");
+    expect(contested).toContain("보상");
   });
 
   it("test_moves_that_change_nothing_are_not_offered", () => {
-    // 선불이 이미 0인데 "선불은 없던 걸로 하죠"가 떠 있으면 선택지가 아니라 소음이다
+    // 보상이 이미 1배인데 "값 이야기는 접겠습니다"가 떠 있으면 선택지가 아니라 소음이다
     withSingleContract();
     mount();
 
-    expect(moveButton("backDownAdvance")).toBeNull();
     expect(moveButton("backDownReward")).toBeNull();
   });
 
@@ -434,31 +423,48 @@ describe("창구 화면 — 흥정", () => {
     withSingleContract(makeClient(STUBBORN));
     mount();
 
-    playMove("askAdvanceHalf");
+    playMove("pressRewardHard");
 
-    expect(moveButton("backDownAdvance")).not.toBeNull();
+    expect(moveButton("backDownReward")).not.toBeNull();
   });
 
   it("test_backing_down_returns_the_axis_to_neutral", () => {
     withSingleContract(makeClient(STUBBORN));
     mount();
 
-    playMove("askAdvanceHalf");
-    playMove("backDownAdvance");
+    playMove("pressRewardHard");
+    playMove("backDownReward");
 
     const terms = root.querySelector(".terms")?.textContent ?? "";
-    expect(terms).toContain("0%");
+    expect(terms).toContain("×1.00");
+  });
+
+  it("test_a_playable_move_always_remains_until_the_offers_run_out", () => {
+    // Arrange — 선불 축이 빠지면서 남은 축이 보상 하나뿐이 됐다. 조건이 중립이면
+    // backDownReward가 사라지므로, takeAsIs의 면제가 막다른 길을 막는 유일한 장치다.
+    // 그 면제를 지우면 이 테스트가 깨진다. (CounterScreen.isPlayable 주석 참조)
+    withSingleContract(makeClient(STUBBORN));
+    mount();
+
+    // Act & Assert — 결렬 직전까지 매 턴 고를 수 있는 수가 남아 있다.
+    // 같은 수를 두 번 두면 값이 안 바뀌어 사라지므로 번갈아 둔다 — 그 사라짐 자체가
+    // 이 테스트가 지키려는 규칙("조건이 실제로 달라지는 수만 보여준다")이다.
+    for (let attempt = 1; attempt < NEGOTIATION.maxOffers; attempt += 1) {
+      expect(root.querySelectorAll(".moves button:not([disabled])").length).toBeGreaterThan(0);
+      expect(moveButton("takeAsIs")).not.toBeNull();
+      playMove(attempt % 2 === 1 ? "pressRewardHard" : "pressReward");
+    }
   });
 
   it("test_running_out_of_offers_breaks_off_and_clears_the_counter", () => {
     withSingleContract(makeClient(STUBBORN));
     mount();
 
+    playMove("pressReward");
     playMove("pressRewardHard");
-    playMove("askAdvanceHalf");
     expect(root.querySelector(".booth")).not.toBeNull();
 
-    playMove("askAdvance");
+    playMove("pressReward");
 
     expect(state.offersMade[CONTRACT_ID]).toBe(NEGOTIATION.maxOffers);
     expect(root.querySelector(".booth")).toBeNull();
@@ -471,9 +477,9 @@ describe("창구 화면 — 흥정", () => {
     withSingleContract(makeClient(STUBBORN));
     mount();
 
+    playMove("pressReward");
     playMove("pressRewardHard");
-    playMove("askAdvanceHalf");
-    playMove("askAdvance");
+    playMove("pressReward");
 
     expect(root.innerHTML).not.toContain(String(REAL_RISK));
     expect(root.innerHTML).not.toContain("realRisk");
@@ -483,13 +489,12 @@ describe("창구 화면 — 흥정", () => {
     const contract = withSingleContract(makeClient(GENEROUS));
     mount();
 
-    playMove("askAdvanceHalf");
+    playMove("pressReward");
 
     expect(onSettled).toHaveBeenCalledTimes(1);
     const settlement = onSettled.mock.calls[0][0] as Settlement;
     expect(settlement.contract.id).toBe(contract.id);
-    expect(settlement.agreedReward).toBeCloseTo(contract.baseReward * 1, 8);
-    expect(settlement.advancePaid).toBeCloseTo(contract.baseReward * 0.5, 8);
+    expect(settlement.agreedReward).toBeCloseTo(contract.baseReward * 1.4, 8);
   });
 
   it("test_taking_the_offer_as_is_settles_at_the_base_terms", () => {
@@ -500,7 +505,6 @@ describe("창구 화면 — 흥정", () => {
 
     const settlement = onSettled.mock.calls[0][0] as Settlement;
     expect(settlement.agreedReward).toBeCloseTo(contract.baseReward, 8);
-    expect(settlement.advancePaid).toBe(0);
   });
 
   it("test_settled_booth_hides_the_moves_and_shows_the_stamp", () => {

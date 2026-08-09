@@ -214,10 +214,9 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
 
     try {
       const dispatched = dispatchParty(deps.state, contract.id, partyIds, {
-        advancePaid: deps.settlement.advancePaid,
-        // 잔금. 완수해도 wealth 판정을 통과해야 받고 사망이면 못 받는다 — 선불과의
-        // 이 차이가 흥정에서 선불 축을 미는 이유 전부다 (story-012).
-        remainingReward: deps.settlement.agreedReward - deps.settlement.advancePaid,
+        // 타결액을 그대로 넘긴다. 완수하면 전액 들어오고 사망이면 한 푼도 못 받는다 —
+        // 선불 축과 잔금 미지급 판정이 폐기되면서 그 사이의 중간 상태가 사라졌다.
+        agreedReward: deps.settlement.agreedReward,
         concealedKnownRisk: wasConcealed,
       });
       confirmedPartyIds = dispatched.partyIds;

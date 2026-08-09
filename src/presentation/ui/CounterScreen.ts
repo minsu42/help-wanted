@@ -6,13 +6,18 @@
  *
  * ## 왜 슬라이더가 아니라 대사인가
  *
- * 세 축을 슬라이더로 맞추고 "제안한다"를 누르는 방식은 흥정을 **숫자 맞추기**로
- * 만든다. 그런데 이 게임에서 거부 응답은 장식이 아니라 **정보 채널이다** —
- * `NegotiationResult.contestedAxis`가 지목하는 축이 곧 의뢰인의 숨은 상태에 대한
- * 단서다("선불은 도저히 안 되겠소" → 이 사람은 현금이 없다). 슬라이더는 그 단서를
- * 카드 한켠의 문장으로 흘려보내지만, 대화는 그것을 **다음 수를 고르는 근거**로
- * 되돌려 놓는다. `negotiation.ts` 상단 주석이 "흥정 과정이 그 정보 채널이 된다"고
- * 적어 둔 설계가 인터페이스에서 실제로 성립하는 지점이다.
+ * 축을 슬라이더로 맞추고 "제안한다"를 누르는 방식은 흥정을 **숫자 맞추기**로
+ * 만든다. 그런데 이 게임에서 거부 응답은 장식이 아니라 **정보 채널이다** — 어느
+ * 배율에서 반박이 돌아오는지가 곧 의뢰인의 숨은 상태(`wealth`·`urgency`)에 대한
+ * 단서다. 슬라이더는 그 단서를 카드 한켠의 문장으로 흘려보내지만, 대화는 그것을
+ * **다음 수를 고르는 근거**로 되돌려 놓는다. `negotiation.ts` 상단 주석이 "흥정
+ * 과정이 그 정보 채널이 된다"고 적어 둔 설계가 인터페이스에서 실제로 성립하는
+ * 지점이다.
+ *
+ * > 2026-08-09 개정 — 원래 이 문단은 `contestedAxis`가 **어느 축을 지목하는가**를
+ * > 단서로 들었다("선불은 도저히 안 되겠소" → 현금이 없다). 선불 축이 폐기되면서
+ * > 축이 하나만 남아 그 지목이 무정보가 됐다. 대화 인터페이스를 고른 이유 자체는
+ * > 살아남지만 **단서의 종류가 "어느 축"에서 "어느 지점"으로 바뀌었다.**
  *
  * ## 판정은 하나도 바뀌지 않았다
  *
@@ -65,15 +70,18 @@ export interface DisclosureStatus {
 /**
  * 흥정 선택지 하나의 수치. `balance.json`의 `negotiation.moves`에서 온다.
  *
- * `reward`/`advance`는 **증분이 아니라 그 축이 도달할 절대값이다.** 생략된 축은 직전
- * 상태를 유지한다 — 그래서 "값을 올린다" 다음에 "선불도 받는다"를 고르면 둘이 함께
- * 쌓이고, "선불은 없던 걸로"를 고르면 선불만 0으로 돌아간다. 증분으로 만들면 같은
- * 선택지를 두 번 눌렀을 때 어디까지 올라갔는지 플레이어가 셈해야 한다.
+ * `reward`는 **증분이 아니라 그 축이 도달할 절대값이다.** 생략하면 직전 상태를
+ * 유지한다 — 그래서 "값을 올린다" 다음에 "크게 올린다"를 고르면 뒤엣것이 이기고,
+ * "값 이야기는 접겠습니다"를 고르면 1배로 돌아간다. 증분으로 만들면 같은 선택지를
+ * 두 번 눌렀을 때 어디까지 올라갔는지 플레이어가 셈해야 한다.
+ *
+ * > 2026-08-09 개정 — 선불 축(`advance`)이 폐기되면서 필드가 하나 빠졌다
+ * > (`production/roadmap.md` P0 항목 1). 절대값 규약 자체는 축의 수와 무관하게
+ * > 유효하며, P3의 「근거 기반 협상」이 축을 다시 늘릴 때 그대로 쓴다.
  */
 export interface NegotiationMove {
   readonly id: string;
   readonly reward?: number;
-  readonly advance?: number;
   readonly disclose?: boolean;
 }
 
@@ -116,17 +124,14 @@ export interface CounterScreenDeps {
 export interface Settlement {
   readonly contract: Contract;
   readonly offer: Offer;
-  /** 흥정이 끝난 최종 보상 */
+  /** 흥정이 끝난 최종 보상. 완수하면 전액 들어온다 */
   readonly agreedReward: number;
-  /** 선불로 받은 금액. **사망해도 남는다** */
-  readonly advancePaid: number;
 }
 
 /** 이 의뢰와의 대화가 어디까지 왔는가. */
 interface Talk {
   /** 지금까지 쌓인 조건 */
   rewardMultiplier: number;
-  advanceRatio: number;
   discloseRisk: boolean;
   /** 의뢰인이 마지막으로 한 말 */
   message: string;
@@ -136,7 +141,6 @@ interface Talk {
 }
 
 const NEUTRAL_REWARD = 1;
-const NEUTRAL_ADVANCE = 0;
 
 /**
  * 창구 화면을 그린다.
@@ -174,7 +178,6 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
     if (talk === undefined) {
       talk = {
         rewardMultiplier: NEUTRAL_REWARD,
-        advanceRatio: NEUTRAL_ADVANCE,
         discloseRisk: false,
         message: say(contract, 'clientOpening'),
       };
@@ -236,12 +239,10 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
     if (move.disclose === true && !disclosure.allowed) return;
 
     if (move.reward !== undefined) talk.rewardMultiplier = move.reward;
-    if (move.advance !== undefined) talk.advanceRatio = move.advance;
     if (move.disclose === true) talk.discloseRisk = true;
 
     const offer: Offer = {
       rewardMultiplier: talk.rewardMultiplier,
-      advanceRatio: talk.advanceRatio,
       discloseRisk: talk.discloseRisk && disclosure.allowed,
     };
 
@@ -267,10 +268,9 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
       return;
     }
 
-    talk.message = say(
-      contract,
-      result.contestedAxis === 'advance' ? 'counterAdvance' : 'counterReward',
-    );
+    // 축이 보상 하나뿐이므로 반박 문안도 하나다. 삼항이 아니라 고정인 이유가 그것이며,
+    // P3이 축을 다시 늘리면 `result.contestedAxis`로 갈라지는 자리로 되돌아온다.
+    talk.message = say(contract, 'counterReward');
     render();
   }
 
@@ -281,12 +281,7 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
     const agreedReward = contract.baseReward * offer.rewardMultiplier;
     render();
 
-    deps.onSettled({
-      contract,
-      offer,
-      agreedReward,
-      advancePaid: agreedReward * offer.advanceRatio,
-    });
+    deps.onSettled({ contract, offer, agreedReward });
   }
 
   function say(contract: Contract, situation: string): string {
@@ -302,20 +297,24 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
   /**
    * 이 수를 지금 둘 수 있는가.
    *
-   * 규칙은 하나다 — **조건이 실제로 달라지는 수만 보여준다.** 이미 선불이 0인데
-   * "선불은 없던 걸로 하죠"가 떠 있으면 그건 선택지가 아니라 소음이다. 위험 고지만
+   * 규칙은 하나다 — **조건이 실제로 달라지는 수만 보여준다.** 이미 보상이 1배인데
+   * "값 이야기는 접겠습니다"가 떠 있으면 그건 선택지가 아니라 소음이다. 위험 고지만
    * 예외적으로 게이트를 추가로 본다.
    *
    * `takeAsIs`는 이 규칙에서 면제된다 — 조건이 이미 중립이어도 "그대로 받겠다"는
    * 언제나 유효한 수이고, 이것이 빠지면 고를 것이 하나도 없는 상태가 생길 수 있다.
+   *
+   * > 2026-08-09 — **이 면제가 이제 막다른 길을 막는 유일한 장치다.** 선불 축이
+   * > 폐기되면서 남은 축이 보상 하나뿐이 됐고, 보상이 중립인 상태에서 `backDownReward`는
+   * > 아무것도 바꾸지 않아 사라진다. 축이 둘일 때는 다른 축이 늘 대안을 하나 남겼지만
+   * > 지금은 아니다. **이 조건을 지우면 조용히 막다른 길이 열린다.**
+   * > `tests/unit/presentation/counterScreen.test.ts`가 이것을 검사한다.
    */
   function isPlayable(move: NegotiationMove, talk: Talk, disclosure: DisclosureStatus): boolean {
     if (move.disclose === true) return disclosure.allowed && !talk.discloseRisk;
     if (move.id === TAKE_AS_IS) return true;
 
-    const changesReward = move.reward !== undefined && move.reward !== talk.rewardMultiplier;
-    const changesAdvance = move.advance !== undefined && move.advance !== talk.advanceRatio;
-    return changesReward || changesAdvance;
+    return move.reward !== undefined && move.reward !== talk.rewardMultiplier;
   }
 
   function render(): void {
@@ -416,15 +415,11 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
   function renderTerms(contract: Contract, talk: Talk): string {
     const contested = talk.lastResult?.contestedAxis;
     const reward = round(contract.baseReward * talk.rewardMultiplier);
-    const advance = round(contract.baseReward * talk.rewardMultiplier * talk.advanceRatio);
 
     return `
       <dl class="terms">
         <div class="terms__item${contested === 'reward' ? ' terms__item--contested' : ''}">
           <dt>보상</dt><dd>${reward}G <span class="terms__mul">×${talk.rewardMultiplier.toFixed(2)}</span></dd>
-        </div>
-        <div class="terms__item${contested === 'advance' ? ' terms__item--contested' : ''}">
-          <dt>선불</dt><dd>${advance}G <span class="terms__mul">${Math.round(talk.advanceRatio * 100)}%</span></dd>
         </div>
         <div class="terms__item${talk.discloseRisk ? ' terms__item--disclosed' : ''}">
           <dt>위험 고지</dt><dd>${talk.discloseRisk ? '했다' : '안 했다'}</dd>
