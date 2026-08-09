@@ -8,6 +8,11 @@
  * 파일이 직접 스텁으로 몬다. 이 화면이 `resolveHallAttendance`를 직접 부르지 않고
  * `state.hallAttendance`만 읽는다는 경계, 그리고 재대화 차단이 `state.talkedToday`
  * (화면 로컬이 아니라 세션 상태)에서 온다는 것이 이 파일이 고정하는 핵심 회귀 조건이다.
+ *
+ * 홀이 목록에서 **방**으로 바뀌면서 상호작용이 두 단계가 됐다 — 방 안의 사람을 누르면
+ * (`select-person`) 하단 대화창이 열리고, 대화·영입 버튼은 그 대화창에만 있다.
+ * 그래서 대부분의 테스트가 {@link select}로 시작한다. 사람의 정보가 방에 다 노출돼
+ * 있으면 방이 아니라 그냥 세로 목록이므로, 이 두 단계는 의도된 것이다.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { recruitCost, type GuildConfig } from "../../../src/domain/guild";
@@ -20,6 +25,7 @@ import {
   mountGuildHallScreen,
   type GuildHallScreenDeps,
 } from "../../../src/presentation/ui/GuildHallScreen";
+import layout from "../../../src/data/hall-layout.json";
 
 const GRADES: GradeThresholds = { steady: 25, skilled: 50, veteran: 75 };
 
@@ -50,6 +56,10 @@ const TEXT: TextBank = {
     rumorRefused: {
       _vars: ["name"],
       lines: { default: ["{name}이 입을 다물었다"] },
+    },
+    rumorNothingToTell: {
+      _vars: ["name"],
+      lines: { default: ["{name}은 아는 것이 없었다"] },
     },
     recruitGreeting: {
       _vars: ["name"],
@@ -158,6 +168,15 @@ function setRoster(members: Adventurer[]): void {
   state.roster.splice(0, state.roster.length, ...members);
 }
 
+/** 명부와 출석을 한 번에 세운다 — 거의 모든 테스트가 이 둘을 함께 필요로 한다. */
+function attend(members: Adventurer[]): void {
+  setRoster(members);
+  state.hallAttendance = {
+    guildMemberIds: members.filter((m) => m.inGuild).map((m) => m.id),
+    visitorIds: members.filter((m) => !m.inGuild).map((m) => m.id),
+  };
+}
+
 function mount(overrides: Partial<GuildHallScreenDeps> = {}) {
   return mountGuildHallScreen(root, {
     state,
@@ -171,10 +190,23 @@ function mount(overrides: Partial<GuildHallScreenDeps> = {}) {
   });
 }
 
-function personRow(id: string): HTMLElement {
-  const row = root.querySelector<HTMLElement>(`[data-person-id="${id}"]`);
-  if (row === null) throw new Error(`행이 없다: ${id}`);
-  return row;
+/** 방 안의 인물. 없으면 오늘 홀에 오지 않았다는 뜻이다. */
+function token(id: string): HTMLButtonElement | null {
+  return root.querySelector<HTMLButtonElement>(`[data-action="select-person"][data-person-id="${id}"]`);
+}
+
+/** 그 사람에게 말을 걸러 간다. 대화·영입 버튼은 이 다음에야 존재한다. */
+function select(id: string): void {
+  const button = token(id);
+  if (button === null) throw new Error(`방에 그 사람이 없다: ${id}`);
+  button.click();
+}
+
+/** 하단 대화창. 아무도 고르지 않았으면 안내문만 들어 있다. */
+function panel(): HTMLElement {
+  const node = root.querySelector<HTMLElement>(".hall-dialogue");
+  if (node === null) throw new Error("대화창이 없다");
+  return node;
 }
 
 function talkButton(id: string, pay?: boolean): HTMLButtonElement {
@@ -187,33 +219,90 @@ function talkButton(id: string, pay?: boolean): HTMLButtonElement {
   return button;
 }
 
-describe("길드 홀 화면 — 출석자 렌더", () => {
-  it("test_attendee_shows_name_grade_two_traits_and_affiliation", () => {
-    const member = makeAdventurer({ name: "카린", traits: ["talkative", "bitter"], capability: 80 });
-    setRoster([member]);
-    state.hallAttendance = { guildMemberIds: [member.id], visitorIds: [] };
+function recruitButton(id: string): HTMLButtonElement | null {
+  return root.querySelector<HTMLButtonElement>(`[data-action="recruit"][data-id="${id}"]`);
+}
+
+describe("길드 홀 화면 — 방", () => {
+  it("test_every_attendee_gets_a_token_in_the_room", () => {
+    const members = [makeAdventurer(), makeAdventurer(), makeAdventurer()];
+    attend(members);
 
     mount();
 
-    const row = personRow(member.id);
-    expect(row.querySelector(".hall-person__name")?.textContent).toBe("카린");
-    expect(row.querySelector(".hall-person__grade")?.textContent).toBe("베테랑");
-    expect(row.querySelector(".hall-person__traits")?.textContent).toContain("수다스럽다");
-    expect(row.querySelector(".hall-person__traits")?.textContent).toContain("냉소적이다");
-    expect(row.querySelector(".hall-person__affiliation")?.textContent).toBe("길드원");
+    expect(root.querySelectorAll(".hall-token")).toHaveLength(3);
+  });
+
+  it("test_absent_people_have_no_token", () => {
+    // 명부에는 있지만 오늘 홀에 오지 않은 사람은 방에 없다
+    const present = makeAdventurer();
+    const absent = makeAdventurer();
+    setRoster([present, absent]);
+    state.hallAttendance = { guildMemberIds: [present.id], visitorIds: [] };
+
+    mount();
+
+    expect(token(present.id)).not.toBeNull();
+    expect(token(absent.id)).toBeNull();
+  });
+
+  it("test_each_token_is_placed_at_its_own_seat", () => {
+    // 자리가 겹치면 사람이 사람을 가린다. 인덱스로 배정되므로 순서가 곧 자리다.
+    const members = [makeAdventurer(), makeAdventurer(), makeAdventurer()];
+    attend(members);
+
+    mount();
+
+    const seats = [...root.querySelectorAll<HTMLElement>(".hall-token")].map(
+      (node) => `${node.style.getPropertyValue("--x")}|${node.style.getPropertyValue("--y")}`,
+    );
+    expect(new Set(seats).size).toBe(seats.length);
+  });
+
+  it("test_guild_members_and_visitors_draw_from_different_seat_pools", () => {
+    // 소속을 색이 아니라 **자리**로 말한다 — 길드원은 안쪽, 외부인은 문가.
+    // 두 무리가 같은 자리 목록을 쓰면 그 신호가 통째로 사라진다.
+    const member = makeAdventurer({ inGuild: true });
+    const visitor = makeAdventurer({ inGuild: false });
+    attend([member, visitor]);
+
+    mount();
+
+    const seatOf = (id: string) => token(id)?.style.getPropertyValue("--x") ?? "";
+    expect(seatOf(member.id)).toBe(String(layout.guildSeats[0][0]));
+    expect(seatOf(visitor.id)).toBe(String(layout.visitorSeats[0][0]));
+  });
+
+  it("test_seats_are_stable_across_rerenders", () => {
+    // 대화 한 번에 화면이 다시 그려진다. 자리가 바뀌면 사람이 순간이동한다.
+    const talker = makeAdventurer({ trust: 0.9 });
+    attend([talker, makeAdventurer(), makeAdventurer()]);
+    mount();
+    const before = [...root.querySelectorAll<HTMLElement>(".hall-token")].map((n) => n.style.left);
+
+    select(talker.id);
+    talkButton(talker.id).click();
+
+    const after = [...root.querySelectorAll<HTMLElement>(".hall-token")].map((n) => n.style.left);
+    expect(after).toEqual(before);
+  });
+
+  it("test_empty_room_says_nobody_came", () => {
+    mount();
+
+    expect(root.querySelector(".hall-room__empty")?.textContent).toContain("아무도 오지 않았다");
   });
 
   it("test_guild_member_and_visitor_are_marked_with_different_classes", () => {
     const member = makeAdventurer({ inGuild: true });
     const visitor = makeAdventurer({ inGuild: false });
-    setRoster([member, visitor]);
-    state.hallAttendance = { guildMemberIds: [member.id], visitorIds: [visitor.id] };
+    attend([member, visitor]);
 
     mount();
 
-    expect(personRow(member.id).classList.contains("hall-person--guild")).toBe(true);
-    expect(personRow(visitor.id).classList.contains("hall-person--guild")).toBe(false);
-    expect(personRow(visitor.id).classList.contains("hall-person--visitor")).toBe(true);
+    expect(token(member.id)?.classList.contains("hall-person--guild")).toBe(true);
+    expect(token(member.id)?.classList.contains("hall-person--visitor")).toBe(false);
+    expect(token(visitor.id)?.classList.contains("hall-person--visitor")).toBe(true);
   });
 
   it("test_capability_number_never_appears_in_dom", () => {
@@ -222,10 +311,10 @@ describe("길드 홀 화면 — 출석자 렌더", () => {
       makeAdventurer({ capability: 61 }),
       makeAdventurer({ capability: 77 }),
     ];
-    setRoster(members);
-    state.hallAttendance = { guildMemberIds: members.map((m) => m.id), visitorIds: [] };
+    attend(members);
 
     mount();
+    select(members[0].id);
 
     for (const member of members) {
       expect(root.innerHTML).not.toContain(String(member.capability));
@@ -235,13 +324,80 @@ describe("길드 홀 화면 — 출석자 렌더", () => {
 
   it("test_names_are_escaped", () => {
     const member = makeAdventurer({ name: "<script>evil()</script>" });
-    setRoster([member]);
-    state.hallAttendance = { guildMemberIds: [member.id], visitorIds: [] };
+    attend([member]);
 
     mount();
+    select(member.id);
 
     expect(root.querySelector("script")).toBeNull();
     expect(root.innerHTML).toContain("&lt;script&gt;");
+  });
+});
+
+describe("길드 홀 화면 — 대화창 열기", () => {
+  it("test_nothing_is_selected_until_a_person_is_clicked", () => {
+    attend([makeAdventurer()]);
+
+    mount();
+
+    expect(panel().classList.contains("hall-dialogue--empty")).toBe(true);
+    expect(root.querySelector(".hall-dialogue__hint")?.textContent).toContain("눌러 말을 건다");
+  });
+
+  it("test_selected_person_shows_name_grade_two_traits_and_affiliation", () => {
+    const member = makeAdventurer({ name: "카린", traits: ["talkative", "bitter"], capability: 80 });
+    attend([member]);
+
+    mount();
+    select(member.id);
+
+    const box = panel();
+    expect(box.querySelector(".hall-person__name")?.textContent).toBe("카린");
+    expect(box.querySelector(".hall-person__grade")?.textContent).toBe("베테랑");
+    expect(box.querySelector(".hall-person__traits")?.textContent).toContain("수다스럽다");
+    expect(box.querySelector(".hall-person__traits")?.textContent).toContain("냉소적이다");
+    expect(box.querySelector(".hall-person__affiliation")?.textContent).toBe("길드원");
+  });
+
+  it("test_clicking_the_sprite_itself_selects_the_person", () => {
+    // 회귀: 사람은 버튼이 아니라 **그림**을 누른다. 스프라이트가 인라인 SVG였을 때
+    // event.target이 SVGRectElement라 `instanceof HTMLElement` 가드에 걸려 클릭이
+    // 통째로 무시된 적이 있다. 그림이 무엇으로 바뀌든 눌리기는 해야 한다.
+    const member = makeAdventurer();
+    attend([member]);
+
+    mount();
+    const sprite = token(member.id)?.querySelector(".hall-token__sprite");
+    expect(sprite).not.toBeNull();
+    sprite?.dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(panel().classList.contains("hall-dialogue--empty")).toBe(false);
+    expect(panel().dataset.personId).toBe(member.id);
+  });
+
+  it("test_clicking_the_selected_person_again_closes_the_dialogue", () => {
+    const member = makeAdventurer();
+    attend([member]);
+
+    mount();
+    select(member.id);
+    expect(panel().classList.contains("hall-dialogue--empty")).toBe(false);
+
+    select(member.id);
+
+    expect(panel().classList.contains("hall-dialogue--empty")).toBe(true);
+  });
+
+  it("test_selecting_another_person_switches_the_dialogue", () => {
+    const first = makeAdventurer({ name: "첫째" });
+    const second = makeAdventurer({ name: "둘째" });
+    attend([first, second]);
+
+    mount();
+    select(first.id);
+    select(second.id);
+
+    expect(panel().querySelector(".hall-person__name")?.textContent).toBe("둘째");
   });
 });
 
@@ -250,15 +406,14 @@ describe("길드 홀 화면 — 대화", () => {
     const talker = makeAdventurer({ trust: 0.9, traits: ["loyal", "cautious"] });
     const client = makeClient({ knownBy: [talker.id] });
     const contract = makeContract({ client, facts: [makeFact("ct-1", "realRisk")] });
-    setRoster([talker]);
+    attend([talker]);
     state.openContracts = [contract];
-    state.hallAttendance = { guildMemberIds: [talker.id], visitorIds: [] };
 
     mount();
+    select(talker.id);
     talkButton(talker.id).click();
 
-    const row = personRow(talker.id);
-    expect(row.querySelector(".hall-person__reply")?.textContent?.length).toBeGreaterThan(0);
+    expect(panel().querySelector(".hall-person__reply")?.textContent?.length).toBeGreaterThan(0);
     expect(state.knowledge.discoveredContacts.has(`${talker.id}->${client.id}`)).toBe(true);
     expect(state.knowledge.revealedFacts.has(`ct-1:realRisk`)).toBe(true);
   });
@@ -269,11 +424,11 @@ describe("길드 홀 화면 — 대화", () => {
     const talker = makeAdventurer({ trust: 0.9, traits: ["bitter", "loyal"] });
     const client = makeClient({ knownBy: [talker.id] });
     const contract = makeContract({ id: "ct-1", realRisk: 100, client, facts: [makeFact("ct-1", "realRisk")] });
-    setRoster([talker]);
+    attend([talker]);
     state.openContracts = [contract];
-    state.hallAttendance = { guildMemberIds: [talker.id], visitorIds: [] };
 
     mount();
+    select(talker.id);
     talkButton(talker.id).click();
 
     const heard = state.knowledge.heardFacts.get("ct-1:realRisk");
@@ -284,45 +439,102 @@ describe("길드 홀 화면 — 대화", () => {
     expect(heard?.statedValue).toBeCloseTo(100 * (1 + RUMOR.traitDistortion), 8);
   });
 
-  it("test_talked_person_button_is_disabled_and_added_to_talkedToday", () => {
+  it("test_talked_person_button_is_removed_and_added_to_talkedToday", () => {
     const talker = makeAdventurer({ trust: 0.9 });
-    setRoster([talker]);
-    state.hallAttendance = { guildMemberIds: [talker.id], visitorIds: [] };
+    attend([talker]);
 
     mount();
+    select(talker.id);
     talkButton(talker.id).click();
 
     expect(state.talkedToday.has(talker.id)).toBe(true);
     expect(root.querySelector(`[data-action="talk"][data-id="${talker.id}"]`)).toBeNull();
-    expect(personRow(talker.id).querySelector(".hall-person__status")?.textContent).toContain(
-      "이미 대화했다",
-    );
+    expect(panel().querySelector(".hall-person__status")?.textContent).toContain("이미 대화했다");
+  });
+
+  it("test_talking_keeps_the_person_selected_so_the_reply_stays_visible", () => {
+    // 말을 걸었는데 대화창이 닫히면 방금 들은 말이 사라진다
+    const talker = makeAdventurer({ trust: 0.9 });
+    attend([talker, makeAdventurer()]);
+
+    mount();
+    select(talker.id);
+    talkButton(talker.id).click();
+
+    expect(panel().dataset.personId).toBe(talker.id);
+  });
+
+  it("test_talked_person_token_is_dimmed_in_the_room", () => {
+    // 남은 기회가 어디 있는지 방을 훑어보고 알 수 있어야 한다
+    const talker = makeAdventurer({ trust: 0.9 });
+    attend([talker]);
+
+    mount();
+    select(talker.id);
+    talkButton(talker.id).click();
+
+    expect(token(talker.id)?.classList.contains("hall-person--talked")).toBe(true);
   });
 
   it("test_reentry_does_not_bypass_talkedToday_block", () => {
     // 재대화 차단이 화면 로컬이 아니라 state.talkedToday에서 온다는 것을 고정한다 —
     // 화면을 다시 mount해도(길드 홀을 나갔다 들어와도) 차단이 유지되어야 한다.
     const talker = makeAdventurer();
-    setRoster([talker]);
-    state.hallAttendance = { guildMemberIds: [talker.id], visitorIds: [] };
+    attend([talker]);
     state.talkedToday.add(talker.id);
 
     const handle = mount();
+    select(talker.id);
 
     expect(root.querySelector(`[data-action="talk"][data-id="${talker.id}"]`)).toBeNull();
-    expect(personRow(talker.id).querySelector(".hall-person__status")).not.toBeNull();
+    expect(panel().querySelector(".hall-person__status")).not.toBeNull();
 
     handle.destroy();
     mount();
+    select(talker.id);
     expect(root.querySelector(`[data-action="talk"][data-id="${talker.id}"]`)).toBeNull();
+  });
+
+  it("test_person_who_knows_nobody_says_so_instead_of_refusing", () => {
+    // 회귀: 값을 치른 greedy에게 "공짜로 도는 이야기가 어디 있냐"가 돌아오면 플레이어는
+    // 돈을 내고 모욕을 산 것으로 읽는다. 아는 게 없는 것과 입을 다무는 것은 다른 일이다.
+    const talker = makeAdventurer({ traits: ["greedy", "loyal"], trust: 0.9 });
+    attend([talker]);
+    state.openContracts = [makeContract({ client: makeClient({ knownBy: [] }) })];
+    state.funds = 200;
+
+    mount();
+    select(talker.id);
+    talkButton(talker.id, true).click();
+
+    const reply = panel().querySelector(".hall-person__reply")?.textContent ?? "";
+    expect(reply).toContain("아는 것이 없었다");
+    expect(reply).not.toContain("입을 다물었다");
+  });
+
+  it("test_person_who_knows_someone_but_stays_silent_reads_as_a_refusal", () => {
+    // 신뢰가 모자라 막힌 경우다. 이쪽은 "아는 게 없다"가 아니라 거절이어야 한다 —
+    // 신뢰를 쌓으면 열린다는 신호가 사라지면 안 된다.
+    const talker = makeAdventurer({ traits: ["loyal", "cautious"], trust: 0 });
+    const client = makeClient({ knownBy: [talker.id] });
+    attend([talker]);
+    state.openContracts = [makeContract({ client, facts: [makeFact("ct-1", "realRisk")] })];
+
+    mount();
+    select(talker.id);
+    talkButton(talker.id).click();
+
+    const reply = panel().querySelector(".hall-person__reply")?.textContent ?? "";
+    expect(reply).toContain("입을 다물었다");
+    expect(state.knowledge.revealedFacts.size).toBe(0);
   });
 
   it("test_greedy_person_offers_pay_and_refuse_choices", () => {
     const talker = makeAdventurer({ traits: ["greedy", "loyal"], trust: 0.9 });
-    setRoster([talker]);
-    state.hallAttendance = { guildMemberIds: [talker.id], visitorIds: [] };
+    attend([talker]);
 
     mount();
+    select(talker.id);
 
     expect(talkButton(talker.id, true)).not.toBeNull();
     expect(talkButton(talker.id, false)).not.toBeNull();
@@ -330,11 +542,11 @@ describe("길드 홀 화면 — 대화", () => {
 
   it("test_greedy_pay_button_is_disabled_when_funds_are_insufficient", () => {
     const talker = makeAdventurer({ traits: ["greedy", "loyal"], trust: 0.9 });
-    setRoster([talker]);
-    state.hallAttendance = { guildMemberIds: [talker.id], visitorIds: [] };
+    attend([talker]);
     state.funds = RUMOR.greedyPrice - 1;
 
     mount();
+    select(talker.id);
 
     expect(talkButton(talker.id, true).disabled).toBe(true);
     expect(talkButton(talker.id, false).disabled).toBe(false);
@@ -351,53 +563,89 @@ describe("길드 홀 화면 — 영입", () => {
 
     mount();
 
-    expect(root.querySelector(`[data-action="recruit"][data-id="${guildMember.id}"]`)).toBeNull();
-    expect(root.querySelector(`[data-action="recruit"][data-id="${visitor.id}"]`)).not.toBeNull();
-    expect(root.querySelector(`[data-action="recruit"][data-id="${absentOutsider.id}"]`)).toBeNull();
+    // 오지 않은 외부인은 방에 없으므로 말을 걸 수조차 없다
+    expect(token(absentOutsider.id)).toBeNull();
+
+    select(guildMember.id);
+    expect(recruitButton(guildMember.id)).toBeNull();
+
+    select(visitor.id);
+    expect(recruitButton(visitor.id)).not.toBeNull();
   });
 
   it("test_successful_recruit_sets_inGuild_and_deducts_exact_cost", () => {
     const visitor = makeAdventurer({ inGuild: false, capability: 20, tenureYears: 1 });
-    setRoster([visitor]);
-    state.hallAttendance = { guildMemberIds: [], visitorIds: [visitor.id] };
+    attend([visitor]);
     state.funds = 500;
     const cost = recruitCost(visitor, GUILD.recruit);
 
     mount();
-    root.querySelector<HTMLButtonElement>(`[data-action="recruit"][data-id="${visitor.id}"]`)?.click();
+    select(visitor.id);
+    recruitButton(visitor.id)?.click();
 
     expect(visitor.inGuild).toBe(true);
     expect(state.funds).toBe(500 - cost);
+  });
+
+  it("test_recruited_person_immediately_reads_as_a_guild_member", () => {
+    // 방금 돈을 냈는데 아직도 외부인이라고 나오면 혼란만 남는다
+    const visitor = makeAdventurer({ inGuild: false, capability: 20, tenureYears: 1 });
+    attend([visitor]);
+    state.funds = 500;
+
+    mount();
+    select(visitor.id);
+    recruitButton(visitor.id)?.click();
+
+    expect(panel().querySelector(".hall-person__affiliation")?.textContent).toBe("길드원");
+    expect(recruitButton(visitor.id)).toBeNull();
+    expect(token(visitor.id)?.classList.contains("hall-person--guild")).toBe(true);
   });
 
   it("test_roster_full_disables_recruit_with_its_own_reason", () => {
     const memberA = makeAdventurer({ inGuild: true });
     const memberB = makeAdventurer({ inGuild: true });
     const visitor = makeAdventurer({ inGuild: false });
-    setRoster([memberA, memberB, visitor]); // guildTier 1의 rosterCap은 2
-    state.hallAttendance = { guildMemberIds: [memberA.id, memberB.id], visitorIds: [visitor.id] };
+    attend([memberA, memberB, visitor]); // guildTier 1의 rosterCap은 2
 
     mount();
+    select(visitor.id);
 
-    const button = root.querySelector<HTMLButtonElement>(`[data-action="recruit"][data-id="${visitor.id}"]`);
-    expect(button?.disabled).toBe(true);
-    const reason = personRow(visitor.id).querySelector(".hall-person__recruit-reason")?.textContent ?? "";
+    expect(recruitButton(visitor.id)?.disabled).toBe(true);
+    const reason = panel().querySelector(".hall-person__recruit-reason")?.textContent ?? "";
     expect(reason).toContain("정원이 찼습니다");
   });
 
   it("test_insufficient_funds_disables_recruit_with_a_different_reason", () => {
     const visitor = makeAdventurer({ inGuild: false, capability: 80, tenureYears: 6 });
-    setRoster([visitor]);
-    state.hallAttendance = { guildMemberIds: [], visitorIds: [visitor.id] };
+    attend([visitor]);
     state.funds = 1;
 
     mount();
+    select(visitor.id);
 
-    const button = root.querySelector<HTMLButtonElement>(`[data-action="recruit"][data-id="${visitor.id}"]`);
-    expect(button?.disabled).toBe(true);
-    const reason = personRow(visitor.id).querySelector(".hall-person__recruit-reason")?.textContent ?? "";
+    expect(recruitButton(visitor.id)?.disabled).toBe(true);
+    const reason = panel().querySelector(".hall-person__recruit-reason")?.textContent ?? "";
     expect(reason).toContain("자금이 부족합니다");
     expect(reason).not.toContain("정원이 찼습니다");
+  });
+
+  it("test_recruit_is_refused_even_if_the_disabled_button_is_bypassed", () => {
+    // 규칙이 UI 상태보다 우선한다
+    const visitor = makeAdventurer({ inGuild: false, capability: 80, tenureYears: 6 });
+    attend([visitor]);
+    state.funds = 1;
+
+    mount();
+    select(visitor.id);
+    const button = recruitButton(visitor.id);
+    if (button !== null) {
+      button.disabled = false;
+      button.click();
+    }
+
+    expect(visitor.inGuild).toBe(false);
+    expect(state.funds).toBe(1);
   });
 });
 
