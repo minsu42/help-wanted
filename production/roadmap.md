@@ -578,8 +578,8 @@ P1의 마르타 시나리오가 사실상 이 역할을 하고 있으므로 구�
 | P8 | `production/balance-notes-*.md` | ⬜ story-018 산출물 (미완) |
 | P1 | ~~`design/quick-specs/intake-system-*.md`~~ → **`design/gdd/intake-system.md`** | ✅ **완료** — quick-spec이 아니라 **정식 8섹션 GDD로 승격.** `/design-review` full 통과 후 2회 개정 (필수 8건 + 깊이 등급). 리뷰 로그 `design/gdd/reviews/intake-system-review-log.md` |
 | P1 | `design/quick-specs/commission-form-*.md` | ⬜ **다음 문서 작업** |
-| P1 | `design/quick-specs/persistence-*.md` | ⬜ **누락 발견 (2026-08-09)** |
-| P1 | `docs/architecture/adr-*-contract-schema.md` | ⬜ **디렉터리부터 신설** |
+| P1 | `docs/architecture/adr-001-contract-slots-and-client-occupation.md` | ✅ **완료 (2026-08-10)** — `docs/architecture/` 디렉터리 신설. **이 저장소의 첫 ADR.** 슬롯 어휘 6개 닫힌 유니온, `Reach`/`SlotState` 분리, `Limiter` 3값, **진행도는 `PlayerKnowledge`에** |
+| P1 | `design/quick-specs/persistence-*.md` | ⬜ **다음 문서 작업.** ADR-001이 `ReadonlyMap` 직렬화 문제를 남겼다 |
 | P2 | `design/quick-specs/dispatch-resolution-*.md` 개정 | ⬜ |
 | P2 | `design/quick-specs/result-comparison-*.md` | ⬜ |
 | P3 | `design/quick-specs/day-economy-*.md` | ⬜ |
@@ -597,20 +597,26 @@ P1의 마르타 시나리오가 사실상 이 역할을 하고 있으므로 구�
 
 ### ADR을 언제 쓰는가
 
-`.claude/docs/coding-standards.md`가 *"모든 시스템은 `docs/architecture/`에 대응
-ADR이 있어야 한다"*를 요구하는데, 그 디렉터리는 **존재하지 않는다.** 3일 마감으로
-파이프라인을 축약했고 그 근거가 소멸했다.
-
 전 시스템 소급 적용은 낭비다. **경계가 바뀔 때만 ADR을 쓴다**:
 타입 스키마 변경 · 계층 경계 이동 · 지속성 포맷 · 런타임 의존성 추가.
 나머지는 quick-spec으로 충분하다.
 
-즉시 대상 3건: **P1의 `Contract` 스키마 재설계**, **세이브/로드 포맷**,
-**버전 고정 결정**.
+| 즉시 대상 | 상태 |
+| ---- | ---- |
+| P1의 `Contract` 스키마 재설계 (+ `Client.occupation`) | ✅ **ADR-001 (2026-08-10)** |
+| 세이브/로드 포맷 | ⬜ ADR-002 예정. ADR-001이 `ReadonlyMap` 직렬화 문제를 남겼다 |
+| 청취 화면의 부분 렌더링 경계 (기존 6화면 규약을 처음으로 깬다) | ⬜ ADR-003 후보 |
+| 버전 고정 결정 | ✅ 아래 「버전 정책」 절이 소유 (별도 ADR을 만들지 않는다) |
 
-> ⚠ 지금은 *지켜지지 않는 규칙이 문서에 살아 있는 상태*이며, 이것이 가장 나쁘다.
-> coding-standards.md를 위 방침으로 고치거나 규칙을 실제로 지키거나 둘 중 하나를
-> 하라.
+> **2026-08-10 — 「지켜지지 않는 규칙」 상태를 해소했다.**
+>
+> `.claude/docs/coding-standards.md`가 *"모든 시스템은 대응 ADR이 있어야 한다"* 를
+> 요구하는데 `docs/architecture/` 디렉터리 자체가 없었다. 이 절은 그것을 *"가장 나쁜
+> 상태"* 로 지목하며 **둘 중 하나를 하라**고 적어 두었다.
+>
+> **둘 다 했다** — 디렉터리를 만들고 ADR-001을 썼으며(규칙을 지켰다), 동시에
+> coding-standards.md의 문구를 *"모든 시스템"* 에서 **"경계가 바뀔 때"** 로 고쳤다
+> (규칙을 실제 방침에 맞췄다). 이 절이 그 방침의 소유자다.
 
 ---
 
