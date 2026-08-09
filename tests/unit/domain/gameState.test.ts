@@ -303,6 +303,57 @@ describe("dispatchParty", () => {
     expect(dispatch.concealedKnownRisk).toBe(false);
   });
 
+  it("test_dispatch_clears_the_stored_settlement", () => {
+    // Arrange — 창구가 타결 조건을 남긴 상태
+    const state = createGameState(SEED, CONFIG);
+    const contract = state.openContracts[0];
+    state.settlements[contract.id] = { agreedReward: 120, discloseRisk: true };
+
+    // Act
+    dispatchParty(state, contract.id, [availableGuildMembers(state)[0].id]);
+
+    // Assert — 열린 의뢰에서 빠지는 것과 같은 시점에 지워진다
+    expect(state.settlements[contract.id]).toBeUndefined();
+  });
+
+  it("test_dispatch_applies_the_forced_assignment_cost_to_reluctant_members_only", () => {
+    // Arrange — 정원이 넉넉한 의뢰를 골라 한 파티에 두 명을 넣는다. 시드마다
+    // maxPartySize가 달라 첫 의뢰를 그냥 쓰면 정원 초과로 던진다.
+    const state = createGameState(SEED, CONFIG);
+    const contract = state.openContracts.find((candidate) => candidate.maxPartySize >= 2);
+    if (contract === undefined) throw new Error("정원 2 이상인 의뢰가 없다 — 시드를 바꿀 것");
+    const [forced, willing] = availableGuildMembers(state);
+    forced.trust = 0.5;
+    willing.trust = 0.5;
+
+    // Act
+    dispatchParty(state, contract.id, [forced.id, willing.id], {
+      reluctantIds: [forced.id],
+      forcedAssignmentTrustPenalty: -0.1,
+    });
+
+    // Assert — 명단에 있는 사람만 값을 치른다
+    expect(forced.trust).toBeCloseTo(0.4, 8);
+    expect(willing.trust).toBeCloseTo(0.5, 8);
+    expect(forced.memories.some((memory) => memory.kind === "forcedAssignment")).toBe(true);
+    expect(willing.memories.some((memory) => memory.kind === "forcedAssignment")).toBe(false);
+  });
+
+  it("test_dispatch_without_reluctant_ids_leaves_trust_untouched", () => {
+    // Arrange
+    const state = createGameState(SEED, CONFIG);
+    const contract = state.openContracts[0];
+    const member = availableGuildMembers(state)[0];
+    const before = member.trust;
+
+    // Act
+    dispatchParty(state, contract.id, [member.id]);
+
+    // Assert
+    expect(member.trust).toBe(before);
+    expect(member.memories).toHaveLength(0);
+  });
+
   it("test_dispatched_member_cannot_be_dispatched_again", () => {
     const state = createGameState(SEED, CONFIG);
     const { member } = sendOne(state);

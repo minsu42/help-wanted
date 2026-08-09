@@ -87,8 +87,18 @@
   box-shadow: 0 0 0 2px var(--desk), 0 2px 8px rgb(0 0 0 / 25%);
 }
 
-.roster-row--refused {
-  opacity: 0.7;
+/*
+ * 꺼리는 사람. 흐리게 두되 **고를 수 없는 것처럼 보이지는 않게** 한다 — 0.7이었던
+ * 것을 0.82로 올린 이유가 그것이다. 이제 고를 수 있고, 다만 값을 치른다.
+ */
+.roster-row--reluctant {
+  opacity: 0.82;
+}
+
+/* 꺼리는데 체크된 상태 = 지금 강행하고 있다. 봉랍색 테두리로 결과를 미리 보여준다 */
+.roster-row--forced {
+  opacity: 1;
+  box-shadow: 0 0 0 2px var(--seal), 0 2px 8px rgb(0 0 0 / 25%);
 }
 
 .roster-row__label {
@@ -97,10 +107,6 @@
   align-items: center;
   gap: 0.75rem;
   cursor: pointer;
-}
-
-.roster-row--refused .roster-row__label {
-  cursor: not-allowed;
 }
 
 .roster-row__check {
@@ -139,6 +145,16 @@
   margin: 0.5rem 0 0;
   color: var(--seal);
   font-size: 0.8125rem;
+}
+
+/* 강행 인원 요약. 확정 버튼 바로 위에 두어 누르기 전에 읽히게 한다 */
+.dispatch__forcing {
+  margin: 1rem 0 0;
+  padding: 0.625rem 1rem;
+  border-left: 3px solid var(--seal);
+  background: rgb(0 0 0 / 18%);
+  color: var(--paper-dim);
+  font-size: 0.875rem;
 }
 
 /* --- 액션 --- */
@@ -181,30 +197,27 @@
 }
 
 /*
- * 배정을 확정하지 않고 나가는 탈출구 (응급 처치, 2026-08-09).
- * 주 행동(확정)과 시각적으로 경쟁하면 안 되므로 채움 대신 테두리만 쓴다.
- * `margin-left: auto`로 확정 버튼을 오른쪽 끝에 고정해, 취소가 실수로 먼저
- * 눌리지 않도록 둘 사이에 거리를 둔다.
+ * 곁다리 탈출구 — 배정·대기 단계의 「나중에 배정한다」·「창구로 돌아간다」.
+ *
+ * 결과·오류 화면의 `.dispatch__return`은 그 화면의 **유일한 주 동작**이므로 꽉 찬
+ * 버튼 그대로 두고, 다른 동작과 나란히 서는 이 둘만 약하게 만든다. 같은 무게로 두면
+ * 배정 화면이 "나갈까 말까"를 먼저 묻는 것처럼 읽힌다 — 다만 반드시 **보여야** 한다.
+ *
+ * 이 규칙이 위의 공용 버튼 규칙보다 **뒤에** 있어야 이긴다(클래스 하나 차이지만
+ * 순서에 기대지 않도록 두 클래스를 겹쳐 명시도를 올려 둔다).
+ *
+ * `margin-left: auto`가 확정 버튼과 사이를 벌려, 나가려다 확정을 누르는 일을 막는다.
  */
-.dispatch__abandon {
-  padding: 0.5rem 1.5rem;
+.dispatch__return.dispatch__return--aside {
+  margin-left: auto;
   background: transparent;
   color: var(--paper-dim);
-  border: 1px solid var(--ink-faint);
-  border-radius: 2px;
-  font-family: inherit;
-  font-size: 1rem;
-  letter-spacing: 0.08em;
-  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--paper-dim);
 }
 
-.dispatch__abandon:hover {
+.dispatch__return.dispatch__return--aside:hover {
+  background: rgb(255 255 255 / 8%);
   color: var(--paper);
-  border-color: var(--paper-dim);
-}
-
-.dispatch__confirm {
-  margin-left: auto;
 }
 
 /* --- 결과 --- */

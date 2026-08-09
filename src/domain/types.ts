@@ -87,7 +87,8 @@ export type MemoryKind =
   | 'wounded' // 다쳐서 돌아왔다
   | 'lostComrade' // 동료가 돌아오지 못했다
   | 'wasWarned' // 위험을 미리 들었다
-  | 'wasDeceived'; // 위험을 듣지 못한 채 갔다
+  | 'wasDeceived' // 위험을 듣지 못한 채 갔다
+  | 'forcedAssignment'; // 내키지 않는다고 했는데도 보내졌다
 
 /**
  * 플레이어의 결정에 대한 인물의 기억 한 조각. 덧붙이기만 하고 지우지 않는다.
@@ -294,6 +295,26 @@ export interface PlayerKnowledge {
    * 조용히 어긋난다.
    */
   readonly heardFacts: ReadonlyMap<string, HeardRumor>;
+}
+
+/**
+ * 창구에서 타결된 조건. **의뢰가 아직 배정되지 않았을 때만 존재한다.**
+ *
+ * 이 타입이 프레젠테이션이 아니라 도메인에 있는 이유: 배정 화면을 나갔다가 창구로
+ * 돌아와도 조건이 유지되어야 하는데, 그러려면 {@link GameState}가 들고 있어야 하고
+ * 도메인은 프레젠테이션 타입(`CounterScreen`의 `Settlement`)을 참조할 수 없다.
+ * `Settlement`가 들고 있는 `Contract` 참조는 여기 없다 — 키가 의뢰 id이므로 중복이다.
+ *
+ * **왜 조건을 보존해야 하는가**: `evaluateOffer`는 `offerNumber >= maxOffers`면 무조건
+ * 결렬이다. 타결은 1~2회차에서만 일어나므로, 조건을 버리고 창구로 돌려보내면 플레이어가
+ * 무슨 선택지를 누르든 그것이 3회차라서 즉시 결렬된다 — "열린 채로 유지"가 실질적으로
+ * 파기가 된다. 기록: `design/quick-specs/assignment-reluctance-2026-08-09.md` §5.
+ */
+export interface SettledTerms {
+  /** 흥정이 끝난 최종 보상. 완수하면 전액 들어온다 */
+  readonly agreedReward: number;
+  /** 위험을 고지했는가. 숨겼으면 사망 시 신뢰 하락폭이 커진다 */
+  readonly discloseRisk: boolean;
 }
 
 /**

@@ -149,8 +149,16 @@ const NEUTRAL_REWARD = 1;
  */
 export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): ScreenHandle {
   const talks = new Map<string, Talk>();
-  /** 지금 창구에 앉아 있는 의뢰인. 나머지는 대기줄에 선다 */
-  let activeId = deps.state.openContracts[0]?.id;
+  /**
+   * 지금 창구에 앉아 있는 의뢰인. 나머지는 대기줄에 선다.
+   *
+   * 타결됐는데 아직 배정하지 않은 의뢰가 있으면 그것을 먼저 앉힌다 — 배정 화면에서
+   * 「나중에 배정한다」로 방금 돌아온 경우이므로, 다른 의뢰인을 앉히면 플레이어가
+   * 대기줄에서 자기가 하던 일을 도로 찾아야 한다.
+   */
+  let activeId =
+    deps.state.openContracts.find((contract) => deps.state.settlements[contract.id] !== undefined)
+      ?.id ?? deps.state.openContracts[0]?.id;
   let destroyed = false;
 
   const onClick = (event: Event): void => handleClick(event);
@@ -172,15 +180,31 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
     return deps.state.openContracts.find((contract) => contract.id === contractId);
   }
 
-  /** 이 의뢰와의 대화. 처음이면 의뢰인의 첫마디부터 시작한다. */
+  /**
+   * 이 의뢰와의 대화. 처음이면 의뢰인의 첫마디부터 시작한다.
+   *
+   * **단 이미 타결된 의뢰는 첫마디로 되돌아가지 않는다.** 배정 화면에서 「나중에
+   * 배정한다」로 돌아오면 이 화면은 새로 만들어져 `talks`가 비어 있는데, 그때 아무
+   * 처리도 하지 않으면 도장까지 찍은 계약이 *"무슨 일로 오셨소"* 부터 다시 시작한다.
+   * `GameState.settlements`가 그 구멍을 메우는 유일한 기록이므로 여기서 복원한다.
+   */
   function talkFor(contract: Contract): Talk {
     let talk = talks.get(contract.id);
     if (talk === undefined) {
-      talk = {
-        rewardMultiplier: NEUTRAL_REWARD,
-        discloseRisk: false,
-        message: say(contract, 'clientOpening'),
-      };
+      const terms = deps.state.settlements[contract.id];
+      talk =
+        terms === undefined
+          ? {
+              rewardMultiplier: NEUTRAL_REWARD,
+              discloseRisk: false,
+              message: say(contract, 'clientOpening'),
+            }
+          : {
+              rewardMultiplier: terms.agreedReward / contract.baseReward,
+              discloseRisk: terms.discloseRisk,
+              message: say(contract, 'negotiationSettled'),
+              outcome: 'settled',
+            };
       talks.set(contract.id, talk);
     }
     return talk;
@@ -206,6 +230,10 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
     if (action === 'move') {
       const moveId = button.dataset.move;
       if (moveId !== undefined) playMove(moveId);
+      return;
+    }
+    if (action === 'to-dispatch') {
+      resumeSettled();
       return;
     }
     if (action === 'visit-hall') {
@@ -279,9 +307,43 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
     talk.message = say(contract, 'negotiationSettled');
 
     const agreedReward = contract.baseReward * offer.rewardMultiplier;
+    // 조건을 세션 상태에 남긴다. 배정 화면에서 「나중에 배정한다」로 돌아오면 이 화면은
+    // 새로 만들어지므로 `talks`는 비어 있다 — 여기 적어 두지 않으면 이미 타결한 의뢰를
+    // 처음부터 다시 흥정해야 하는데, `offersMade`가 이미 차 있어 다음 제안이 곧바로
+    // 결렬된다. 즉 "열린 채로 유지"가 실질적으로 파기가 된다.
+    deps.state.settlements[contract.id] = {
+      agreedReward,
+      discloseRisk: offer.discloseRisk,
+    };
     render();
 
     deps.onSettled({ contract, offer, agreedReward });
+  }
+
+  /**
+   * 이미 타결된 의뢰를 배정 화면으로 다시 넘긴다.
+   *
+   * **재협상이 아니다.** 저장된 조건을 그대로 복원해 넘길 뿐이며 `evaluateOffer`를
+   * 부르지 않고 `offersMade`도 건드리지 않는다 — 창구를 나갔다 들어오는 것으로 결렬
+   * 규칙을 우회할 수 없어야 한다는 `GameState.offersMade`의 존재 이유를 지킨다.
+   */
+  function resumeSettled(): void {
+    const contract = findContract(activeId);
+    if (contract === undefined) return;
+
+    const terms = deps.state.settlements[contract.id];
+    if (terms === undefined) return;
+
+    deps.onSettled({
+      contract,
+      offer: {
+        // 배율은 보존하지 않는다 — 소비처가 `agreedReward` 하나뿐이라 되계산이 가능하고,
+        // 저장 포맷(P1)에 파생값을 하나 더 넣지 않는 편이 싸다.
+        rewardMultiplier: terms.agreedReward / contract.baseReward,
+        discloseRisk: terms.discloseRisk,
+      },
+      agreedReward: terms.agreedReward,
+    });
   }
 
   function say(contract: Contract, situation: string): string {
@@ -356,8 +418,9 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
 
     const tabs = waiting
       .map((contract) => {
-        const talk = talks.get(contract.id);
-        const settled = talk?.outcome === 'settled';
+        // `talks`가 아니라 세션 상태를 본다 — 창구를 다시 만들면 `talks`는 비지만
+        // 타결 사실은 남아 있어야 대기줄에서 그 의뢰를 찾을 수 있다.
+        const settled = deps.state.settlements[contract.id] !== undefined;
         const active = contract.id === activeId;
         return `
           <button type="button"
@@ -400,9 +463,26 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
           <p class="booth__line">${escapeHtml(talk.message)}</p>
 
           ${renderTerms(contract, talk)}
-          ${settled ? '<p class="booth__stamp">계약 성립</p>' : renderMoves(contract, talk)}
+          ${settled ? renderSettled() : renderMoves(contract, talk)}
         </div>
       </article>
+    `;
+  }
+
+  /**
+   * 타결된 의뢰의 자리. 도장과 **배정으로 가는 문**이 함께 있다.
+   *
+   * 버튼이 필요한 이유: 타결 직후에는 `onSettled`가 곧바로 배정 화면으로 넘기므로 이
+   * 자리가 보이지 않는다. 보이는 것은 **배정 화면에서 돌아왔을 때**뿐이고, 그때 다시
+   * 배정하러 갈 문이 없으면 타결된 의뢰가 창구에 영원히 박혀 있게 된다 — 고치려던
+   * 막다른 길을 창구 쪽에 새로 만드는 셈이다.
+   */
+  function renderSettled(): string {
+    return `
+      <div class="booth__settled">
+        <p class="booth__stamp">계약 성립</p>
+        <button type="button" class="move move--dispatch" data-action="to-dispatch">배정하러 간다</button>
+      </div>
     `;
   }
 

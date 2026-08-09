@@ -212,3 +212,46 @@ export function resolveDispatchAftermath(
 
   return { trustUpdates, memoryUpdates };
 }
+
+/**
+ * 내키지 않는다고 한 사람을 강행 배정한 대가를 판정한다.
+ *
+ * > 2026-08-09 신설 — 배정 거부가 **하드 게이트에서 대가로** 바뀌면서 생겼다.
+ * > 이전에는 꺼리는 사람을 아예 보낼 수 없었고, 그래서 가용한 전원이 꺼리는 상태가
+ * > 되면 배정 화면을 벗어날 방법이 없어 게임이 멈췄다.
+ * > 기록: `design/quick-specs/assignment-reluctance-2026-08-09.md`.
+ *
+ * ## 판정 조건은 이 파일에 없다
+ *
+ * 누가 꺼리는지(`trust`가 임계값 미만인가, `survival` 목표에 고위험 의뢰인가)는
+ * **호출자가 정해서 넘긴다.** `gameState.ts`의 `dispatchParty`가 배정 거부 규칙을
+ * 갖지 않는 것과 정확히 같은 경계다 — 그 규칙은 배정 화면(Story 008)의 소유이고,
+ * 이 파일은 "그래서 신뢰가 얼마가 되는가"만 답한다.
+ *
+ * ## 대가는 신뢰가 0일 때 무력하다 — 알려진 한계다
+ *
+ * `applyTrust`가 0에서 클램프하므로, 이미 바닥난 길드에서는 강행이 공짜다.
+ * **가장 강행하고 싶은 순간에 대가가 사라진다.** 신뢰가 아니라 사람이 떠나는 것만이
+ * 바닥에서도 작동하는 대가이며, 그것은 로드맵 P4의 「길드 탈퇴」가 맡는다.
+ *
+ * @param reluctant 꺼리는데도 배정된 사람들의 id·현재 trust. 순순히 간 사람은 넣지 않는다
+ * @param day 기억에 찍힐 날짜
+ * @param trustPenalty 한 사람당 신뢰 감소분(음수). `balance.json`의
+ *   `dispatch.forcedAssignmentTrustPenalty`
+ */
+export function resolveForcedAssignment(
+  reluctant: readonly ReputationTarget[],
+  day: number,
+  trustPenalty: number,
+): DispatchAftermath {
+  return {
+    trustUpdates: reluctant.map((member) => ({
+      personId: member.id,
+      trust: applyTrust(member.trust, trustPenalty),
+    })),
+    memoryUpdates: reluctant.map((member) => ({
+      personId: member.id,
+      memory: { day, kind: 'forcedAssignment' as const },
+    })),
+  };
+}

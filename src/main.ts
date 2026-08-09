@@ -343,6 +343,7 @@ function showDispatch(settlement: Settlement): void {
         survivalRefusalRisk: balance.dispatch.survivalRefusalRisk,
         assignmentTrustThreshold: balance.dispatch.assignmentTrustThreshold,
         gloryVolunteerRisk: balance.dispatch.gloryVolunteerRisk,
+        forcedAssignmentTrustPenalty: balance.dispatch.forcedAssignmentTrustPenalty,
       },
       text: textBank,
       /**
@@ -361,6 +362,9 @@ function showDispatch(settlement: Settlement): void {
       },
       // 배정 화면이 이미 자기 계약의 서술을 보여줬어도, 대조는 따로 보여준다 —
       // "무슨 일이 일어났는가"와 "왜 그렇게 됐는가"는 다른 정보다.
+      //
+      // 배정 단계에서 눌린 경우(「나중에 배정한다」)에도 같은 곳으로 간다. 큐가 비어
+      // 있으면 그냥 창구이고, 의뢰는 아직 `openContracts`에 있으므로 잃는 것이 없다.
       onReturnToCounter: () => showNextOutcomeOr(showCounter),
     }),
   );

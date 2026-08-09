@@ -3,6 +3,7 @@ import balance from "../../src/data/balance.json";
 import type { DispatchOutcome } from "../../src/domain/dispatch";
 import {
   resolveDispatchAftermath,
+  resolveForcedAssignment,
   type AftermathOutcome,
   type DispatchAftermath,
   type ReputationConfig,
@@ -299,5 +300,65 @@ describe("resolveDispatchAftermath — 사망은 길드 전체로 번진다", ()
 
     expect(trustOf(survived, "adv-home")).toBeUndefined();
     expect(trustOf(wounded, "adv-home")).toBeUndefined();
+  });
+});
+
+/**
+ * 강행 배정의 대가.
+ *
+ * > 2026-08-09 신설 — 배정 거부가 하드 게이트에서 대가로 바뀌면서 생겼다.
+ * > 마지막 케이스가 이 변경의 **알려진 한계**를 못박는다: 신뢰가 이미 0이면 대가가
+ * > 없다. 무심코 "고쳐지지 않았다"고 읽히지 않도록 의도된 동작임을 테스트로 남긴다.
+ * > 실제 해법은 로드맵 P4의 「길드 탈퇴」다.
+ * > 기록: `design/quick-specs/assignment-reluctance-2026-08-09.md` §7
+ */
+describe("resolveForcedAssignment — 강행 배정", () => {
+  const PENALTY = balance.dispatch.forcedAssignmentTrustPenalty;
+
+  it("test_forced_assignment_lowers_trust_by_the_penalty", () => {
+    // Arrange
+    const reluctant = [member("adv-1", 0.5)];
+
+    // Act
+    const aftermath = resolveForcedAssignment(reluctant, DAY, PENALTY);
+
+    // Assert
+    expect(trustOf(aftermath, "adv-1")).toBeCloseTo(0.5 + PENALTY, 8);
+  });
+
+  it("test_forced_assignment_records_the_memory_with_the_day", () => {
+    // Arrange
+    const reluctant = [member("adv-1", 0.5)];
+
+    // Act
+    const aftermath = resolveForcedAssignment(reluctant, DAY, PENALTY);
+
+    // Assert
+    expect(memoriesOf(aftermath, "adv-1")).toEqual([{ day: DAY, kind: "forcedAssignment" }]);
+  });
+
+  it("test_forced_assignment_penalty_is_lighter_than_a_death", () => {
+    // 사람이 죽은 것보다 무거울 수 없다 — 이 순서가 깨지면 밸런스가 뒤집힌 것이다.
+    expect(Math.abs(PENALTY)).toBeLessThan(Math.abs(CONFIG.trustOnDeath));
+  });
+
+  it("test_forced_assignment_with_no_reluctant_members_changes_nothing", () => {
+    // Act
+    const aftermath = resolveForcedAssignment([], DAY, PENALTY);
+
+    // Assert
+    expect(aftermath.trustUpdates).toEqual([]);
+    expect(aftermath.memoryUpdates).toEqual([]);
+  });
+
+  it("test_forced_assignment_cost_vanishes_at_zero_trust", () => {
+    // Arrange — 은폐 사망 한 번이면 길드원 전원이 도달하는 상태
+    const reluctant = [member("adv-broken", 0)];
+
+    // Act
+    const aftermath = resolveForcedAssignment(reluctant, DAY, PENALTY);
+
+    // Assert — 클램프되어 대가가 사라진다. 의도된 한계이며 P4가 해결한다
+    expect(trustOf(aftermath, "adv-broken")).toBe(0);
   });
 });

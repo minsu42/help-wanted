@@ -69,6 +69,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     usedNames: new Set(),
     nextContractId: 0,
     offersMade: {},
+    settlements: {},
     hallAttendance: { guildMemberIds: [], visitorIds: [] },
     talkedToday: new Set(),
     ...overrides,

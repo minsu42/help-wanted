@@ -533,6 +533,85 @@ describe("창구 화면 — 흥정", () => {
   });
 });
 
+/**
+ * 배정 화면에서 「나중에 배정한다」로 돌아온 경우.
+ *
+ * 화면이 새로 만들어지므로 `talks`는 비어 있다. 조건이 `GameState.settlements`에
+ * 남아 있지 않으면 도장까지 찍은 계약이 첫마디부터 다시 시작하는데, `offersMade`가
+ * 이미 차 있어 다음 제안이 곧바로 결렬된다 — "열린 채로 유지"가 실질적으로 파기가
+ * 된다. 기록: `design/quick-specs/assignment-reluctance-2026-08-09.md` §5
+ */
+describe("창구 화면 — 타결 조건 보존", () => {
+  it("test_settling_records_the_terms_in_session_state", () => {
+    // Arrange
+    const contract = withSingleContract(makeClient(GENEROUS));
+    mount();
+
+    // Act
+    playMove("pressReward");
+
+    // Assert
+    expect(state.settlements[contract.id]).toEqual({
+      agreedReward: contract.baseReward * 1.4,
+      discloseRisk: false,
+    });
+  });
+
+  it("test_remounting_restores_the_settled_terms_without_renegotiating", () => {
+    // Arrange — 타결한 뒤 화면을 버리고 다시 만든다(배정 화면을 다녀온 것과 같다)
+    const contract = withSingleContract(makeClient(GENEROUS));
+    const first = mount();
+    playMove("takeAsIs");
+    const offersAfterSettle = state.offersMade[contract.id];
+    first.destroy();
+    onSettled.mockClear();
+
+    // Act
+    mount();
+
+    // Assert — 흥정으로 되돌아가지 않고, 제안 횟수도 그대로다
+    expect(root.querySelector(".moves")).toBeNull();
+    expect(root.querySelector(".booth__stamp")).not.toBeNull();
+    expect(state.offersMade[contract.id]).toBe(offersAfterSettle);
+  });
+
+  it("test_resuming_a_settled_contract_reports_the_stored_terms", () => {
+    // Arrange
+    const contract = withSingleContract(makeClient(GENEROUS));
+    const first = mount();
+    playMove("pressReward");
+    first.destroy();
+    onSettled.mockClear();
+    mount();
+
+    // Act
+    root.querySelector<HTMLButtonElement>('[data-action="to-dispatch"]')?.click();
+
+    // Assert
+    expect(onSettled).toHaveBeenCalledTimes(1);
+    const settlement = onSettled.mock.calls[0][0] as Settlement;
+    expect(settlement.contract.id).toBe(contract.id);
+    expect(settlement.agreedReward).toBeCloseTo(contract.baseReward * 1.4, 8);
+  });
+
+  it("test_resuming_does_not_consume_another_offer", () => {
+    // Arrange
+    const contract = withSingleContract(makeClient(GENEROUS));
+    const first = mount();
+    playMove("takeAsIs");
+    const offersAfterSettle = state.offersMade[contract.id];
+    first.destroy();
+    mount();
+
+    // Act
+    root.querySelector<HTMLButtonElement>('[data-action="to-dispatch"]')?.click();
+
+    // Assert — 재협상이 아니므로 evaluateOffer를 부르지 않는다
+    expect(state.offersMade[contract.id]).toBe(offersAfterSettle);
+    expect(state.openContracts).toContain(contract);
+  });
+});
+
 describe("창구 화면 — 수명", () => {
   it("test_destroy_clears_dom_and_detaches_listeners", () => {
     withSingleContract(makeClient(STUBBORN));
