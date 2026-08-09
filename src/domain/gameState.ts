@@ -25,11 +25,15 @@ import { createContract, type ContractConfig } from './contract';
 import { resolveDispatch, type DispatchConfig, type DispatchResult } from './dispatch';
 import { resolveDailyEconomy, type EconomyConfig } from './economy';
 import { resolveHallAttendance, type HallAttendance } from './hall';
-import { resolveDispatchAftermath, type ReputationConfig } from './reputation';
+import {
+  resolveDispatchAftermath,
+  resolveForcedAssignment,
+  type ReputationConfig,
+} from './reputation';
 import type { NamePool } from './person';
 import { createWorldRoster, type RosterConfig } from './roster';
 import { createRng, type Rng } from './rng';
-import type { Adventurer, Contract, GuildTier, MutableKnowledge } from './types';
+import type { Adventurer, Contract, GuildTier, MutableKnowledge, SettledTerms } from './types';
 
 /** 회차가 끝났는지. 끝난 회차는 더 진행할 수 없다. */
 export type SessionPhase = 'playing' | 'ended';
@@ -84,6 +88,18 @@ export interface GameState {
    * 긴장시키는 전부이므로 세션 상태로 둔다.
    */
   offersMade: Record<string, number>;
+  /**
+   * 타결됐으나 아직 배정되지 않은 의뢰의 조건. 키는 의뢰 id다.
+   *
+   * `offersMade`와 같은 이유로 화면이 아니라 여기 있다 — **배정 화면을 나갔다가
+   * 창구로 돌아와도 조건이 남아 있어야 하기 때문이다.** 화면에 두면 화면이 파괴될
+   * 때 함께 사라지고, 그러면 플레이어는 이미 타결한 의뢰를 처음부터 다시 흥정해야
+   * 하는데 `offersMade`가 이미 차 있어 다음 제안이 곧바로 결렬된다.
+   *
+   * `dispatchParty`가 그 의뢰를 소비할 때 함께 지워진다 — 열린 의뢰에서 빠지는
+   * 시점과 같다. 기록: `design/quick-specs/assignment-reluctance-2026-08-09.md` §5.
+   */
+  settlements: Record<string, SettledTerms>;
   /**
    * 오늘 길드 홀에 있는 사람들. **하루에 한 번만 뽑아 여기 고정한다.**
    *
@@ -180,6 +196,7 @@ export function createGameState(seed: number, config: GameConfig): GameState {
     usedNames,
     nextContractId: 0,
     offersMade: {},
+    settlements: {},
     // 1일차 홀은 여기서 채운다. `advanceDay`는 2일차부터 도는 함수이므로 거기에만
     // 출석 판정을 두면 첫날 홀이 비어 있고, 플레이어가 정보를 캘 창이 없는 상태로
     // 첫 흥정을 하게 된다.
@@ -195,8 +212,14 @@ export function createGameState(seed: number, config: GameConfig): GameState {
 /**
  * 열린 의뢰에 파티를 배정해 내보낸다.
  *
- * **배정 거부 규칙(`goal === 'survival'`, 낮은 `trust`)은 여기 없다** — Story 008의
- * 몫이며, 호출자가 이미 걸러서 넘긴다고 본다. 이 함수는 상태 전이만 책임진다.
+ * **배정 꺼림 규칙(`goal === 'survival'`, 낮은 `trust`)은 여기 없다** — Story 008의
+ * 몫이며, 호출자가 판정해서 {@link options.reluctantIds}로 넘긴다. 이 함수는 상태
+ * 전이와 그 대가의 적용만 책임진다.
+ *
+ * > 2026-08-09 개정 — 이전에는 *"호출자가 이미 걸러서 넘긴다"* 였다. 꺼리는 사람은
+ * > 아예 배정될 수 없었기 때문이다. 그 하드 게이트가 **가용한 전원이 꺼리면 게임이
+ * > 멈추는** 막다른 길을 만들어 대가로 바뀌었고, 그래서 이제 꺼리는 사람도 넘어온다.
+ * > 기록: `design/quick-specs/assignment-reluctance-2026-08-09.md`.
  *
  * @throws 의뢰가 열려 있지 않을 때, 파티가 비었거나 정원을 넘을 때,
  *   배정 대상이 명부에 없거나 `available`이 아닐 때
@@ -208,6 +231,13 @@ export function dispatchParty(
   options: {
     readonly agreedReward?: number;
     readonly concealedKnownRisk?: boolean;
+    /**
+     * 내키지 않는다고 했는데도 강행 배정된 사람들. `partyIds`의 부분집합이어야 한다 —
+     * 여기 없는 사람은 순순히 간 것이다.
+     */
+    readonly reluctantIds?: readonly string[];
+    /** 강행 한 명당 신뢰 감소분(음수). `balance.json`의 `dispatch.forcedAssignmentTrustPenalty` */
+    readonly forcedAssignmentTrustPenalty?: number;
   } = {},
 ): ActiveDispatch {
   const contractIndex = state.openContracts.findIndex((contract) => contract.id === contractId);
@@ -235,10 +265,31 @@ export function dispatchParty(
     }
   }
 
+  // 강행의 대가를 상태 전이 **전에** 적용한다. `resolveForcedAssignment`가 현재
+  // trust를 읽어 최종값을 계산하므로 순서 자체는 무관하지만, 여기 두면 "이 사람들을
+  // 억지로 보냈다"가 보내는 동작 바로 옆에 붙어 읽힌다.
+  const reluctantIds = new Set(options.reluctantIds ?? []);
+  if (reluctantIds.size > 0) {
+    const forced = resolveForcedAssignment(
+      party.filter((member) => reluctantIds.has(member.id)),
+      state.day,
+      options.forcedAssignmentTrustPenalty ?? 0,
+    );
+    for (const update of forced.trustUpdates) {
+      requireMember(state, update.personId).trust = update.trust;
+    }
+    for (const update of forced.memoryUpdates) {
+      requireMember(state, update.personId).memories.push(update.memory);
+    }
+  }
+
   for (const member of party) {
     member.status = 'onMission';
   }
   state.openContracts.splice(contractIndex, 1);
+  // 타결 조건은 의뢰가 열린 목록에서 빠지는 것과 같은 시점에 지운다. 안 지우면
+  // 회차가 끝날 때까지 죽은 의뢰의 조건이 쌓인다.
+  delete state.settlements[contractId];
 
   const dispatch: ActiveDispatch = {
     contract,

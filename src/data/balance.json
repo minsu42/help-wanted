@@ -116,7 +116,10 @@
     "survivalRefusalRisk": 90,
     "_gloryComment": "glory 모험가가 자원하는 위험도. survivalRefusalRisk와 일부러 다른 노브다 — 같은 값을 재사용하면 거부 임계값을 조정할 때 자원 표시가 조용히 따라 움직인다. 70~90 구간에서 '자원하는데 아무도 거부하지 않는' 밴드가 생기는 것이 의도다.",
     "gloryVolunteerRisk": 70,
+    "_reluctanceComment": "2026-08-09 — assignmentTrustThreshold와 survivalRefusalRisk의 성격이 바뀌었다. 하드 게이트가 아니라 경고 표시 임계값이다. 이전에는 이 조건에 걸린 사람을 아예 배정할 수 없었고, 가용한 전원이 걸리면 배정 화면을 벗어날 방법이 없어 게임이 멈췄다(자동 플레이 6회 중 3회). 원인은 임계값이 높은 것이 아니라 산술이었다 — guildInitialTrust 0.5에 대해 trustOnDeath(-0.15) + trustOnDeceit(-0.35) = -0.5라서 은폐 사망 한 번이면 길드원 전원이 정확히 0.0이 된다. 임계값이 0보다 크기만 하면 무엇이든 잠기므로 이 값을 낮추는 것으로는 고쳐지지 않는다. 이제는 강행할 수 있고 대신 forcedAssignmentTrustPenalty를 문다. 기록: design/quick-specs/assignment-reluctance-2026-08-09.md",
     "assignmentTrustThreshold": 0.15,
+    "_forcedAssignmentComment": "꺼리는 사람을 강행 배정했을 때 그 사람의 신뢰 감소분. trustOnWound(-0.1)와 같은 크기다 — '내키지 않는데 보내졌다'가 '다쳐서 돌아왔다'와 같은 무게라는 뜻이고, trustOnDeath(-0.15)보다는 가볍다(사람이 죽은 것보다 무거울 수 없다). ⚠ 신뢰가 이미 0이면 이 대가가 무력해진다 — 가장 강행하고 싶은 순간에 공짜가 된다. 바닥에서도 작동하는 대가는 로드맵 P4의 「길드 탈퇴」뿐이다.",
+    "forcedAssignmentTrustPenalty": -0.1,
     "repOnSuccess": 2.5,
     "repOnDeath": 6,
     "repInjuryPenalty": 0.6
