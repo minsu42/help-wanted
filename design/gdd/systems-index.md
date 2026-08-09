@@ -52,8 +52,16 @@
 
 **스코프 방식의 변화**: 3일 마감판은 표준 `/design-system` 8섹션 GDD 파이프라인을
 스킵하고 핵심 3개 시스템만 `/quick-design` 경량 스펙으로 대체했다. 이 결정은
-**유지한다** — 이번 확장에서도 정식 GDD 대신 `design/quick-specs/`의 경량
-스펙을 계속 쓴다. 다만 스펙 개수는 6종 이상으로 늘어난다 (`production/roadmap.md`
+**기본값으로는 유지하되, 예외가 생겼다** — 신규 도메인 모듈은 정식 GDD로 승격한다.
+
+> **2026-08-09 정정 — 청취(#21~#24)가 첫 예외다.** 스킵 결정의 근거는 3일 마감이었고
+> 소멸했다. 청취는 신규 도메인 모듈(`src/domain/intake.ts`)이고 수식 5개·AC 40여 개를
+> 지므로 quick-spec보다 무거워 **`design/gdd/intake-system.md`로 승격**했고, 이미
+> `/design-review` full 모드를 1회 통과했다(판정 NEEDS REVISION → 필수 8건 개정 완료).
+> **판단 기준**: 새 도메인 모듈 + 수식 다수 + 계층 경계 신설이면 정식 GDD, 기존
+> 시스템의 수치·규칙 조정이면 quick-spec.
+
+다만 스펙 개수는 6종 이상으로 늘어난다 (`production/roadmap.md`
 「문서 작업 목록」 참조). 아래 "Design Doc" 열의 "⬜ 미작성"은 누락이 아니라
 아직 순서가 오지 않은 것이다 — roadmap의 각 단계는 구현 전에 스펙을 먼저
 쓰도록 강제한다("문서를 먼저 쓴다" 원칙).
@@ -89,13 +97,13 @@ P4로 가지 않는다 (roadmap.md의 GATE 절 참조).
 | 18 | ~~배경 사건 척추~~ | Narrative | — | **폐기 (2026-08-09)** — → 세력 평판(#33) · 세계 변화(#34) · 메인 스토리 3막(#36)이 대체 | — | 일일 진행, 의뢰 생성, 엔딩 |
 | 19 | 모험가 영입 | Economy | 기반 (구현) / **P4 (하이브리드 확장)** | In Design (개정 대상) | `design/quick-specs/guild-scale-and-difficulty-2026-08-08.md` §3 | 모험가 명부, 길드 경제, 소문 네트워크, 모험가 가치관(#30) |
 | 20 | 길드 확장 | Economy | 기반 (구현) | In Design | `design/quick-specs/guild-scale-and-difficulty-2026-08-08.md` §4 | 모험가 영입, 길드 경제 |
-| 21 | **청취 (Intake)** *(신설)* | Gameplay | **P1** | Not Started | `design/quick-specs/intake-system-*.md` (⬜ 미작성) | 에이전트 시뮬레이션, 의뢰인 생성, 밸런스 데이터, 시드 PRNG, 질문 카탈로그(#24) |
-| 22 | **의뢰인 직업 (Client Occupation)** *(신설)* | Gameplay | **P1** | Not Started | intake-system-*.md에 포함 예정 | 에이전트 시뮬레이션, 밸런스 데이터 |
-| 23 | **무지 격차 (Ignorance Gap)** *(신설)* | Gameplay | **P1** | Not Started | intake-system-*.md에 포함 예정 | 의뢰인 직업(#22), 의뢰 생성 |
-| 24 | **질문 카탈로그 (Question Catalog)** *(신설)* | Core/Narrative | **P1** | Not Started | intake-system-*.md에 포함 예정 (`questions.json`) | 서술 텍스트 조립, 밸런스 데이터 |
+| 21 | **청취 (Intake)** *(신설)* | Gameplay | **P1** | **In Review** — 설계 리뷰 1차 개정 완료 (2026-08-09) | **`design/gdd/intake-system.md`** (정식 8섹션 GDD) · 리뷰 로그 `design/gdd/reviews/intake-system-review-log.md` | 에이전트 시뮬레이션, 의뢰인 생성, 밸런스 데이터, 시드 PRNG, 질문 카탈로그(#24), **서술 텍스트 조립(#6 — Hard)** |
+| 22 | **의뢰인 직업 (Client Occupation)** *(신설)* | Gameplay | **P1** | **In Review** | `intake-system.md`에 포함 (F4 직업 분포 + R10 문안 레지스터) | 에이전트 시뮬레이션, 밸런스 데이터 |
+| 23 | **무지 격차 (Ignorance Gap)** *(신설)* | Gameplay | **P1** | **In Review** | `intake-system.md`에 포함 (F1·F2 · R3~R6) | 의뢰인 직업(#22), 의뢰 생성 |
+| 24 | **질문 카탈로그 (Question Catalog)** *(신설)* | Core/Narrative | **P1** | **In Review** | `intake-system.md`에 포함 (`questions.json` — **완성 문장은 담지 않는다, R10**). **슬롯 6개 × 깊이 2등급 = 질문 12개 확정** | 서술 텍스트 조립, 밸런스 데이터 |
 | 25 | **의뢰서 작성 (Commission Form)** *(신설)* | Gameplay/UI | **P1** | Not Started | `design/quick-specs/commission-form-*.md` (⬜ 미작성) | 청취(#21), 의뢰 생성 |
 | 26 | **길드마스터북 (Guildmaster's Handbook)** *(신설)* | UI/Narrative | **P1** | Not Started | commission-form-*.md에 포함 예정 — Open Question 8 (노출 시점) 미해결 | 질문 카탈로그(#24), 청취(#21) |
-| 27 | **하루 행동 횟수 (Daily Action Budget)** *(신설)* | Progression | **P3** | Not Started | `design/quick-specs/day-economy-*.md` (⬜ 미작성) | 일일 진행, 청취(#21), 계약 협상 |
+| 27 | **하루 행동 횟수 (Daily Action Budget)** *(신설)* | Progression | **P1 최소판 / P3 본체** | Not Started | `intake-system.md` Tuning Knobs가 **잠정값 12 = 의뢰인 4 × 슬롯 3** 을 정의. 본체는 `day-economy-*.md` (⬜) | 일일 진행, 청취(#21), 계약 협상 |
 | 28 | **대기 목록 (Waiting Queue)** *(신설)* | Gameplay | **P3** | Not Started | day-economy-*.md에 포함 예정 | 하루 행동 횟수(#27), 의뢰 생성 |
 | 29 | **고정비 (Fixed Costs)** *(신설)* | Economy | **P3** | Not Started | day-economy-*.md에 포함 예정 | 길드 경제(#13), 모험가 명부 |
 | 30 | **모험가 가치관 (Adventurer Values)** *(신설)* | Gameplay | **P4** | Not Started | `design/quick-specs/adventurer-values-*.md` (⬜ 미작성) | 에이전트 시뮬레이션, 모험가 명부 |
@@ -178,7 +186,10 @@ P4로 가지 않는다 (roadmap.md의 GATE 절 참조).
 
 ### Intake Layer (Core에 의존) *(신설 — P1)*
 
-1. **청취** — depends on: 에이전트 시뮬레이션, 의뢰인 생성, 질문 카탈로그, 밸런스 데이터, 시드 PRNG
+1. **청취** — depends on: 에이전트 시뮬레이션, 의뢰인 생성, 질문 카탈로그, 밸런스 데이터,
+   시드 PRNG, **서술 텍스트 조립 (Hard — `intake-system.md` R10)**
+   > 텍스트 조립이 Hard인 이유: 응답 문안이 `(슬롯 × reach × limiter)` 키로 조립되며,
+   > `무지`/`은폐`의 문안 구별이 없으면 판정은 돌지만 **판별 판타지가 죽는다.**
 2. **의뢰서 작성** — depends on: 청취(받아쓰기 칸의 원천), 의뢰 생성
 3. **길드마스터북** — depends on: 질문 카탈로그, 청취
 
@@ -290,7 +301,8 @@ roadmap.md에 시간 계획이 없는 것과 별개로 순수 작업량 감이�
 | System | Risk Type | Risk Description | Mitigation |
 |--------|-----------|-------------------|------------|
 | 의뢰서 작성 (#25) | Design | **클릭 노동이 될 위험 — 이번 개정의 1순위 리스크** (`game-concept.md` Design Risks) | 받아쓰기/판단 칸 분리, 타입 제약 토큰, 처리량 압박, 반복 압축. 검증 기준은 `design/research/paperwork-ux-2026-08-09.md` §6 |
-| 청취 (#21) / 질문 카탈로그 (#24) | Technical | 질문 카탈로그의 조합 폭발 — 의뢰 종류마다 질문을 새로 쓰면 콘텐츠 작성량이 터짐 | 질문은 슬롯 단위로 공용, 의뢰 종류는 어느 슬롯이 열리는지만 정함 |
+| 청취 (#21) / 질문 카탈로그 (#24) | ~~Technical~~ → **해소 (2026-08-09)** | ~~조합 폭발~~ — **일어나지 않는다.** 카탈로그는 의뢰 종류가 아니라 **슬롯 어휘에만** 비례하고 어휘는 6개에서 멈춘다. 의뢰 종류를 12종으로 늘려도 질문은 안 늘어난다 | 질문·문안 모두 슬롯이 소유(R10). **위험은 정반대였다 — 어휘 빈곤.** `depth` 2등급으로 12개 확보 |
+| 전체 — **예선 심사 시간** | **Business/Scope** *(신설 2026-08-09)* | **캠페인은 8~15시간인데 예선 심사에서 실제로 플레이되는 것은 첫 20~30분이다.** 로드맵 전체가 "완주 가능성"을 향해 정렬되어 있어 **첫인상 작업을 잊기 쉽다** | 배포는 **GitHub Pages 고정**(NAN2026 예선 — 재검토 없음)이라 회피 경로가 없다. GATE 통과 기준에 *"첫 30분만 본 사람도 이 게임이 무엇인지 말할 수 있다"* 추가. 첫 화면 1초 예산이 **심사 리스크**로 격상. 근거: `production/roadmap.md` 「배포 채널」 |
 | 세계 변화 (#34) | Design/Technical | 인과가 안 보이면 후과가 무작위 사건처럼 느껴짐 (기둥 7의 실패 모드). 후과의 후과를 무한히 따라가면 디버깅 불가 | 후과가 나타날 때 원인이 된 의뢰를 명시적으로 참조. 깊이 1로 제한 |
 | 배정 거부·이탈 (#31) / 위험도를 낮춰 적는 유인 | Design | 낮게 적으면 값을 더 받고 모험가도 거부하지 않음 — 대가가 약하면 지배 전략이 됨 (`game-concept.md` Design Risks) | 오판의 사망률 연동을 충분히 가파르게. 모험가들이 기억한다 (Memory 기록) |
 | 세력 평판 (#33) | Technical | 세력 6종 × 의뢰 종류의 밸런싱은 손으로 맞추기 어려움 | 평판 변동을 데이터 테이블로 분리, 자동 시뮬레이션으로 회귀 검사 |
@@ -308,7 +320,8 @@ roadmap.md에 시간 계획이 없는 것과 별개로 순수 작업량 감이�
 | Total systems identified (신설 포함, 폐기 기록 제외) | **36** |
 | 폐기 기록 (독립 시스템이 아니었던 하위 규칙) | 3 (#37 선불 축, #38 잔금 미지급, #39 15일 고정 회차) |
 | Quick specs written | 4 (`design/quick-specs/`) — **전부 2026-08-08 구판, 개정 필요** |
-| Quick specs 미작성 (신설 시스템용) | 6종 (`intake-system`, `commission-form`, `dispatch-resolution` 개정, `result-comparison`, `day-economy`, `contract-negotiation` 개정, `adventurer-values`, `rumor-network` 개정, `faction-reputation`, `world-consequences` — roadmap.md 「문서 작업 목록」 참조) |
+| 정식 GDD written (승격분) | **1** — `intake-system.md` (#21~#24 묶음, `/design-review` 1차 통과) |
+| Quick specs 미작성 (신설 시스템용) | 5종 (`commission-form`, `dispatch-resolution` 개정, `result-comparison`, `day-economy`, `contract-negotiation` 개정, `adventurer-values`, `rumor-network` 개정, `faction-reputation`, `world-consequences` — roadmap.md 「문서 작업 목록」 참조) |
 | Systems implemented (완전 재사용 가능) | 1/36 (시드 PRNG) |
 | Systems implemented (부분 재사용 — 개정 필요) | 6 (에이전트 시뮬레이션, 소문 네트워크, 계약 협상, 파견 판정, 길드 홀 화면, 모험가 영입/확장) |
 | Design Doc 정합성 미확인 (선불·15일 전제) | 3종 (`contract-negotiation-2026-08-08.md`, `dispatch-resolution-2026-08-08.md`, `guild-scale-and-difficulty-2026-08-08.md`) |
@@ -328,13 +341,18 @@ roadmap.md에 시간 계획이 없는 것과 별개로 순수 작업량 감이�
 - [x] `game-concept.md` 전면 개정 + `production/roadmap.md` 신설 (2026-08-09)
 - [x] `systems-index.md` P0~P8 반영 (2026-08-09, 이 문서)
 - [ ] **P0** — 선불 축·잔금 미지급·15일 고정 회차 제거, 미커밋 변경 커밋
-- [ ] **P1** — 청취·의뢰서 작성 스펙(`intake-system-*.md`, `commission-form-*.md`) 작성 후 구현
+- [x] **P1 문서** — 청취 정식 GDD(`design/gdd/intake-system.md`) 작성 + `/design-review`
+      full 통과, 필수 8건 개정 완료 (2026-08-09)
+- [ ] **P1** — `commission-form-*.md` 작성, 그리고 청취 미해결 항목 착수:
+      **Q1(슬롯 종류 수 — 카탈로그 크기를 정하므로 구현 전 필수)**,
+      리뷰 로그의 R3·R7 (문서 한 줄) → 이후 구현
 - [ ] **P2** — 의뢰서 → 파견 판정 연동 스펙 개정 후 구현, 3단 대조 화면
 - [ ] **P3** — 하루 행동 횟수·고정비 스펙 작성 후 구현, 계약 협상 근거 기반 확장
 - [ ] **GATE** — Core Hypothesis 플레이테스트 (roadmap.md 통과 기준 참조)
 - [ ] P4~P8 — roadmap.md 순서대로 반복
 
-> **참고**: 이 프로젝트는 `/design-system`(정식 8섹션 GDD) 파이프라인을 계속
-> 스킵한다 — 이번 확장에서도 유효한 결정이다(위 Overview 참조). 대신
-> `/quick-design`(스펙) → `/create-stories` → `/dev-story`로 직행하며, 각
-> 단계의 "먼저 쓸 문서"가 곧 그 단계의 quick-design 결과물이다.
+> **참고**: 이 프로젝트는 `/design-system`(정식 8섹션 GDD)을 **기본값으로는 스킵**하고
+> `/quick-design`(스펙) → `/create-stories` → `/dev-story`로 직행한다. 각 단계의
+> "먼저 쓸 문서"가 곧 그 단계의 quick-design 결과물이다.
+> **단, 신규 도메인 모듈은 정식 GDD로 승격한다** — 청취(#21~#24)가 첫 사례이며
+> 판단 기준은 위 Overview에 있다. 승격한 문서는 `/design-review`도 통과해야 한다.
