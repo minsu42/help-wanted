@@ -81,28 +81,52 @@
 
 ## P0 — 정리
 
+> **2026-08-09 — 완료.** `npm run check` 통과(tsc 무경고, 테스트 397/397, 빌드 성공,
+> gzip JS 21.03 → 20.31KB). 항목별 결과는 아래 각 줄에 표기했다.
+>
+> **작업 중 발견한 것 — 배정 화면의 막다른 길 (P0 이전부터 있던 버그).**
+> 가용한 모험가가 전부 배정을 거부하면(`trust < assignmentTrustThreshold`)
+> 배정 화면에 탈출구가 없어 게임이 멈춘다. `DispatchScreen`의 assign 단계가
+> 렌더하는 `data-action`은 `confirm` 하나뿐이다.
+> 자동 플레이 6회 시행: **P0 이전 빌드 6/6 막힘**, P0 이후 3/6.
+> **P0가 만든 것이 아니다** — 다만 「main은 항상 배포 가능」 규칙과 정면으로
+> 부딪히므로 방치할 수 없다. 고치려면 *"나가면 그 의뢰는 어떻게 되는가"* 를
+> 정해야 하므로 설계 결정이며, 로드맵 **P4(배정 거부와 그 결과)**가 이 영역을
+> 정면으로 다룬다. 제출 마감 전이라면 응급 처치(창구 복귀 버튼)를 먼저 넣는다.
+
 **왜 이 순서인가**: 지금 미커밋 변경이 쌓여 있고, 제거할 시스템이 남아 있다.
 이걸 안 치우고 P1을 시작하면 새 코드와 죽은 코드가 섞인다.
 
 ### 들어가는 것
 
-0. **미커밋 변경 커밋** — 아트 바이블, 길드 홀 아트 패스, 에셋(`src/assets/`),
+0. ✅ **미커밋 변경 커밋** — 아트 바이블, 길드 홀 아트 패스, 에셋(`src/assets/`),
    도구(`tools/`), `src/data/hall-layout.json`, `docs/asset-credits.md`,
    `production/review-mode.txt`, `production/stage.txt`, **`src/vite-env.d.ts`**
    (⚠ 빠지면 다른 환경에서 빌드가 깨진다), 그리고 2026-08-09 문서 정합성 감사
    결과 전부
-1. **선불 축 제거**
+1. ✅ **선불 축 제거**
    - `Offer.advanceRatio`, `NegotiationConfig.wAdvance`
    - `NegotiationAxis`의 `'advance'`
    - `balance.json`의 `negotiation.moves`에서 `askAdvance` / `askAdvanceHalf` /
      `backDownAdvance`
    - `text.json`의 `counterAdvance` 및 해당 moves 문안
    - `ActiveDispatch.advancePaid`, `receiveAdvance()`
-2. **잔금 미지급 제거**
+2. ✅ **잔금 미지급 제거**
    - `economy.ts`의 `rng.chance(client.wealth)` 판정 경로
    - `WealthReveal`, `PlayerKnowledge.knownWealth`, `MutableKnowledge.knownWealth`
    - 결과 화면의 미지급 표시
-3. **`realWealth` 사실의 처분 결정** — ⚠ **연쇄가 있다.** 잔금 미지급을 없애면
+3. ✅ **`realWealth` 사실의 처분 결정 — 살린다.**
+   새 역할은 **보상 흥정의 상한을 가늠하는 정보**다. `evaluateOffer`의 `tolerance`가
+   `wealthWeight × wealth`를 계속 쓰므로 소비처를 잃지 않았다. 아래 연쇄
+   (`factsPerContract: 2`, story-009 AC-4, 왜곡 규칙)는 **전부 그대로 유지된다.**
+   기록: `design/quick-specs/rumor-network-2026-08-08.md` §1.
+   대신 **실제로 잃은 것은 따로 있다** — 반박이 축을 지목해 주던 정보 채널이
+   사라졌다(축이 보상 하나뿐이라 `contestedAxis`가 무정보). 복구는 **P3의
+   「근거 기반 협상」**이 맡는다.
+
+   <details><summary>원래 적혀 있던 미결 사항</summary>
+
+   — ⚠ **연쇄가 있다.** 잔금 미지급을 없애면
    `FactKind`의 `realWealth`가 소비처를 잃는다. 그런데 완전히 죽지는 않았다 —
    `wealth`는 여전히 보상 축의 수용 범위를 정하므로 *"이 사람이 얼마나 낼 수
    있는가"*는 흥정 정보로 살아 있다. **살릴지 죽일지 정하고**, 죽이면 아래가
@@ -110,12 +134,19 @@
    - `balance.json`의 `rumor.factsPerContract: 2`
    - story-009 AC-4 (`talkative`는 사실 2개를 준다)
    - `RevealedFact`의 wealth 경로, 왜곡 규칙(*"왜곡은 `realRisk`에만"*)
-4. **15일 고정 회차 해제** — `session.totalDays`를 하드 종료가 아니라 막 전환
-   기준으로 바꿀 준비. P7까지는 임시로 긴 값을 둔다
-5. **낡은 스펙 개정 표기** — `design/quick-specs/` **4종**(3종이 아니다.
+
+   </details>
+4. ✅ **15일 고정 회차 해제** — `session.totalDays`를 하드 종료가 아니라 막 전환
+   기준으로 바꿀 준비. ~~P7까지는 임시로 긴 값을 둔다~~
+   → **값은 15로 유지했다.** `ending`의 명성 구간 경계(low/high)가 15일 수입
+   곡선에 맞춰 잡혀 있어, 밸런스 패스 없이 늘리면 모든 회차가 최상급 엔딩으로
+   끝난다. 배포 가능한 빌드를 나쁘게 만들지 않는 쪽을 골랐다.
+   `balance.json`의 `session._comment`가 이제 **두 값이 서로 묶여 있다는 사실**을
+   명시한다 — 늘릴 때는 반드시 함께 조정한다
+5. ✅ **낡은 스펙 개정 표기** — `design/quick-specs/` **4종**(3종이 아니다.
    `guild-scale-and-difficulty`가 명성 단일 수치를 전제한다)
    → *2026-08-09 문서 정합성 감사에서 이미 처리됨*
-6. 테스트 갱신 — 위 제거로 깨지는 테스트 정리
+6. ✅ 테스트 갱신 — 위 제거로 깨지는 테스트 정리
 
 ### 완료 기준
 
