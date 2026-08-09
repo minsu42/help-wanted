@@ -659,6 +659,54 @@ describe("파견 화면 — 결과 렌더", () => {
   });
 });
 
+describe("파견 화면 — 응급 탈출구 (2026-08-09, 로드맵 P0 발견)", () => {
+  // 회귀 테스트 — 가용한 길드원이 전부 배정을 거부하면(또는 명부가 비어 있으면)
+  // 이 화면에 나갈 방법이 없어 게임이 멈췄다. 확정 버튼은 계속 disabled로 남고,
+  // 취소 버튼이 없으면 창구로도 다른 화면으로도 돌아갈 길이 없다.
+  it("test_dispatch_screen_abandon_button_exists_even_when_every_member_is_refused", () => {
+    const contract = makeContract();
+    const distrustful = makeAdventurer({ trust: 0.1 }); // assignmentTrustThreshold(0.15) 미달
+    setRoster([distrustful]);
+    state.openContracts = [contract];
+
+    mount(makeSettlement(contract));
+
+    expect(checkboxFor(distrustful.id).disabled).toBe(true);
+    expect(root.querySelector<HTMLButtonElement>('[data-action="confirm"]')?.disabled).toBe(true);
+    expect(root.querySelector('[data-action="return"]')).not.toBeNull();
+  });
+
+  it("test_dispatch_screen_abandon_button_exists_when_no_member_is_assignable_at_all", () => {
+    const contract = makeContract();
+    state.openContracts = [contract];
+    setRoster([]); // 명부 자체가 비어 있는 극단 케이스
+
+    mount(makeSettlement(contract));
+
+    expect(root.querySelector(".roster-list__empty")).not.toBeNull();
+    expect(root.querySelector('[data-action="return"]')).not.toBeNull();
+  });
+
+  it("test_dispatch_screen_abandoning_before_confirm_leaves_the_contract_untouched", () => {
+    // 확정 전에 나가면 `dispatchParty`가 아직 호출되지 않았으므로 계약이 여전히
+    // `openContracts`에 남아야 한다 — 상태를 건드리지 않는 순수한 취소여야 한다.
+    const contract = makeContract();
+    const member = makeAdventurer();
+    setRoster([member]);
+    state.openContracts = [contract];
+
+    mount(makeSettlement(contract));
+    toggle(member.id, true); // 선택까지는 했으나 확정은 하지 않는다
+
+    click("return");
+
+    expect(onReturnToCounter).toHaveBeenCalledTimes(1);
+    expect(state.openContracts).toEqual([contract]);
+    expect(state.activeDispatches).toHaveLength(0);
+    expect(member.status).toBe("available");
+  });
+});
+
 describe("파견 화면 — 수명", () => {
   it("test_destroy_clears_dom_and_detaches_listeners", () => {
     const contract = makeContract();

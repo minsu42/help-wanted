@@ -287,6 +287,15 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
     `;
   }
 
+  /**
+   * 응급 처치 (2026-08-09, 로드맵 P0 발견 — 근본 해결은 P4 「배정 거부와 그 결과」).
+   *
+   * 가용한 길드원이 전부 거부하거나(신뢰 부족 등) 명부가 비어 있으면 이 화면에
+   * 탈출구가 없어 게임이 멈췄다 (자동 플레이 6회 중 최대 6회 재현). 그래서 이 단계에서
+   * 항상 취소 버튼(`data-action="return"`)을 그린다. 확정하지 않고 나가도
+   * dispatchParty()를 호출하지 않았으므로 계약은 openContracts에 그대로 남는다 —
+   * 상태를 건드리지 않는 순수한 취소라 이 화면 하나로 고칠 수 있었다.
+   */
   function renderAssigning(): string {
     const members = assignableMembers();
     const rows = members.map((member) => renderRosterRow(member)).join('');
@@ -300,6 +309,9 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
         </ul>
         <footer class="dispatch__actions">
           <span class="dispatch__count">${selected.size} / ${contract.maxPartySize}명 선택</span>
+          <button class="dispatch__abandon" type="button" data-action="return">
+            포기하고 창구로 돌아간다
+          </button>
           <button class="dispatch__confirm" type="button" data-action="confirm"
                   ${canConfirm ? '' : 'disabled'}>배정 확정</button>
         </footer>
