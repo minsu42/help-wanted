@@ -1,8 +1,11 @@
 /*
- * 창구 화면 — 양피지 카드와 세 개의 축.
+ * 창구 화면 — 창 너머의 의뢰인과 장부 위의 대화.
  *
- * 붉은 봉랍색(--seal)은 위험·사망·결렬에만 쓴다. 여기서는 결렬 문구와 잠긴 축의
- * 사유에만 나타난다. 아껴야 그 색이 의미를 갖는다.
+ * 붉은 봉랍색(--seal)은 위험·사망·결렬에만 쓴다. 여기서는 결렬 문구, 잠긴 위험 고지
+ * 사유, 그리고 위험 고지 선택지 자체에만 나타난다 — 실제 위험을 입 밖에 내는 것은
+ * 이 화면에서 유일하게 되돌릴 수 없는 수이기 때문이다. 아껴야 그 색이 의미를 갖는다.
+ *
+ * 반박당한 축(--contested)에는 붉은색을 쓰지 않는다. 거부는 위험이 아니라 정보다.
  */
 
 .counter {
@@ -44,28 +47,123 @@
   color: var(--seal);
 }
 
-/* --- 의뢰 카드 --- */
+/* --- 대기줄 --- */
 
-.contract-card {
-  margin: 1.5rem 0;
-  padding: 1.5rem 1.75rem;
-  background: var(--paper);
-  color: var(--ink);
-  border-radius: 2px;
-  box-shadow: 0 2px 12px rgb(0 0 0 / 35%);
+.queue {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin: 1.25rem 0 0;
+  flex-wrap: wrap;
 }
 
-.contract-card--settled {
+.queue__label {
+  align-self: center;
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+  letter-spacing: 0.2em;
+}
+
+.queue__tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  border: 1px solid var(--ink-faint);
+  border-bottom: none;
+  border-radius: 3px 3px 0 0;
+  color: var(--paper-dim);
+  font-family: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.queue__tab:hover {
+  color: var(--paper);
+  border-color: var(--paper-dim);
+}
+
+/* 지금 창구에 앉아 있는 사람. 아래 booth와 이어져 보이도록 종이색을 그대로 쓴다 */
+.queue__tab--active {
+  background: var(--paper);
+  border-color: var(--paper);
+  color: var(--ink);
+}
+
+.queue__tab--settled .queue__name::after {
+  content: " ✓";
+  color: var(--seal);
+}
+
+.queue__risk {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- 창구 --- */
+
+.booth {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 0 2px 2px 2px;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 35%);
+  overflow: hidden;
+}
+
+@media (max-width: 44rem) {
+  .booth {
+    grid-template-columns: 1fr;
+  }
+}
+
+.booth--settled {
   background: var(--paper-dim);
 }
 
-.contract-card__client {
+/*
+ * 창 너머. 어두운 안쪽에 의뢰인이 앉아 있고 이쪽은 밝은 종이다 — 창구라는 것이
+ * 배경색 대비 하나로 읽혀야 한다.
+ */
+.booth__window {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: linear-gradient(180deg, #1a2e33, #0e1d21);
+  border-right: 6px solid var(--desk);
+  padding-top: 1.5rem;
+}
+
+@media (max-width: 44rem) {
+  .booth__window {
+    border-right: none;
+    border-bottom: 6px solid var(--desk);
+    padding: 1.25rem 0 0;
+  }
+}
+
+.booth__figure {
+  width: 8rem;
+  height: auto;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.booth__talk {
+  padding: 1.5rem 1.75rem;
+}
+
+.booth__client {
   margin: 0 0 0.75rem;
   font-size: 1.375rem;
   letter-spacing: 0.05em;
 }
 
-.contract-card__facts {
+.booth__facts {
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem;
@@ -74,117 +172,177 @@
   border-bottom: 1px dashed var(--ink-faint);
 }
 
-.contract-card__facts div {
+.booth__facts div {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
 }
 
-.contract-card__facts dt {
+.booth__facts dt {
   color: var(--ink-faint);
   font-size: 0.8125rem;
   letter-spacing: 0.08em;
 }
 
-.contract-card__facts dd {
+.booth__facts dd {
   margin: 0;
   font-size: 1.0625rem;
-}
-
-/* --- 세 개의 축 --- */
-
-.axis {
-  display: grid;
-  grid-template-columns: 4.5rem 1fr auto;
-  align-items: center;
-  gap: 0.875rem;
-  margin: 0.625rem 0;
-}
-
-.axis--toggle {
-  grid-template-columns: 4.5rem auto 1fr;
-}
-
-.axis__label {
-  color: var(--ink-faint);
-  font-size: 0.875rem;
-  letter-spacing: 0.1em;
-}
-
-.axis__slider {
-  width: 100%;
-  accent-color: var(--desk);
-}
-
-.axis__value {
-  min-width: 9rem;
-  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.axis__check {
-  accent-color: var(--desk);
-}
-
-.axis__hint {
-  color: var(--ink-faint);
-  font-size: 0.8125rem;
-}
-
-/*
- * 잠긴 축의 사유. 그냥 회색이면 플레이어가 버그로 읽으므로 사유를 눈에 띄게 둔다 —
- * 소문을 캐러 갈 이유가 여기서 생긴다.
- */
-.axis--locked .axis__label {
-  opacity: 0.5;
-}
-
-.axis__hint--locked {
-  color: var(--seal);
-}
-
-/* --- 제안 --- */
-
-.contract-card__reply {
-  margin: 1.25rem 0 0;
+/* 의뢰인이 한 말. 이 화면에서 가장 먼저 읽혀야 하는 줄이다 */
+.booth__line {
+  margin: 0 0 1.25rem;
   padding: 0.75rem 1rem;
   background: rgb(0 0 0 / 5%);
   border-left: 3px solid var(--ink-faint);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
-.contract-card__actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 1.25rem;
-}
-
-.contract-card__offer {
-  padding: 0.5rem 1.5rem;
-  background: var(--desk);
-  color: var(--paper);
-  border: none;
-  border-radius: 2px;
-  font-family: inherit;
-  font-size: 1rem;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-}
-
-.contract-card__offer:hover {
-  background: var(--desk-dark);
-}
-
-.contract-card__attempts {
-  color: var(--ink-faint);
-  font-size: 0.8125rem;
-}
-
-.contract-card__stamp {
+.booth__stamp {
   margin: 1.25rem 0 0;
   color: var(--seal);
   font-size: 1.125rem;
   letter-spacing: 0.3em;
   text-align: right;
+}
+
+/* --- 테이블에 올라온 조건 --- */
+
+.terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.75rem;
+  margin: 0 0 1.25rem;
+}
+
+.terms__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding-left: 0.625rem;
+  border-left: 3px solid transparent;
+}
+
+.terms__item dt {
+  color: var(--ink-faint);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+}
+
+.terms__item dd {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.terms__mul {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+/*
+ * 의뢰인이 걸고넘어진 축. 붉은색이 아니라 굵은 먹선으로 강조한다 — 거부는 위험이
+ * 아니라 정보이고, 이 강조가 의뢰인의 대사와 같은 축을 가리켜야 단서가 성립한다.
+ */
+.terms__item--contested {
+  border-left-color: var(--desk);
+}
+
+.terms__item--contested dt,
+.terms__item--contested dd {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.terms__item--disclosed {
+  border-left-color: var(--seal);
+}
+
+/* --- 고를 수 있는 수 --- */
+
+.moves {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-start;
+}
+
+.move {
+  width: 100%;
+  padding: 0.55rem 1rem;
+  background: rgb(0 0 0 / 3%);
+  border: 1px solid var(--ink-faint);
+  border-left: 3px solid var(--ink-faint);
+  border-radius: 0;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+}
+
+.move:hover {
+  background: rgb(0 0 0 / 8%);
+  border-left-color: var(--desk);
+}
+
+.move:focus-visible {
+  outline: 2px solid var(--desk);
+  outline-offset: 2px;
+}
+
+/*
+ * 실제 위험을 입 밖에 내는 수. 되돌릴 수 없고, 대안이 있는 의뢰인에게는 그 자리에서
+ * 결렬로 이어진다 — 이 화면에서 붉은색이 붙는 유일한 선택지인 이유다.
+ */
+.move--disclose {
+  border-left-color: var(--seal);
+}
+
+.move--disclose:hover {
+  border-left-color: var(--seal);
+  background: rgb(139 35 32 / 8%);
+}
+
+/*
+ * 잠긴 위험 고지의 사유. 선택지가 사라진 자리에 반드시 남는다 — 소문을 캐러 갈
+ * 이유가 여기서 생긴다.
+ */
+.moves__locked {
+  margin: 0.25rem 0 0;
+  color: var(--seal);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.moves__attempts {
+  margin: 0.5rem 0 0;
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+/* --- 나가는 문 --- */
+
+.counter__actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.counter__nav {
+  padding: 0.5rem 1.5rem;
+  background: transparent;
+  border: 1px solid var(--paper-dim);
+  border-radius: 2px;
+  color: var(--paper);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.counter__nav:hover {
+  background: rgb(232 220 192 / 12%);
 }

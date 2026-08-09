@@ -72,11 +72,18 @@
     "urgencyWeight": 0.6,
     "alternativePenalty": 0.25,
     "disclosureBonus": 0.4,
-    "maxOffers": 2,
-    "_offerComment": "플레이어가 창구에서 부를 수 있는 범위. 상한이 곧 욕심의 한계이므로 밸런스 값이다.",
-    "offerRewardMin": 0.5,
-    "offerRewardMax": 3.0,
-    "offerStep": 0.05
+    "maxOffers": 3,
+    "_movesComment": "흥정은 대화다 — 선택지 하나가 곧 제안 한 번이고 evaluateOffer를 한 번 부른다. reward/advance는 증분이 아니라 그 축이 도달할 절대값이며, 생략된 축은 직전 상태를 유지한다. 문안은 text.json의 moves 절에 같은 id로 있다. maxOffers가 2에서 3으로 오른 것은 이 인터페이스 변경 때문이다 — 슬라이더는 세 축을 한 번에 정하고 제안했지만 대화는 한 수에 한 축만 움직이므로, 2회로는 반박을 듣고 물러설 기회가 없어 결렬만 남는다.",
+    "moves": [
+      { "id": "pressReward", "reward": 1.4 },
+      { "id": "pressRewardHard", "reward": 2.0 },
+      { "id": "askAdvance", "advance": 0.3 },
+      { "id": "askAdvanceHalf", "advance": 0.5 },
+      { "id": "disclose", "disclose": true },
+      { "id": "backDownReward", "reward": 1.0 },
+      { "id": "backDownAdvance", "advance": 0.0 },
+      { "id": "takeAsIs", "reward": 1.0, "advance": 0.0 }
+    ]
   },
 
   "rumor": {

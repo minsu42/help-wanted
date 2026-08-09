@@ -1,12 +1,28 @@
 /**
- * 창구 화면 — 플레이어가 이 게임을 처음 보는 곳.
+ * 창구 화면 — 의뢰인과 마주 앉아 조건을 흥정한다.
  *
  * 심사위원이 5분 안에 재미를 느껴야 한다는 제약의 최전선이다. 그래서 이 화면이
  * 가르쳐야 하는 것은 규칙이 아니라 **"모르면 손해다"** 하나다.
  *
+ * ## 왜 슬라이더가 아니라 대사인가
+ *
+ * 세 축을 슬라이더로 맞추고 "제안한다"를 누르는 방식은 흥정을 **숫자 맞추기**로
+ * 만든다. 그런데 이 게임에서 거부 응답은 장식이 아니라 **정보 채널이다** —
+ * `NegotiationResult.contestedAxis`가 지목하는 축이 곧 의뢰인의 숨은 상태에 대한
+ * 단서다("선불은 도저히 안 되겠소" → 이 사람은 현금이 없다). 슬라이더는 그 단서를
+ * 카드 한켠의 문장으로 흘려보내지만, 대화는 그것을 **다음 수를 고르는 근거**로
+ * 되돌려 놓는다. `negotiation.ts` 상단 주석이 "흥정 과정이 그 정보 채널이 된다"고
+ * 적어 둔 설계가 인터페이스에서 실제로 성립하는 지점이다.
+ *
+ * ## 판정은 하나도 바뀌지 않았다
+ *
+ * 선택지 하나가 곧 {@link Offer} 하나이고, 그것을 `evaluateOffer`에 그대로 넘긴다.
+ * 도메인은 대화라는 것을 모른다 — 이 화면이 대사를 조건으로 번역할 뿐이다. 그래서
+ * 흥정 판정 테스트(3대 필수 테스트 1번)는 이 변경에 손대지 않았다.
+ *
  * ## 비활성 사유를 반드시 적는다
  *
- * 위험 고지 토글이 그냥 회색이면 플레이어는 **버그로 읽는다.** *"이 의뢰의 실제
+ * 위험 고지 선택지가 그냥 회색이면 플레이어는 **버그로 읽는다.** *"이 의뢰의 실제
  * 위험을 아직 모른다"* 라고 적혀 있어야 소문을 캐러 갈 이유가 생긴다 —
  * **정보 = 흥정력을 UI가 가르치는 유일한 지점이다.**
  *
@@ -18,9 +34,9 @@
  * ## 화면 모듈의 규약
  *
  * UI 프레임워크를 쓰지 않으므로 규약을 코드로 세운다 — `mount...`가 루트에 그리고
- * {@link ScreenHandle}을 돌려주며, `destroy()`가 리스너와 DOM을 정리한다. 이후 화면도
- * 이 모양을 따른다. 리스너는 루트 하나에만 걸고 `data-action`으로 위임한다. 카드마다
- * 리스너를 걸면 다시 그릴 때 해제를 빠뜨려 새는 곳이 생긴다.
+ * {@link ScreenHandle}을 돌려주며, `destroy()`가 리스너와 DOM을 정리한다. 리스너는
+ * 루트 하나에만 걸고 `data-action`으로 위임한다. 카드마다 리스너를 걸면 다시 그릴 때
+ * 해제를 빠뜨려 새는 곳이 생긴다.
  */
 import type { GameState } from '../../domain/gameState';
 import {
@@ -38,29 +54,51 @@ export type { ScreenHandle };
 /**
  * 위험 고지 축을 열 수 있는가.
  *
- * 판정은 Story 011의 몫이고 이 화면은 결과를 렌더만 한다. `reason`이 비어 있으면
- * 플레이어가 비활성을 버그로 읽으므로, 막을 때는 **반드시 이유를 준다.**
+ * 판정은 `canDisclose`(도메인)의 몫이고 이 화면은 결과를 렌더만 한다. `reason`이
+ * 비어 있으면 플레이어가 비활성을 버그로 읽으므로, 막을 때는 **반드시 이유를 준다.**
  */
 export interface DisclosureStatus {
   readonly allowed: boolean;
   readonly reason?: string;
 }
 
-/** 창구에서 부를 수 있는 범위. `balance.json`의 `negotiation` 절에서 온다. */
-export interface OfferBounds {
-  readonly rewardMin: number;
-  readonly rewardMax: number;
-  readonly step: number;
+/**
+ * 흥정 선택지 하나의 수치. `balance.json`의 `negotiation.moves`에서 온다.
+ *
+ * `reward`/`advance`는 **증분이 아니라 그 축이 도달할 절대값이다.** 생략된 축은 직전
+ * 상태를 유지한다 — 그래서 "값을 올린다" 다음에 "선불도 받는다"를 고르면 둘이 함께
+ * 쌓이고, "선불은 없던 걸로"를 고르면 선불만 0으로 돌아간다. 증분으로 만들면 같은
+ * 선택지를 두 번 눌렀을 때 어디까지 올라갔는지 플레이어가 셈해야 한다.
+ */
+export interface NegotiationMove {
+  readonly id: string;
+  readonly reward?: number;
+  readonly advance?: number;
+  readonly disclose?: boolean;
+}
+
+/**
+ * `text.json`에 이 화면이 추가한 `moves` 절.
+ *
+ * {@link TextBank}(도메인 소유, `text.ts`)는 이 키를 모른다 — `situations` 하나만
+ * 안다. `EndingScreen`이 `endings`를 같은 방식으로 확장한 것과 같은 경계다.
+ *
+ * 선택지 문안이 `situations`가 아닌 이유: 말하는 사람이 **플레이어**이고 플레이어에게는
+ * 성격 태그가 없다. 성격 필터를 거칠 대상이 없으므로 `narrate()`를 통과시키지 않는다.
+ */
+export interface CounterTextBank extends TextBank {
+  readonly moves: Readonly<Record<string, string>>;
 }
 
 export interface CounterScreenDeps {
   readonly state: GameState;
   readonly negotiation: NegotiationConfig;
-  readonly bounds: OfferBounds;
-  readonly text: TextBank;
-  /** Story 011이 주입한다. 없으면 항상 잠긴다 */
+  /** 고를 수 있는 수의 목록. `balance.json`의 `negotiation.moves` */
+  readonly moves: readonly NegotiationMove[];
+  readonly text: CounterTextBank;
+  /** `canDisclose`를 감싼 것이 주입된다. 없으면 항상 잠긴다 */
   readonly disclosureStatus: (contract: Contract) => DisclosureStatus;
-  /** 타결되면 호출된다. 배정 화면(Story 008)이 이어받는다 */
+  /** 타결되면 호출된다. 배정 화면이 이어받는다 */
   readonly onSettled: (settlement: Settlement) => void;
   /**
    * 길드 홀로 간다. **창구가 홀로 가는 유일한 문이다** — 정보를 캐는 창이 여기서만
@@ -84,19 +122,21 @@ export interface Settlement {
   readonly advancePaid: number;
 }
 
-/** 화면이 들고 있는 제안 초안. 아직 내밀지 않은 조건이다. */
-interface Draft {
+/** 이 의뢰와의 대화가 어디까지 왔는가. */
+interface Talk {
+  /** 지금까지 쌓인 조건 */
   rewardMultiplier: number;
   advanceRatio: number;
   discloseRisk: boolean;
-  /** 직전 제안의 판정 결과. 반박 문장을 그리는 근거다 */
+  /** 의뢰인이 마지막으로 한 말 */
+  message: string;
+  /** 직전 제안의 판정 결과. 반박 축을 강조하는 근거다 */
   lastResult?: NegotiationResult;
-  /** 의뢰인이 한 말 */
-  message?: string;
-  outcome?: 'countered' | 'broken' | 'settled';
+  outcome?: 'broken' | 'settled';
 }
 
 const NEUTRAL_REWARD = 1;
+const NEUTRAL_ADVANCE = 0;
 
 /**
  * 창구 화면을 그린다.
@@ -104,14 +144,14 @@ const NEUTRAL_REWARD = 1;
  * @param root 그려 넣을 요소. 기존 내용은 지워진다
  */
 export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): ScreenHandle {
-  const drafts = new Map<string, Draft>();
+  const talks = new Map<string, Talk>();
+  /** 지금 창구에 앉아 있는 의뢰인. 나머지는 대기줄에 선다 */
+  let activeId = deps.state.openContracts[0]?.id;
   let destroyed = false;
 
   const onClick = (event: Event): void => handleClick(event);
-  const onInput = (event: Event): void => handleInput(event);
 
   root.addEventListener('click', onClick);
-  root.addEventListener('input', onInput);
   render();
 
   return {
@@ -119,45 +159,28 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
       if (destroyed) return;
       destroyed = true;
       root.removeEventListener('click', onClick);
-      root.removeEventListener('input', onInput);
       root.innerHTML = '';
     },
   };
 
-  function draftFor(contractId: string): Draft {
-    let draft = drafts.get(contractId);
-    if (draft === undefined) {
-      draft = { rewardMultiplier: NEUTRAL_REWARD, advanceRatio: 0, discloseRisk: false };
-      drafts.set(contractId, draft);
-    }
-    return draft;
-  }
-
-  function findContract(contractId: string): Contract | undefined {
+  function findContract(contractId: string | undefined): Contract | undefined {
+    if (contractId === undefined) return undefined;
     return deps.state.openContracts.find((contract) => contract.id === contractId);
   }
 
-  /**
-   * 슬라이더는 다시 그리지 않고 숫자 표시만 갱신한다.
-   *
-   * 드래그 중에 전체를 다시 그리면 슬라이더가 손에서 빠져나간다. 그리고 이쪽이
-   * 훨씬 싸다 — 100ms 예산은 이렇게 지킨다.
-   */
-  function handleInput(event: Event): void {
-    const input = event.target;
-    if (!(input instanceof HTMLInputElement)) return;
-
-    const contractId = input.dataset.contract;
-    const field = input.dataset.field;
-    if (contractId === undefined || field === undefined) return;
-
-    const draft = draftFor(contractId);
-    if (field === 'reward') draft.rewardMultiplier = Number(input.value);
-    else if (field === 'advance') draft.advanceRatio = Number(input.value);
-    else if (field === 'disclose') draft.discloseRisk = input.checked;
-    else return;
-
-    updateReadouts(contractId);
+  /** 이 의뢰와의 대화. 처음이면 의뢰인의 첫마디부터 시작한다. */
+  function talkFor(contract: Contract): Talk {
+    let talk = talks.get(contract.id);
+    if (talk === undefined) {
+      talk = {
+        rewardMultiplier: NEUTRAL_REWARD,
+        advanceRatio: NEUTRAL_ADVANCE,
+        discloseRisk: false,
+        message: say(contract, 'clientOpening'),
+      };
+      talks.set(contract.id, talk);
+    }
+    return talk;
   }
 
   function handleClick(event: Event): void {
@@ -167,65 +190,93 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
     const button = target.closest<HTMLElement>('[data-action]');
     if (button === null) return;
 
-    const contractId = button.dataset.contract;
-    if (button.dataset.action === 'offer' && contractId !== undefined) {
-      submitOffer(contractId);
+    const action = button.dataset.action;
+
+    if (action === 'select') {
+      const contractId = button.dataset.contract;
+      if (contractId !== undefined && findContract(contractId) !== undefined) {
+        activeId = contractId;
+        render();
+      }
       return;
     }
-    if (button.dataset.action === 'visit-hall') {
+    if (action === 'move') {
+      const moveId = button.dataset.move;
+      if (moveId !== undefined) playMove(moveId);
+      return;
+    }
+    if (action === 'visit-hall') {
       deps.onVisitHall();
       return;
     }
-    if (button.dataset.action === 'end-day') {
+    if (action === 'end-day') {
       deps.onEndDay();
     }
   }
 
-  function submitOffer(contractId: string): void {
-    const contract = findContract(contractId);
+  /**
+   * 선택지 하나를 둔다 — 조건을 갱신하고 그것을 곧바로 제안한다.
+   *
+   * **한 수가 곧 제안 한 번이다.** 조건을 다 맞춘 뒤 따로 "제안한다"를 누르는 단계를
+   * 두지 않는 이유는, 그 단계가 있으면 다시 숫자 맞추기가 되고 반박이 다음 수의
+   * 근거가 되지 못하기 때문이다.
+   */
+  function playMove(moveId: string): void {
+    const contract = findContract(activeId);
     if (contract === undefined) return;
 
-    const draft = draftFor(contractId);
-    if (draft.outcome === 'broken' || draft.outcome === 'settled') return;
+    const talk = talkFor(contract);
+    if (talk.outcome !== undefined) return;
+
+    const move = deps.moves.find((candidate) => candidate.id === moveId);
+    if (move === undefined) return;
+
+    const disclosure = deps.disclosureStatus(contract);
+    // 잠긴 축은 선택지가 눌려도 무시한다. UI 상태를 규칙보다 믿으면 안 된다.
+    if (move.disclose === true && !disclosure.allowed) return;
+
+    if (move.reward !== undefined) talk.rewardMultiplier = move.reward;
+    if (move.advance !== undefined) talk.advanceRatio = move.advance;
+    if (move.disclose === true) talk.discloseRisk = true;
 
     const offer: Offer = {
-      rewardMultiplier: draft.rewardMultiplier,
-      advanceRatio: draft.advanceRatio,
-      // 잠긴 축은 초안이 켜져 있어도 무시한다. UI 상태를 규칙보다 믿으면 안 된다.
-      discloseRisk: draft.discloseRisk && deps.disclosureStatus(contract).allowed,
+      rewardMultiplier: talk.rewardMultiplier,
+      advanceRatio: talk.advanceRatio,
+      discloseRisk: talk.discloseRisk && disclosure.allowed,
     };
 
-    const attempt = (deps.state.offersMade[contractId] ?? 0) + 1;
-    deps.state.offersMade[contractId] = attempt;
+    const attempt = (deps.state.offersMade[contract.id] ?? 0) + 1;
+    deps.state.offersMade[contract.id] = attempt;
 
     const result = evaluateOffer(offer, contract.client, deps.negotiation, attempt);
-    draft.lastResult = result;
+    talk.lastResult = result;
 
     if (result.outcome === 'accepted') {
-      settle(contract, offer, draft);
+      settle(contract, offer, talk);
       return;
     }
 
     if (result.outcome === 'broken') {
-      draft.outcome = 'broken';
-      draft.message = say(contract, 'negotiationBroken');
+      talk.outcome = 'broken';
+      talk.message = say(contract, 'negotiationBroken');
       // 카드를 걷어낸다. 숨은 진실은 끝내 그려지지 않는다.
-      deps.state.openContracts = deps.state.openContracts.filter((c) => c.id !== contractId);
+      deps.state.openContracts = deps.state.openContracts.filter((c) => c.id !== contract.id);
+      // 창구가 비었으니 대기줄의 다음 사람을 앉힌다.
+      activeId = deps.state.openContracts[0]?.id;
       render();
       return;
     }
 
-    draft.outcome = 'countered';
-    draft.message = say(
+    talk.message = say(
       contract,
       result.contestedAxis === 'advance' ? 'counterAdvance' : 'counterReward',
     );
     render();
   }
 
-  function settle(contract: Contract, offer: Offer, draft: Draft): void {
-    draft.outcome = 'settled';
-    draft.message = say(contract, 'negotiationSettled');
+  function settle(contract: Contract, offer: Offer, talk: Talk): void {
+    talk.outcome = 'settled';
+    talk.message = say(contract, 'negotiationSettled');
 
     const agreedReward = contract.baseReward * offer.rewardMultiplier;
     render();
@@ -239,41 +290,41 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
   }
 
   function say(contract: Contract, situation: string): string {
-    return narrate(deps.text, situation, contract.client.traits, {
-      client: contract.client.name,
-    }, deps.state.rng);
+    return narrate(
+      deps.text,
+      situation,
+      contract.client.traits,
+      { client: contract.client.name },
+      deps.state.rng,
+    );
   }
 
-  function updateReadouts(contractId: string): void {
-    const contract = findContract(contractId);
-    if (contract === undefined) return;
-    const draft = draftFor(contractId);
+  /**
+   * 이 수를 지금 둘 수 있는가.
+   *
+   * 규칙은 하나다 — **조건이 실제로 달라지는 수만 보여준다.** 이미 선불이 0인데
+   * "선불은 없던 걸로 하죠"가 떠 있으면 그건 선택지가 아니라 소음이다. 위험 고지만
+   * 예외적으로 게이트를 추가로 본다.
+   *
+   * `takeAsIs`는 이 규칙에서 면제된다 — 조건이 이미 중립이어도 "그대로 받겠다"는
+   * 언제나 유효한 수이고, 이것이 빠지면 고를 것이 하나도 없는 상태가 생길 수 있다.
+   */
+  function isPlayable(move: NegotiationMove, talk: Talk, disclosure: DisclosureStatus): boolean {
+    if (move.disclose === true) return disclosure.allowed && !talk.discloseRisk;
+    if (move.id === TAKE_AS_IS) return true;
 
-    setText(`[data-readout="reward"][data-contract="${contractId}"]`, rewardLabel(contract, draft));
-    setText(`[data-readout="advance"][data-contract="${contractId}"]`, advanceLabel(contract, draft));
-  }
-
-  function setText(selector: string, value: string): void {
-    const node = root.querySelector(selector);
-    if (node !== null) node.textContent = value;
-  }
-
-  function rewardLabel(contract: Contract, draft: Draft): string {
-    return `${round(contract.baseReward * draft.rewardMultiplier)}G (×${draft.rewardMultiplier.toFixed(2)})`;
-  }
-
-  function advanceLabel(contract: Contract, draft: Draft): string {
-    const reward = contract.baseReward * draft.rewardMultiplier;
-    return `${round(reward * draft.advanceRatio)}G (${Math.round(draft.advanceRatio * 100)}%)`;
+    const changesReward = move.reward !== undefined && move.reward !== talk.rewardMultiplier;
+    const changesAdvance = move.advance !== undefined && move.advance !== talk.advanceRatio;
+    return changesReward || changesAdvance;
   }
 
   function render(): void {
     if (destroyed) return;
 
-    const cards = deps.state.openContracts.map((contract) => renderCard(contract)).join('');
-    const broken = [...drafts.entries()]
-      .filter(([id, draft]) => draft.outcome === 'broken' && findContract(id) === undefined)
-      .map(([, draft]) => `<p class="counter__broken">${escapeHtml(draft.message ?? '')}</p>`)
+    const contract = findContract(activeId);
+    const broken = [...talks.entries()]
+      .filter(([id, talk]) => talk.outcome === 'broken' && findContract(id) === undefined)
+      .map(([, talk]) => `<p class="counter__broken">${escapeHtml(talk.message)}</p>`)
       .join('');
 
     root.innerHTML = `
@@ -283,7 +334,8 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
           <p class="counter__funds">자금 ${round(deps.state.funds)}G · 명성 ${round(deps.state.reputation)}</p>
         </header>
         ${broken}
-        ${cards === '' ? '<p class="counter__empty">오늘은 더 이상 찾아온 사람이 없다.</p>' : cards}
+        ${renderQueue()}
+        ${contract === undefined ? renderEmpty() : renderBooth(contract)}
         <footer class="counter__actions">
           <button type="button" class="counter__nav" data-action="visit-hall">길드 홀에 가본다</button>
           <button type="button" class="counter__nav" data-action="end-day">하루를 마감한다</button>
@@ -292,82 +344,164 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
     `;
   }
 
-  function renderCard(contract: Contract): string {
-    const draft = draftFor(contract.id);
-    const disclosure = deps.disclosureStatus(contract);
-    const attempts = deps.state.offersMade[contract.id] ?? 0;
-    const remaining = deps.negotiation.maxOffers - attempts;
-    const closed = draft.outcome === 'settled';
+  function renderEmpty(): string {
+    return '<p class="counter__empty">오늘은 더 이상 찾아온 사람이 없다.</p>';
+  }
+
+  /**
+   * 대기줄. 의뢰가 하나뿐이면 그리지 않는다 — 고를 것이 없는 탭 줄은 화면만 먹는다.
+   */
+  function renderQueue(): string {
+    const waiting = deps.state.openContracts;
+    if (waiting.length < 2) return '';
+
+    const tabs = waiting
+      .map((contract) => {
+        const talk = talks.get(contract.id);
+        const settled = talk?.outcome === 'settled';
+        const active = contract.id === activeId;
+        return `
+          <button type="button"
+                  class="queue__tab${active ? ' queue__tab--active' : ''}${settled ? ' queue__tab--settled' : ''}"
+                  data-action="select" data-contract="${contract.id}">
+            <span class="queue__name">${escapeHtml(contract.client.name)}</span>
+            <span class="queue__risk">위험 ${round(contract.statedRisk)}</span>
+          </button>
+        `;
+      })
+      .join('');
 
     return `
-      <article class="contract-card${closed ? ' contract-card--settled' : ''}" data-card="${contract.id}">
-        <h2 class="contract-card__client">${escapeHtml(contract.client.name)}</h2>
-        <dl class="contract-card__facts">
-          <div><dt>위험도</dt><dd>${round(contract.statedRisk)}</dd></div>
-          <div><dt>기본 보상</dt><dd>${round(contract.baseReward)}G</dd></div>
-          <div><dt>소요</dt><dd>${contract.durationDays}일</dd></div>
-          <div><dt>정원</dt><dd>${contract.maxPartySize}명</dd></div>
-        </dl>
+      <nav class="queue" aria-label="오늘 찾아온 의뢰인">
+        <span class="queue__label">대기</span>
+        ${tabs}
+      </nav>
+    `;
+  }
 
-        ${closed ? '' : renderAxes(contract, draft, disclosure)}
+  function renderBooth(contract: Contract): string {
+    const talk = talkFor(contract);
+    const settled = talk.outcome === 'settled';
 
-        ${draft.message === undefined ? '' : `<p class="contract-card__reply">${escapeHtml(draft.message)}</p>`}
+    return `
+      <article class="booth${settled ? ' booth--settled' : ''}" data-card="${contract.id}">
+        <div class="booth__window">
+          ${clientFigure(contract.client.id)}
+        </div>
 
-        ${
-          closed
-            ? '<p class="contract-card__stamp">계약 성립</p>'
-            : `<footer class="contract-card__actions">
-                 <button class="contract-card__offer" type="button"
-                         data-action="offer" data-contract="${contract.id}">제안한다</button>
-                 <span class="contract-card__attempts">남은 기회 ${remaining}회</span>
-               </footer>`
-        }
+        <div class="booth__talk">
+          <h2 class="booth__client">${escapeHtml(contract.client.name)}</h2>
+          <dl class="booth__facts">
+            <div><dt>위험도</dt><dd>${round(contract.statedRisk)}</dd></div>
+            <div><dt>기본 보상</dt><dd>${round(contract.baseReward)}G</dd></div>
+            <div><dt>소요</dt><dd>${contract.durationDays}일</dd></div>
+            <div><dt>정원</dt><dd>${contract.maxPartySize}명</dd></div>
+          </dl>
+
+          <p class="booth__line">${escapeHtml(talk.message)}</p>
+
+          ${renderTerms(contract, talk)}
+          ${settled ? '<p class="booth__stamp">계약 성립</p>' : renderMoves(contract, talk)}
+        </div>
       </article>
     `;
   }
 
-  function renderAxes(
-    contract: Contract,
-    draft: Draft,
-    disclosure: DisclosureStatus,
-  ): string {
-    const { rewardMin, rewardMax, step } = deps.bounds;
+  /**
+   * 지금 테이블에 올라와 있는 조건.
+   *
+   * 반박당한 축을 강조하는 것이 이 영역의 핵심이다 — 의뢰인의 말과 숫자가 같은 축을
+   * 가리켜야 "저 사람은 현금이 없구나"가 읽힌다.
+   */
+  function renderTerms(contract: Contract, talk: Talk): string {
+    const contested = talk.lastResult?.contestedAxis;
+    const reward = round(contract.baseReward * talk.rewardMultiplier);
+    const advance = round(contract.baseReward * talk.rewardMultiplier * talk.advanceRatio);
 
     return `
-      <div class="axis">
-        <label class="axis__label" for="reward-${contract.id}">보상</label>
-        <input class="axis__slider" type="range" id="reward-${contract.id}"
-               min="${rewardMin}" max="${rewardMax}" step="${step}"
-               value="${draft.rewardMultiplier}"
-               data-field="reward" data-contract="${contract.id}" />
-        <output class="axis__value" data-readout="reward" data-contract="${contract.id}"
-        >${rewardLabel(contract, draft)}</output>
-      </div>
+      <dl class="terms">
+        <div class="terms__item${contested === 'reward' ? ' terms__item--contested' : ''}">
+          <dt>보상</dt><dd>${reward}G <span class="terms__mul">×${talk.rewardMultiplier.toFixed(2)}</span></dd>
+        </div>
+        <div class="terms__item${contested === 'advance' ? ' terms__item--contested' : ''}">
+          <dt>선불</dt><dd>${advance}G <span class="terms__mul">${Math.round(talk.advanceRatio * 100)}%</span></dd>
+        </div>
+        <div class="terms__item${talk.discloseRisk ? ' terms__item--disclosed' : ''}">
+          <dt>위험 고지</dt><dd>${talk.discloseRisk ? '했다' : '안 했다'}</dd>
+        </div>
+      </dl>
+    `;
+  }
 
-      <div class="axis">
-        <label class="axis__label" for="advance-${contract.id}">선불</label>
-        <input class="axis__slider" type="range" id="advance-${contract.id}"
-               min="0" max="1" step="${step}"
-               value="${draft.advanceRatio}"
-               data-field="advance" data-contract="${contract.id}" />
-        <output class="axis__value" data-readout="advance" data-contract="${contract.id}"
-        >${advanceLabel(contract, draft)}</output>
-      </div>
+  function renderMoves(contract: Contract, talk: Talk): string {
+    const disclosure = deps.disclosureStatus(contract);
+    const attempts = deps.state.offersMade[contract.id] ?? 0;
+    const remaining = deps.negotiation.maxOffers - attempts;
 
-      <div class="axis axis--toggle${disclosure.allowed ? '' : ' axis--locked'}">
-        <label class="axis__label" for="disclose-${contract.id}">위험 고지</label>
-        <input class="axis__check" type="checkbox" id="disclose-${contract.id}"
-               ${draft.discloseRisk && disclosure.allowed ? 'checked' : ''}
-               ${disclosure.allowed ? '' : 'disabled'}
-               data-field="disclose" data-contract="${contract.id}" />
-        ${
-          disclosure.allowed
-            ? '<span class="axis__hint">실제 위험을 계약서에 적는다.</span>'
-            : `<span class="axis__hint axis__hint--locked">${escapeHtml(disclosure.reason ?? '')}</span>`
-        }
+    const buttons = deps.moves
+      .filter((move) => isPlayable(move, talk, disclosure))
+      .map((move) => renderMove(move))
+      .join('');
+
+    // 잠긴 이유는 선택지가 사라진 자리에 반드시 남는다. 회색 버튼도 없이 그냥
+    // 없어지면 플레이어는 그런 수가 있다는 것조차 모른다.
+    const locked = disclosure.allowed
+      ? ''
+      : `<p class="moves__locked">위험 고지 — ${escapeHtml(disclosure.reason ?? '')}</p>`;
+
+    return `
+      <div class="moves">
+        ${buttons}
+        ${locked}
+        <p class="moves__attempts">이야기를 이어갈 수 있는 횟수 ${remaining}회</p>
       </div>
     `;
   }
+
+  function renderMove(move: NegotiationMove): string {
+    const label = deps.text.moves[move.id] ?? move.id;
+    const risky = move.disclose === true;
+
+    return `
+      <button type="button" class="move${risky ? ' move--disclose' : ''}"
+              data-action="move" data-move="${move.id}">${escapeHtml(label)}</button>
+    `;
+  }
+}
+
+/**
+ * "그 조건대로 받겠습니다"의 id. 이 수만 {@link isPlayable}의 변화 규칙에서 면제된다.
+ *
+ * 밸런스 수치가 아니라 구조 상수다 — `balance.json`이 이 id를 가진 항목을 반드시
+ * 하나 가져야 한다는 계약을 코드 쪽에서 표현한 것이다.
+ */
+const TAKE_AS_IS = 'takeAsIs';
+
+/** 의뢰인의 실루엣. 인물마다 다르되 같은 사람은 늘 같아야 하므로 id에서 유도한다. */
+const FIGURE_COLORS = ['#4a3a26', '#3f4f5a', '#4a3f2a', '#553a3a', '#3f5040', '#4c4356'] as const;
+
+function clientFigure(clientId: string): string {
+  let hash = 0;
+  for (let i = 0; i < clientId.length; i += 1) {
+    hash = (hash * 31 + clientId.charCodeAt(i)) >>> 0;
+  }
+  const robe = FIGURE_COLORS[hash % FIGURE_COLORS.length];
+  const hooded = hash % 2 === 0;
+
+  return `
+    <svg class="booth__figure" viewBox="0 0 64 88" shape-rendering="crispEdges" aria-hidden="true">
+      <rect x="18" y="44" width="28" height="44" fill="${robe}" />
+      <rect x="12" y="52" width="6" height="26" fill="${robe}" />
+      <rect x="46" y="52" width="6" height="26" fill="${robe}" />
+      <rect x="22" y="54" width="20" height="3" fill="#6b5a45" />
+      <rect x="23" y="20" width="18" height="26" fill="#d9b98c" />
+      <rect x="20" y="12" width="24" height="${hooded ? 16 : 11}" fill="#2b2118" />
+      <rect x="20" y="24" width="3" height="${hooded ? 14 : 8}" fill="#2b2118" />
+      <rect x="41" y="24" width="3" height="${hooded ? 14 : 8}" fill="#2b2118" />
+      <rect x="27" y="31" width="3" height="3" fill="#2b2118" />
+      <rect x="35" y="31" width="3" height="3" fill="#2b2118" />
+    </svg>
+  `;
 }
 
 function round(value: number): number {

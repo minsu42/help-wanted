@@ -21,6 +21,7 @@ import type { Contract } from './domain/types';
 import type { ScreenHandle } from './presentation/screen';
 import {
   mountCounterScreen,
+  type CounterTextBank,
   type DisclosureStatus,
   type Settlement,
 } from './presentation/ui/CounterScreen';
@@ -317,12 +318,8 @@ function showCounter(): void {
         disclosureBonus: balance.negotiation.disclosureBonus,
         maxOffers: balance.negotiation.maxOffers,
       },
-      bounds: {
-        rewardMin: balance.negotiation.offerRewardMin,
-        rewardMax: balance.negotiation.offerRewardMax,
-        step: balance.negotiation.offerStep,
-      },
-      text: textBank,
+      moves: balance.negotiation.moves,
+      text: textBank as CounterTextBank,
       disclosureStatus,
       onSettled: showDispatch,
       onVisitHall: showGuildHall,

@@ -294,12 +294,14 @@ describe("evaluateOffer", () => {
   });
 
   it("test_max_offers_is_read_from_config_not_hardcoded", () => {
-    // maxOffers를 3으로 바꾸면 2회차가 결렬이 아니라 반박이어야 한다
+    // 두 상한을 **테스트 안에서** 만든다. balance.json의 현재 값을 한쪽으로 쓰면
+    // 밸런싱으로 그 값이 바뀌는 순간 대비가 사라져 테스트가 아무것도 검증하지 않는다.
+    const impatient: NegotiationConfig = { ...CONFIG, maxOffers: 2 };
     const patient: NegotiationConfig = { ...CONFIG, maxOffers: 3 };
     const proposal = offer({ rewardMultiplier: 5 });
     const target = client({ wealth: 0, urgency: 0 });
 
-    expect(evaluateOffer(proposal, target, CONFIG, 2).outcome).toBe("broken");
+    expect(evaluateOffer(proposal, target, impatient, 2).outcome).toBe("broken");
     expect(evaluateOffer(proposal, target, patient, 2).outcome).toBe("countered");
   });
 });
