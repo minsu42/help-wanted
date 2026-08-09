@@ -272,12 +272,21 @@ P1의 마르타 시나리오가 사실상 이 역할을 하고 있으므로 구�
 재설계하는 지금 같이 잡는 것이 압도적으로 싸다. P3 이후에 붙이면 그때까지의 모든
 스키마를 소급 마이그레이션해야 한다.
 
-정해야 할 것:
-- 슬롯 수(단일 자동 저장 권장), 저장 시점(하루 마감만), 스키마 버전 필드
-- **재현 키가 무엇인가** — 결정론 요구(*"같은 시드 + 같은 질문 순서 = 같은 결과"*)에서
-  "질문 순서"가 무엇으로 기록되는가? 타이핑한 문자열인가, 매칭된 질문 id인가,
-  클릭한 단어 앵커인가. 셋이 전부 다른 재현 키를 만들고, **이것이 곧 저장 포맷이다**
-- 세이브 스캐밍 억제 방식 (시드 + 결정 로그를 함께 저장해 되감기를 무의미하게)
+> **2026-08-10 — 해소됨. `docs/architecture/adr-002-persistence-format.md`가 소유한다.**
+> (quick-spec이 아니라 ADR로 썼다 — 지속성 포맷은 위 「ADR을 언제 쓰는가」 기준에 걸린다.)
+
+| 정해야 했던 것 | 결정 |
+| ---- | ---- |
+| 슬롯 수 · 저장 시점 · 스키마 버전 | **단일 슬롯 자동 저장 · 하루 마감뿐 · `schemaVersion` 필드 + 키에도 버전** |
+| **재현 키가 무엇인가** | **매칭된 질문 id.** 타이핑 원문도 클릭 앵커도 아니다 (`intake-system.md` 「결정론」) |
+| 세이브 스캐밍 억제 | **막지 않는다. 무의미하게 만든다** — RNG 상태를 함께 저장하므로 되감아 같은 결정을 하면 결과가 바이트 단위로 같다. 파견·의뢰 생성을 다시 굴리는 것이 **불가능**해진다 |
+
+> ⚠ **조사 중 발견한 것 — 세이브가 원리적으로 불가능한 상태였다.** `Rng`가 내부 상태를
+> 읽거나 되돌릴 방법을 노출하지 않는다(`state`가 클로저 변수, `createRng(seed)`뿐).
+> 컨셉 문서는 *"시드와 결정 로그를 함께 저장한다"* 고 적었으나 **N번 뽑은 뒤의 상태는
+> 시드가 아니다** — 시드만 저장하면 복원 시 세계가 처음으로 되감긴다.
+> ADR-002가 `snapshot()` 한 줄을 추가해 해결한다. 복원은 `createRng(snapshot)`이며
+> **새 팩토리가 필요 없다** (mulberry32의 상태가 32비트 정수 하나이기 때문).
 
 ### ~~⚠ 두 자원의 역할 분담을 여기서 정의할 것~~ — **해소 (2026-08-09)**
 
@@ -311,13 +320,16 @@ P1의 마르타 시나리오가 사실상 이 역할을 하고 있으므로 구�
   리뷰 이력: `design/gdd/reviews/intake-system-review-log.md`
 - `design/quick-specs/commission-form-*.md` — 의뢰서 칸 정의, 토큰 타입, 등급 매핑.
   ⚠ **위험도 등급 단계 수**(GDD Q7)가 여기서 정해진다
-- `design/quick-specs/persistence-*.md` — 저장 포맷, 스키마 버전, 세이브 스캐밍 억제.
-  ⚠ **재현 키는 이미 정해졌다 — 매칭된 질문 id.** 그리고 GDD가 **로그 재생 방식을
-  기각**했으므로(재생 순서가 어긋나면 최종 상태가 갈린다) **최종 상태 직접 저장**이
-  전제다. 컨셉 문서의 「지속성」 절도 이에 맞춰 정정됐다
-- **ADR: `Contract` 스키마 재설계 + `Client.occupation` 추가** — 타입 경계 변경이므로
-  quick-spec이 아니라 아키텍처 결정이다. 둘은 같은 생성 경로에서 실현되므로 **한 ADR로
-  합친다.** `docs/architecture/`가 아직 없으므로 디렉터리부터 만든다
+- ✅ **`docs/architecture/adr-001-contract-slots-and-client-occupation.md`** — **완료.**
+  슬롯 어휘 6개 닫힌 유니온, `Reach`/`SlotState` 분리(`unknown`≠`blocked`),
+  `Limiter` 3값, **진행도는 `Contract`가 아니라 `PlayerKnowledge`에**,
+  RNG 소비 순서를 `SLOT_NAMES`에 고정, `kind` 클램프는 상류에서.
+  ⚠ **기존 시드가 전부 다른 세계를 만든다** — 세이브가 아직 없으므로 지금이 유일하게
+  마이그레이션 비용 0인 시점이다
+- ✅ **`docs/architecture/adr-002-persistence-format.md`** — **완료.** 최종 상태 직접
+  저장(로그 재생 기각), 명시적 DTO(`JSON.stringify` + replacer 기각 — 도메인 필드 추가가
+  포맷을 조용히 바꾼다), `Rng.snapshot()`, 설정은 저장하지 않음(밸런스 패치가 소급 적용),
+  실패 시 부분 복원 금지
 - 참조: `design/research/paperwork-ux-2026-08-09.md` (§4.5의 반복 압축 약속 범위가
   2026-08-09에 좁혀졌다) · `design/research/interrogation-games-market-2026-08-09.md`
 
@@ -577,9 +589,9 @@ P1의 마르타 시나리오가 사실상 이 역할을 하고 있으므로 구�
 | — | `design/research/interrogation-games-market-2026-08-09.md` | ✅ 신설 — 심문·추리 장르 시장조사. GDD의 R4 개정과 행동 칸 값의 근거 |
 | P8 | `production/balance-notes-*.md` | ⬜ story-018 산출물 (미완) |
 | P1 | ~~`design/quick-specs/intake-system-*.md`~~ → **`design/gdd/intake-system.md`** | ✅ **완료** — quick-spec이 아니라 **정식 8섹션 GDD로 승격.** `/design-review` full 통과 후 2회 개정 (필수 8건 + 깊이 등급). 리뷰 로그 `design/gdd/reviews/intake-system-review-log.md` |
-| P1 | `design/quick-specs/commission-form-*.md` | ⬜ **다음 문서 작업** |
 | P1 | `docs/architecture/adr-001-contract-slots-and-client-occupation.md` | ✅ **완료 (2026-08-10)** — `docs/architecture/` 디렉터리 신설. **이 저장소의 첫 ADR.** 슬롯 어휘 6개 닫힌 유니온, `Reach`/`SlotState` 분리, `Limiter` 3값, **진행도는 `PlayerKnowledge`에** |
-| P1 | `design/quick-specs/persistence-*.md` | ⬜ **다음 문서 작업.** ADR-001이 `ReadonlyMap` 직렬화 문제를 남겼다 |
+| P1 | ~~`design/quick-specs/persistence-*.md`~~ → **`docs/architecture/adr-002-persistence-format.md`** | ✅ **완료 (2026-08-10)** — 지속성 포맷은 ADR 기준에 걸리므로 quick-spec이 아니라 **ADR로 썼다.** ⚠ 조사 중 발견: **`Rng`에 상태를 읽을 방법이 없어 세이브가 원리적으로 불가능했다** → `snapshot()` 추가 |
+| P1 | `design/quick-specs/commission-form-*.md` | ⬜ **다음 문서 작업** (위 P1 행에서 이어짐) |
 | P2 | `design/quick-specs/dispatch-resolution-*.md` 개정 | ⬜ |
 | P2 | `design/quick-specs/result-comparison-*.md` | ⬜ |
 | P3 | `design/quick-specs/day-economy-*.md` | ⬜ |
@@ -604,8 +616,9 @@ P1의 마르타 시나리오가 사실상 이 역할을 하고 있으므로 구�
 | 즉시 대상 | 상태 |
 | ---- | ---- |
 | P1의 `Contract` 스키마 재설계 (+ `Client.occupation`) | ✅ **ADR-001 (2026-08-10)** |
-| 세이브/로드 포맷 | ⬜ ADR-002 예정. ADR-001이 `ReadonlyMap` 직렬화 문제를 남겼다 |
-| 청취 화면의 부분 렌더링 경계 (기존 6화면 규약을 처음으로 깬다) | ⬜ ADR-003 후보 |
+| 세이브/로드 포맷 | ✅ **ADR-002 (2026-08-10)** |
+| 청취 화면의 부분 렌더링 경계 (기존 6화면 규약을 처음으로 깬다) | ⬜ **ADR-003** 후보 |
+| (P6) `Client` 저장소 분리 — 의뢰인이 의뢰보다 오래 살아야 장부 조회가 된다 | ⬜ ADR-002가 남긴 숙제 |
 | 버전 고정 결정 | ✅ 아래 「버전 정책」 절이 소유 (별도 ADR을 만들지 않는다) |
 
 > **2026-08-10 — 「지켜지지 않는 규칙」 상태를 해소했다.**
