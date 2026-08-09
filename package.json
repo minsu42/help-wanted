@@ -13,9 +13,9 @@
     "check": "npm run typecheck && npm run test && vite build"
   },
   "devDependencies": {
-    "happy-dom": "^20.11.2",
-    "typescript": "~5.5.4",
-    "vite": "^7.3.6",
-    "vitest": "^4.1.10"
+    "happy-dom": "20.11.2",
+    "typescript": "5.5.4",
+    "vite": "7.3.6",
+    "vitest": "4.1.10"
   }
 }

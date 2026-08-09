@@ -93,7 +93,6 @@ function snapshot(state: GameState) {
     nextContractId: state.nextContractId,
     discoveredContacts: [...state.knowledge.discoveredContacts],
     revealedFacts: [...state.knowledge.revealedFacts],
-    knownWealth: [...state.knowledge.knownWealth],
   };
 }
 
@@ -281,27 +280,78 @@ describe("dispatchParty", () => {
     expect(dispatch.resolveOnDay).toBe(state.day + dispatch.contract.durationDays);
   });
 
-  it("test_dispatch_stores_advance_and_concealment_for_later_stories", () => {
+  it("test_dispatch_stores_agreed_reward_and_concealment_for_later_stories", () => {
     const state = createGameState(SEED, CONFIG);
     const contract = state.openContracts[0];
     const member = availableGuildMembers(state)[0];
 
     const dispatch = dispatchParty(state, contract.id, [member.id], {
-      advancePaid: 120,
+      agreedReward: 120,
       concealedKnownRisk: true,
     });
 
-    expect(dispatch.advancePaid).toBe(120);
+    expect(dispatch.agreedReward).toBe(120);
     expect(dispatch.concealedKnownRisk).toBe(true);
   });
 
-  it("test_dispatch_defaults_to_no_advance_and_no_concealment", () => {
+  it("test_dispatch_defaults_to_no_reward_and_no_concealment", () => {
     const state = createGameState(SEED, CONFIG);
 
     const { dispatch } = sendOne(state);
 
-    expect(dispatch.advancePaid).toBe(0);
+    expect(dispatch.agreedReward).toBe(0);
     expect(dispatch.concealedKnownRisk).toBe(false);
+  });
+
+  it("test_dispatch_clears_the_stored_settlement", () => {
+    // Arrange — 창구가 타결 조건을 남긴 상태
+    const state = createGameState(SEED, CONFIG);
+    const contract = state.openContracts[0];
+    state.settlements[contract.id] = { agreedReward: 120, discloseRisk: true };
+
+    // Act
+    dispatchParty(state, contract.id, [availableGuildMembers(state)[0].id]);
+
+    // Assert — 열린 의뢰에서 빠지는 것과 같은 시점에 지워진다
+    expect(state.settlements[contract.id]).toBeUndefined();
+  });
+
+  it("test_dispatch_applies_the_forced_assignment_cost_to_reluctant_members_only", () => {
+    // Arrange — 정원이 넉넉한 의뢰를 골라 한 파티에 두 명을 넣는다. 시드마다
+    // maxPartySize가 달라 첫 의뢰를 그냥 쓰면 정원 초과로 던진다.
+    const state = createGameState(SEED, CONFIG);
+    const contract = state.openContracts.find((candidate) => candidate.maxPartySize >= 2);
+    if (contract === undefined) throw new Error("정원 2 이상인 의뢰가 없다 — 시드를 바꿀 것");
+    const [forced, willing] = availableGuildMembers(state);
+    forced.trust = 0.5;
+    willing.trust = 0.5;
+
+    // Act
+    dispatchParty(state, contract.id, [forced.id, willing.id], {
+      reluctantIds: [forced.id],
+      forcedAssignmentTrustPenalty: -0.1,
+    });
+
+    // Assert — 명단에 있는 사람만 값을 치른다
+    expect(forced.trust).toBeCloseTo(0.4, 8);
+    expect(willing.trust).toBeCloseTo(0.5, 8);
+    expect(forced.memories.some((memory) => memory.kind === "forcedAssignment")).toBe(true);
+    expect(willing.memories.some((memory) => memory.kind === "forcedAssignment")).toBe(false);
+  });
+
+  it("test_dispatch_without_reluctant_ids_leaves_trust_untouched", () => {
+    // Arrange
+    const state = createGameState(SEED, CONFIG);
+    const contract = state.openContracts[0];
+    const member = availableGuildMembers(state)[0];
+    const before = member.trust;
+
+    // Act
+    dispatchParty(state, contract.id, [member.id]);
+
+    // Assert
+    expect(member.trust).toBe(before);
+    expect(member.memories).toHaveLength(0);
   });
 
   it("test_dispatched_member_cannot_be_dispatched_again", () => {
@@ -428,16 +478,26 @@ describe("파견 결과가 명부에 반영된다", () => {
 });
 
 describe("경제가 일일 진행에 물려 있다", () => {
-  it("test_advance_payment_lands_in_funds_immediately", () => {
-    // 선불은 판정 없이 즉시 지갑에 들어온다 — 그것이 선불 축의 존재 이유다
-    const state = createGameState(SEED, CONFIG);
-    const before = state.funds;
-    const contract = state.openContracts[0];
-    const member = availableGuildMembers(state)[0];
+  it("test_success_pays_the_full_agreed_reward", () => {
+    // Arrange — success 결과가 나올 때까지 시드를 바꿔가며 회차를 만든다
+    for (let seed = 0; seed < 400; seed += 1) {
+      const state = createGameState(seed, CONFIG);
+      const contract = state.openContracts[0];
+      const member = availableGuildMembers(state)[0];
+      dispatchParty(state, contract.id, [member.id], { agreedReward: 200 });
+      const fundsBefore = state.funds;
 
-    dispatchParty(state, contract.id, [member.id], { advancePaid: 90, remainingReward: 60 });
+      let report = advanceDay(state, CONFIG);
+      while (report.resolved.length === 0 && state.phase === "playing") {
+        report = advanceDay(state, CONFIG);
+      }
+      if (report.resolved[0]?.result.outcome !== "success") continue;
 
-    expect(state.funds).toBe(before + 90);
+      // Assert — 완수(success)하면 타결액 전액이 들어온다
+      expect(state.funds).toBe(fundsBefore + 200);
+      return;
+    }
+    throw new Error("success 결과가 나오는 시드를 찾지 못했다");
   });
 
   it("test_reputation_moves_when_a_dispatch_resolves", () => {
@@ -446,7 +506,7 @@ describe("경제가 일일 진행에 물려 있다", () => {
       const state = createGameState(seed, CONFIG);
       const contract = state.openContracts[0];
       const member = availableGuildMembers(state)[0];
-      dispatchParty(state, contract.id, [member.id], { advancePaid: 0, remainingReward: 100 });
+      dispatchParty(state, contract.id, [member.id], { agreedReward: 100 });
       const reputationBefore = state.reputation;
 
       let report = advanceDay(state, CONFIG);
@@ -464,12 +524,13 @@ describe("경제가 일일 진행에 물려 있다", () => {
     throw new Error("판정이 나는 시드를 찾지 못했다");
   });
 
-  it("test_death_never_pays_the_remaining_reward", () => {
+  it("test_death_never_pays_the_agreed_reward", () => {
+    // Arrange — dead 결과가 나올 때까지 시드를 바꿔가며 회차를 만든다
     for (let seed = 0; seed < 400; seed += 1) {
       const state = createGameState(seed, CONFIG);
       const contract = state.openContracts[0];
       const member = availableGuildMembers(state)[0];
-      dispatchParty(state, contract.id, [member.id], { advancePaid: 0, remainingReward: 500 });
+      dispatchParty(state, contract.id, [member.id], { agreedReward: 500 });
       const fundsBefore = state.funds;
 
       let report = advanceDay(state, CONFIG);
@@ -478,33 +539,11 @@ describe("경제가 일일 진행에 물려 있다", () => {
       }
       if (report.resolved[0]?.result.outcome !== "dead") continue;
 
-      // 사망이면 잔금은 없다. 선불로 받아둔 것만 남는다.
+      // Assert — 사망이면 타결액은 전혀 들어오지 않는다
       expect(state.funds).toBe(fundsBefore);
       return;
     }
     throw new Error("사망이 나는 시드를 찾지 못했다");
-  });
-
-  it("test_unpaid_balance_permanently_records_the_client_wealth", () => {
-    // 한 번 떼이면 그 사람에게는 두 번 다시 속지 않는다
-    for (let seed = 0; seed < 400; seed += 1) {
-      const state = createGameState(seed, CONFIG);
-      const contract = state.openContracts[0];
-      const member = availableGuildMembers(state)[0];
-      dispatchParty(state, contract.id, [member.id], { advancePaid: 0, remainingReward: 200 });
-
-      let report = advanceDay(state, CONFIG);
-      while (report.resolved.length === 0 && state.phase === "playing") {
-        report = advanceDay(state, CONFIG);
-      }
-      if (state.knowledge.knownWealth.size === 0) continue;
-
-      expect(state.knowledge.knownWealth.get(contract.client.id)).toBe(contract.client.wealth);
-      // 사망은 wealth를 묻지 않았으므로 공개 대상이 아니다
-      expect(report.resolved[0].result.outcome).not.toBe("dead");
-      return;
-    }
-    throw new Error("미지급이 나는 시드를 찾지 못했다");
   });
 });
 

@@ -1,11 +1,29 @@
 # Story 012: 명성·자금 경제 (잔금 판정, 스케일링)
 
-> **Day**: 2 | **Status**: Implemented — `/story-done` 대기 | **Layer**: Feature | **Type**: Logic
+> **Day**: 2 | **Status**: Superseded | **Layer**: Feature | **Type**: Logic
 > **Estimate**: 1.5h
 > **Spec**: `design/quick-specs/contract-negotiation-2026-08-08.md` §5,
 > `design/quick-specs/dispatch-resolution-2026-08-08.md` §4,
 > `design/quick-specs/guild-scale-and-difficulty-2026-08-08.md` §1
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
+
+> **2026-08-09 전면 개정 영향** — 이 스토리는 3일 마감판의 as-built 기록이다.
+> 본문은 당시 구현을 그대로 서술하며 수정하지 않는다.
+>
+> **폐기된 것**: Context의 첫 문장 *"선불 축이 값을 하는 곳이다"* 가 이 스토리의 존재
+> 이유였는데, 그 축이 사라진다. **AC-1~4가 전부 폐기된다** — AC-1(타결 시 선불 즉시
+> 입금), AC-2(잔금 지급 여부를 `rng.chance(client.wealth)`로 판정), AC-3(`dead`면
+> 선불만 남는다), AC-4(미지급 시 `wealth` 영구 기록 = `knownWealth`). 따라 나가는
+> 식별자: `WealthReveal`, `PlayerKnowledge.knownWealth`, `MutableKnowledge.knownWealth`,
+> `ActiveDispatch.remainingReward`, `receiveAdvance()` 호출.
+> 함께 폐기: **고정비가 없다는 전제.** 3일 판의 지출은 영입비·확장비·소문값 세 개뿐이라
+> *"20골드밖에 없습니다"* 라는 농부 앞에서 갈등이 생기지 않는다.
+> **대체·확장**: `production/roadmap.md` **P0**(선불·잔금 미지급 제거), **P3**(고정비 —
+> 임대료·급여·치료비·장비 유지비의 주기적 정산, 하루 마감 화면), **P5**(명성 단일
+> 수치를 세력 평판 6종으로 승격. AC-5~7의 명성 변동과 난이도 스케일링 입력이 여기서
+> 재편된다). 새 요구사항은 그쪽이 소유한다.
+> 판정(`economy.ts`)과 적용(`gameState.ts`)의 파일 경계, 정산을 의뢰 생성보다 먼저
+> 부르는 `advanceDay` 순서는 생존한다.
 
 ## Context
 

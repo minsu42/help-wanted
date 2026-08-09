@@ -1,9 +1,26 @@
 # Story 009: 소문 획득 판정 (신뢰·성격 필터·왜곡)
 
-> **Day**: 2 | **Status**: Implemented — `/story-done` 대기 | **Layer**: Feature | **Type**: Logic
+> **Day**: 2 | **Status**: Superseded | **Layer**: Feature | **Type**: Logic
 > **Estimate**: 2h
 > **Spec**: `design/quick-specs/rumor-network-2026-08-08.md` §4–6
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
+
+> **2026-08-09 전면 개정 영향** — 이 스토리는 3일 마감판의 as-built 기록이다.
+> 본문은 당시 구현을 그대로 서술하며 수정하지 않는다.
+>
+> **폐기된 것**: **사실의 출처가 길드원이라는 전제.** AC-1·AC-3이 `Client.knownBy`
+> 조회를 사실 공개의 관문으로 삼고, 그 조회 대상이 길드 홀에 출석한 길드원이다
+> (`RumorClient = Pick<Client, 'id' | 'knownBy' | 'wealth'>`). 컨셉이 이것을
+> *"길드원이 사람이 아니라 정보 단말기였다"* 로 지목했다 — 내 길드원이 온 도시의
+> 비밀을 아는 것은 세계관적으로 이상하다. 개정 후 **길드원은 사실을 말하지 않는다**
+> (의견·관계·자원만). 함께 흔들리는 것: 잔금 미지급이 폐지되면서 `realWealth` 사실이
+> 소비처를 잃고, 그에 따라 `balance.json`의 `rumor.factsPerContract: 2`와
+> AC-4(*"`talkative`는 1회에 사실 2개"*)의 "2"가 근거를 잃는다.
+> **대체·확장**: `production/roadmap.md` **P0**(`realWealth`의 처분 결정 — 살릴지
+> 죽일지에 따라 위 연쇄가 전부 따라 움직인다) 및 **P4**(소문 출처를 외부인·정보상으로
+> 이동, `rumor.ts` 개정). 새 요구사항은 그쪽이 소유한다.
+> 성격 필터, 신뢰 임계값, 왜곡과 게이트의 분리, 화자 귀속(`tellerId`)은 전부 생존하며
+> 출처만 갈아 끼운다. 통합 중 뒤집은 **신뢰 게이트 → 값 게이트 순서**도 유지한다.
 
 ## Context
 

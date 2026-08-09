@@ -1,9 +1,23 @@
 # Story 011: 위험 고지 축 연동 (revealedFacts → 협상)
 
-> **Day**: 2 | **Status**: Ready | **Layer**: Feature | **Type**: Integration
+> **Day**: 2 | **Status**: Superseded | **Layer**: Feature | **Type**: Integration
 > **Estimate**: 1h
 > **Spec**: `design/quick-specs/contract-negotiation-2026-08-08.md` §2
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
+
+> **2026-08-09 전면 개정 영향** — 이 스토리는 3일 마감판의 as-built 기록이다.
+> 본문은 당시 구현을 그대로 서술하며 수정하지 않는다.
+>
+> **폐기된 것**: **게이트가 은폐 축 하나만 전제한다는 것.** AC-1의 두 조건
+> (① `revealedFacts`에 `${contractId}:realRisk`가 있다 ② 실제 위험도 > 공개 위험도)은
+> 격차가 **은폐 하나뿐**이고 그 격차가 **위험도라는 단일 숫자**일 때만 성립한다.
+> 개정 후 격차는 은폐/무지 두 갈래이고, 고지의 대상도 위험도 한 값이 아니라 의뢰서의
+> 여러 슬롯이다. 그리고 위험 고지는 독립된 축이 아니라 **여러 근거 중 하나**가 된다 —
+> *"그곳은 당신이 적어 온 것보다 위험합니다"* 는 흥정 근거의 한 종류일 뿐이다.
+> AC-2의 사유 코드 2종(`'unknownRisk'` / `'noGap'`)도 채널이 둘로 늘면 부족해진다.
+> **대체·확장**: `production/roadmap.md` **P3**(근거 기반 협상 — 알아낸 사실의 개수가
+> 곧 흥정력이 되고 고지가 그 안으로 흡수된다). 새 요구사항은 그쪽이 소유한다.
+> `concealedKnownRisk` 침묵 표식과 그것이 신뢰 하락을 발동시키는 회로는 생존한다.
 
 ## Context
 

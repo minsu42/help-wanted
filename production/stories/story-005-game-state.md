@@ -1,9 +1,26 @@
 # Story 005: 게임 상태 + 일일 진행 (15일)
 
-> **Day**: 1 | **Status**: Implemented — `/story-done` 대기 | **Layer**: Feature | **Type**: Logic
+> **Day**: 1 | **Status**: Superseded | **Layer**: Feature | **Type**: Logic
 > **Estimate**: 1h | **Last Updated**: 2026-08-08
 > **Spec**: 인라인 정의 (별도 quick-spec 없음 — 3일 스코프 결정)
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
+
+> **2026-08-09 전면 개정 영향** — 이 스토리는 3일 마감판의 as-built 기록이다.
+> 본문은 당시 구현을 그대로 서술하며 수정하지 않는다.
+>
+> **폐기된 것**: **15일 고정 회차 전체** — 제목의 "(15일)", AC-5의 `day > 15` 하드
+> 종료, AC-8의 "15일 전체가 동일하게 재현된다", Implementation Deviations 5번이 추가한
+> `balance.json`의 `session.totalDays: 15`. 회차 길이는 시간이 아니라 **막 구조**에
+> 종속된다. 함께 폐기: Implementation Deviations 2번의 `ActiveDispatch.advancePaid`와
+> `receiveAdvance()` 배선 — 선불 축이 사라지면 실어 나를 값이 없다.
+> **대체·확장**: `production/roadmap.md` **P0**(선불 제거, `totalDays`를 하드 종료가
+> 아니라 막 전환 기준으로 바꿀 준비 — P7까지는 임시로 긴 값), **P3**(하루 마감 화면,
+> 행동 횟수, 고정비 정산), **P7**(막 전환이 회차 길이를 정한다).
+> 새 요구사항은 그쪽이 소유한다.
+>
+> ⚠ **여기서 결정되지 않은 것이 P1으로 간다** — `GameState`의 **지속성(세이브/로드)**.
+> 3일 판에는 저장이 아예 없었고, 8~15시간 캠페인에서는 필수다. 저장 포맷은 스키마
+> 변경에 물리므로 `Contract` 재설계와 같이 잡는다 (P1, `persistence-*.md`).
 
 ## Context
 

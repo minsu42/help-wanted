@@ -36,3 +36,8 @@ Desktop.ini
 .env.*.local
 *.pem
 *.key
+
+# 외부 CC0 에셋 원본 아카이브. 저장소에 넣지 않는다 —
+# tools/asset-pipeline이 여기서 필요한 조각만 구워 src/assets/에 내보낸다.
+# 출처와 라이선스는 docs/asset-credits.md 참조.
+*.zip

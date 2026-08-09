@@ -1,9 +1,37 @@
 # Story 008: 파견 배정 + 결과 화면 (최소판)
 
-> **Day**: 1 | **Status**: Implemented — `/story-done` 대기 | **Layer**: Presentation | **Type**: UI
+> **Day**: 1 | **Status**: Superseded | **Layer**: Presentation | **Type**: UI
 > **Estimate**: 2h
 > **Spec**: `design/quick-specs/dispatch-resolution-2026-08-08.md` §1, §4
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
+
+> **2026-08-09 전면 개정 영향** — 이 스토리는 3일 마감판의 as-built 기록이다.
+> 본문은 당시 구현을 그대로 서술하며 수정하지 않는다.
+>
+> **폐기된 것**: **배정 거부의 근거.** AC-3(`goal === 'survival'` + 공개 위험도 >
+> `survivalRefusalRisk`), AC-4(`trust < assignmentTrustThreshold`), AC-5(`goal ===
+> 'glory'` 강조 + Implementation Deviations 2번이 새로 뗀 `dispatch.gloryVolunteerRisk`)
+> 는 전부 **목표 4종과 신뢰 수치**만으로 거부를 판정한다. 개정판에서 모험가는 스탯이
+> 아니라 **가치관을 가진 사람**이며, 거부의 근거가 두 갈래로 갈린다 — ① 의뢰서에 적힌
+> 위험도(플레이어가 적은 값), ② 가치관·과거 악연·공포 대상. 공개 위험도(`statedRisk`)
+> 기준 판정은 자리를 내준다.
+> **대체·확장**: `production/roadmap.md` **P2**(모험가가 의뢰서를 보고 배정을 거부하거나
+> 수당을 요구 — "의도된 부패"가 실체를 갖는 곳) 및 **P4**(가치관 기반 거부, 강제 배정의
+> 결과 — 충성도 하락·임무 중 이탈·길드 탈퇴).
+> 새 요구사항은 그쪽이 소유한다. Implementation Deviations의 **결정 1**(`advanceDay`는
+> 화면이 아니라 `main.ts`가 부른다)과 `inGuild` 필터 회귀 테스트는 생존한다.
+
+> **2026-08-09 — 예정된 폐기가 아니라 지금 실행됐다.**
+>
+> 위 주석은 배정 거부를 *"개정판에서 자리를 내준다"* 며 P2/P4로 미뤘다. 그런데
+> **그 하드 게이트가 게임을 멈추고 있었다** — 가용한 모험가가 전부 거부 상태가 되면
+> 배정 화면에 나갈 문이 없었다(자동 플레이 6회 중 3회 정지). `production/roadmap.md`의
+> 「`main`은 항상 배포 가능」과 정면으로 부딪히므로 P4까지 기다릴 수 없었다.
+>
+> AC-3·AC-4는 **거부에서 꺼림으로** 바뀌었다(막지 않고 경고 + 강행 시 대가).
+> AC-5(glory 강조)는 손대지 않았다 — 원래도 게이트가 아니라 힌트였다.
+> 가치관 기반 판정과 「길드 탈퇴」는 여전히 **P4의 몫으로 남는다.**
+> 개정 스펙: `design/quick-specs/assignment-reluctance-2026-08-09.md`.
 
 ## Context
 
@@ -14,8 +42,11 @@
 
 - [x] 타결된 의뢰에 `available` 길드원을 1~`maxPartySize`명 배정할 수 있다
 - [x] 각 모험가는 이름, **등급**(`gradeOf`), 성격 태그 2개, 상태로 표시된다
-- [x] `goal === 'survival'`이고 공개 위험도 > `survivalRefusalRisk`면 배정을 거부하고 **사유를 보여준다**
-- [x] `trust < assignmentTrustThreshold`면 거부한다
+- [x] ~~`goal === 'survival'`이고 공개 위험도 > `survivalRefusalRisk`면 배정을 거부하고 **사유를 보여준다**~~
+  → **2026-08-09 개정.** 거부하지 않는다. **사유는 그대로 보여주되** 강행할 수 있고
+  강행하면 대가를 문다
+- [x] ~~`trust < assignmentTrustThreshold`면 거부한다~~
+  → **2026-08-09 개정.** 위와 같다
 - [x] `goal === 'glory'`인 모험가는 고위험 의뢰에서 강조 표시된다
 - [x] 배정 확정 시 전원 `onMission`이 되고 `durationDays`가 표시된다
 - [x] 기간 경과 후 결과가 표시된다 — 성공/부상/사망, 누가 어떻게 됐는지

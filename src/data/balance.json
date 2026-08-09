@@ -30,7 +30,7 @@
   },
 
   "session": {
-    "_comment": "15일 회차. 컨셉 문서의 MVP 정의에서 온다 — 짧아야 다시 하고, 다시 해야 정보의 가치를 배운다.",
+    "_comment": "~~15일 회차. 컨셉 문서의 MVP 정의에서 온다 — 짧아야 다시 하고, 다시 해야 정보의 가치를 배운다.~~ → 근거 소멸 (2026-08-09). 컨셉 전면 개정으로 3일 마감 전제와 15일 고정 회차 자체가 폐기됐고 캠페인은 8~15시간 규모로 늘었다. 값 15는 그대로 두지만 의미가 바뀌었다 — 이제 하드 종료가 아니라 임시 상한이며, 로드맵 P7의 「막 전환」이 이 자리를 대체할 예정이다. 늘릴 때는 반드시 ending.reputationLow/reputationHigh를 같이 조정할 것 — 그 경계가 15일 수입 곡선에 맞춰 잡혀 있어, totalDays만 올리면 모든 회차가 high 등급에 도달해 버린다. 두 값이 이 파일 안에서 서로를 모르는 채 따로 튜닝되는 것이 가장 비싼 실수다.",
     "totalDays": 15
   },
 
@@ -66,17 +66,20 @@
   "negotiation": {
     "_comment": "수용 판정은 결정론이다. 난수가 들어가면 정보가 흥정력이 되지 못한다.",
     "wReward": 1.0,
-    "wAdvance": 0.8,
     "toleranceBase": 0.35,
     "wealthWeight": 0.5,
     "urgencyWeight": 0.6,
     "alternativePenalty": 0.25,
     "disclosureBonus": 0.4,
-    "maxOffers": 2,
-    "_offerComment": "플레이어가 창구에서 부를 수 있는 범위. 상한이 곧 욕심의 한계이므로 밸런스 값이다.",
-    "offerRewardMin": 0.5,
-    "offerRewardMax": 3.0,
-    "offerStep": 0.05
+    "maxOffers": 3,
+    "_movesComment": "흥정은 대화다 — 선택지 하나가 곧 제안 한 번이고 evaluateOffer를 한 번 부른다. reward는 증분이 아니라 도달할 절대값이며, 생략하면 직전 상태를 유지한다. 문안은 text.json의 moves 절에 같은 id로 있다. 2026-08-09 컨셉 개정으로 선불(advance) 축이 통째로 빠졌다 — wAdvance와 askAdvance/askAdvanceHalf/backDownAdvance 세 수가 사라졌다. maxOffers는 그래도 3을 유지한다: 남은 수가 pressReward/pressRewardHard/disclose/backDownReward/takeAsIs 다섯이고, 한 수에 한 축(reward)만 움직이는 인터페이스이므로 2회로는 값을 올려 보고(press) 반박을 들은 뒤 물러설(backDown) 여유가 없어 결렬만 남는다.",
+    "moves": [
+      { "id": "pressReward", "reward": 1.4 },
+      { "id": "pressRewardHard", "reward": 2.0 },
+      { "id": "disclose", "disclose": true },
+      { "id": "backDownReward", "reward": 1.0 },
+      { "id": "takeAsIs", "reward": 1.0 }
+    ]
   },
 
   "rumor": {
@@ -113,7 +116,10 @@
     "survivalRefusalRisk": 90,
     "_gloryComment": "glory 모험가가 자원하는 위험도. survivalRefusalRisk와 일부러 다른 노브다 — 같은 값을 재사용하면 거부 임계값을 조정할 때 자원 표시가 조용히 따라 움직인다. 70~90 구간에서 '자원하는데 아무도 거부하지 않는' 밴드가 생기는 것이 의도다.",
     "gloryVolunteerRisk": 70,
+    "_reluctanceComment": "2026-08-09 — assignmentTrustThreshold와 survivalRefusalRisk의 성격이 바뀌었다. 하드 게이트가 아니라 경고 표시 임계값이다. 이전에는 이 조건에 걸린 사람을 아예 배정할 수 없었고, 가용한 전원이 걸리면 배정 화면을 벗어날 방법이 없어 게임이 멈췄다(자동 플레이 6회 중 3회). 원인은 임계값이 높은 것이 아니라 산술이었다 — guildInitialTrust 0.5에 대해 trustOnDeath(-0.15) + trustOnDeceit(-0.35) = -0.5라서 은폐 사망 한 번이면 길드원 전원이 정확히 0.0이 된다. 임계값이 0보다 크기만 하면 무엇이든 잠기므로 이 값을 낮추는 것으로는 고쳐지지 않는다. 이제는 강행할 수 있고 대신 forcedAssignmentTrustPenalty를 문다. 기록: design/quick-specs/assignment-reluctance-2026-08-09.md",
     "assignmentTrustThreshold": 0.15,
+    "_forcedAssignmentComment": "꺼리는 사람을 강행 배정했을 때 그 사람의 신뢰 감소분. trustOnWound(-0.1)와 같은 크기다 — '내키지 않는데 보내졌다'가 '다쳐서 돌아왔다'와 같은 무게라는 뜻이고, trustOnDeath(-0.15)보다는 가볍다(사람이 죽은 것보다 무거울 수 없다). ⚠ 신뢰가 이미 0이면 이 대가가 무력해진다 — 가장 강행하고 싶은 순간에 공짜가 된다. 바닥에서도 작동하는 대가는 로드맵 P4의 「길드 탈퇴」뿐이다.",
+    "forcedAssignmentTrustPenalty": -0.1,
     "repOnSuccess": 2.5,
     "repOnDeath": 6,
     "repInjuryPenalty": 0.6
@@ -128,7 +134,7 @@
   },
 
   "ending": {
-    "_comment": "결산 화면의 명성 구간 경계. 미만이면 low, 이상이면 high, 사이는 mid. 15일 총수입 곡선상 '좋은 회차'가 50~60에 닿으므로 high=60은 최상급 회차만 도달한다 — story-018 밸런스 패스에서 3종이 실제로 다 나오는지 확인하고 조정할 것.",
+    "_comment": "결산 화면의 명성 구간 경계. 미만이면 low, 이상이면 high, 사이는 mid. 15일 총수입 곡선상 '좋은 회차'가 50~60에 닿으므로 high=60은 최상급 회차만 도달한다 — story-018 밸런스 패스에서 3종이 실제로 다 나오는지 확인하고 조정할 것. 이 경계는 session.totalDays=15에 맞춰 잡혀 있다 — totalDays를 늘리면 이 값도 같이 조정해야 한다(그 반대도 마찬가지). 자세한 근거는 session.totalDays의 _comment 참조.",
     "reputationLow": 20,
     "reputationHigh": 60
   },

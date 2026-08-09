@@ -203,12 +203,6 @@
   line-height: 1.6;
 }
 
-.outcome__payment--unpaid {
-  background: var(--seal);
-  color: var(--paper);
-  font-size: 1.0625rem;
-  font-weight: bold;
-}
 
 /* --- 사망 --- */
 

@@ -1,10 +1,22 @@
 # Story 002: 의뢰인·의뢰 생성 (숨은 진실 포함)
 
-> **Day**: 1 | **Status**: Implemented — `/story-done` 대기 | **Layer**: Core | **Type**: Logic
+> **Day**: 1 | **Status**: Superseded | **Layer**: Core | **Type**: Logic
 > **Estimate**: 2h | **Last Updated**: 2026-08-08
 > **Spec**: `design/quick-specs/guild-scale-and-difficulty-2026-08-08.md` §2,
 > `design/quick-specs/rumor-network-2026-08-08.md` §1–2
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
+
+> **2026-08-09 전면 개정 영향** — 이 스토리는 3일 마감판의 as-built 기록이다.
+> 본문은 당시 구현을 그대로 서술하며 수정하지 않는다.
+>
+> **폐기된 것**: `Contract`가 **무슨 일인가**를 담지 않는다는 전제 전체 — 종류·대상·
+> 규모·장소 슬롯이 하나도 없고, 의뢰는 위험도·보상·정원·소요일수라는 숫자 묶음이다.
+> 격차가 **은폐**(`concealment`) 한 축뿐이라는 전제도 폐기된다 — 의뢰인 본인도 모르는
+> **무지**(vagueness) 축이 신설된다. `Client`가 `wealth`/`urgency`/`hasAlternative`
+> 세 값으로만 규정되는 것도 폐기된다 — **직업**이 숨은 값의 분포와 인내심을 정한다.
+> **대체·확장**: `production/roadmap.md` **P1**(의뢰 내용 데이터 모델, 무지 축,
+> 의뢰인 직업 5종, `quest-templates.json`) 및 **P5**(성직·군인 추가).
+> 새 요구사항은 그쪽이 소유한다.
 
 ## Context
 

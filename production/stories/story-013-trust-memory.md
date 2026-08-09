@@ -1,6 +1,6 @@
 # Story 013: 신뢰·기억 갱신 (파견 결과 → trust / Memory)
 
-> **Day**: 2 | **Status**: Ready | **Layer**: Feature | **Type**: Integration
+> **Day**: 2 | **Status**: Complete | **Layer**: Feature | **Type**: Integration
 > **Estimate**: 1h
 > **Spec**: `design/quick-specs/dispatch-resolution-2026-08-08.md` §5,
 > `design/quick-specs/rumor-network-2026-08-08.md` §6

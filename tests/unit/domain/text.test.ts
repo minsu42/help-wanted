@@ -204,7 +204,6 @@ describe("text.json 데이터 무결성", () => {
       "resultDead",
       "rumorTold",
       "counterReward",
-      "counterAdvance",
       "recruitGreeting",
     ]) {
       expect(situationNames()).toContain(required);

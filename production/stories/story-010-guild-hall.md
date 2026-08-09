@@ -1,9 +1,28 @@
 # Story 010: 길드 홀 출석 + 화면
 
-> **Day**: 2 | **Status**: Ready | **Layer**: Presentation | **Type**: UI
+> **Day**: 2 | **Status**: Superseded | **Layer**: Presentation | **Type**: UI
 > **Estimate**: 2h
 > **Spec**: `design/quick-specs/rumor-network-2026-08-08.md` §3
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
+
+> **2026-08-09 전면 개정 영향** — 이 스토리는 3일 마감판의 as-built 기록이다.
+> 본문은 당시 구현을 그대로 서술하며 수정하지 않는다.
+>
+> ⚠ **본문의 AC 체크박스와 Test Evidence는 구현 전 상태에서 갱신되지 않았다.** 실제로는
+> `src/presentation/ui/GuildHallScreen.ts`로 구현되어 커밋 `08450c9`에 들어갔고
+> `tests/unit/presentation/guildHallScreen.test.ts` · `tests/unit/domain/hall.test.ts` ·
+> `tests/integration/hallToKnowledge.test.ts`가 이를 검증한다. 동결 원칙에 따라 그
+> 체크박스는 고치지 않는다 — 실제 상태는 헤더의 `Status`가 말한다.
+>
+> **폐기된 것**: **길드 홀이 사실을 캐는 창이라는 전제.** Context의 *"정보를 캐는
+> 유일한 창"* 과 AC-5(대화 → Story 009 판정 → 사실 공개)가 그 전제 위에 서 있다.
+> 개정 후 홀에서 길드원이 주는 것은 사실이 아니라 **의견·관계·자원 의사**이며, 사실은
+> 홀에 드나드는 **외부인·정보상**이 가져온다. AC-7(밝혀진 인맥 표시)이 영입 판단의
+> 근거였던 것도 P4의 하이브리드 영입에서 재편된다.
+> **대체·확장**: `production/roadmap.md` **P4**(정보 채널 재배치, 길드원 조언,
+> 대화가 신뢰를 올린다 — 홀 순회가 정보 수집에서 **관계 관리**로 바뀐다).
+> 새 요구사항은 그쪽이 소유한다. 출석 규칙(`onMission`/`injured`/`dead` 결석, 등급이
+> 다음 날부터 반영, 시드 결정론)은 생존한다.
 
 ## Context
 

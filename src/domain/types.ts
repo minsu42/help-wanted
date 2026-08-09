@@ -87,7 +87,8 @@ export type MemoryKind =
   | 'wounded' // 다쳐서 돌아왔다
   | 'lostComrade' // 동료가 돌아오지 못했다
   | 'wasWarned' // 위험을 미리 들었다
-  | 'wasDeceived'; // 위험을 듣지 못한 채 갔다
+  | 'wasDeceived' // 위험을 듣지 못한 채 갔다
+  | 'forcedAssignment'; // 내키지 않는다고 했는데도 보내졌다
 
 /**
  * 플레이어의 결정에 대한 인물의 기억 한 조각. 덧붙이기만 하고 지우지 않는다.
@@ -151,11 +152,11 @@ export interface Adventurer extends Person {
 }
 
 /**
- * 의뢰인. `wealth` / `urgency` / `hasAlternative` 세 개가 계약 협상 4개 축의 수용
- * 범위를 결정하는 숨은 상태다.
+ * 의뢰인. `wealth` / `urgency` / `hasAlternative` 세 개가 계약 협상 두 축(보상,
+ * 위험 고지)의 수용 범위를 결정하는 숨은 상태다.
  */
 export interface Client extends Person {
-  /** 자금력 — 보상과 선불의 상한을 정한다 */
+  /** 자금력 — 보상 축의 수용 범위를 정한다 */
   readonly wealth: number;
   /** 급박함 — 양보 폭을 정한다 */
   readonly urgency: number;
@@ -179,13 +180,19 @@ export interface Client extends Person {
 /**
  * 소문으로 얻을 수 있는 사실의 종류.
  *
- * `urgency`와 `hasAlternative`는 **여기 없다.** 그 둘은 흥정 중 의뢰인의 반박이
- * 알려준다 ("선불은 도저히 안 되겠소"). 정보원이 둘로 나뉘어 있어야 홀에서의 대화만으로
- * 모든 것이 풀리지 않는다.
+ * `urgency`와 `hasAlternative`는 **여기 없다.** 그 둘은 흥정에서 어디까지 밀리는지가
+ * 알려준다 — 같은 배율을 불렀는데 누구는 받고 누구는 반박한다. 정보원이 둘로 나뉘어
+ * 있어야 홀에서의 대화만으로 모든 것이 풀리지 않는다.
+ *
+ * > 2026-08-09 개정 — 원래 예시는 *"선불은 도저히 안 되겠소"* 였다. 선불 축이
+ * > 폐기되면서(`roadmap.md` P0 항목 1) **반박이 축을 지목해 주던 채널이 사라졌다.**
+ * > 남은 축이 보상 하나뿐이라 반박은 언제나 보상을 가리키고, 정보는 "지목된 축"이
+ * > 아니라 "어느 배율에서 꺾이는가"로만 새어 나온다. 이 채널을 복구하는 것이
+ * > 로드맵 P3의 「근거 기반 협상」이다.
  */
 export type FactKind =
   | 'realRisk' // 실제 위험도 — 흥정의 위험 고지 축을 연다
-  | 'realWealth'; // 실제 지불 여력 — 선불이냐 보상이냐를 가른다
+  | 'realWealth'; // 실제 지불 여력 — 보상 축의 수용 범위를 알려준다
 
 /** {@link FactKind}의 런타임 전체 목록. {@link TRAITS}와 같은 이유로 존재한다. */
 export const FACT_KINDS: readonly FactKind[] = ['realRisk', 'realWealth'];
@@ -288,14 +295,26 @@ export interface PlayerKnowledge {
    * 조용히 어긋난다.
    */
   readonly heardFacts: ReadonlyMap<string, HeardRumor>;
-  /**
-   * 잔금을 떼이면서 들통난 의뢰인의 실제 지불 여력. `clientId → wealth`
-   *
-   * **한 번 떼이면 그 사람에게는 두 번 다시 속지 않는다.** 선불 축은 페이오프가 며칠
-   * 뒤에 오고 15일 회차에서 떼이는 경험이 두세 번뿐이라 학습이 느리다 — 그 완화책으로
-   * 이것만은 영구히 남는다. 소문으로 얻은 것이 아니라 **대가를 치르고 알게 된 것**이다.
-   */
-  readonly knownWealth: ReadonlyMap<string, number>;
+}
+
+/**
+ * 창구에서 타결된 조건. **의뢰가 아직 배정되지 않았을 때만 존재한다.**
+ *
+ * 이 타입이 프레젠테이션이 아니라 도메인에 있는 이유: 배정 화면을 나갔다가 창구로
+ * 돌아와도 조건이 유지되어야 하는데, 그러려면 {@link GameState}가 들고 있어야 하고
+ * 도메인은 프레젠테이션 타입(`CounterScreen`의 `Settlement`)을 참조할 수 없다.
+ * `Settlement`가 들고 있는 `Contract` 참조는 여기 없다 — 키가 의뢰 id이므로 중복이다.
+ *
+ * **왜 조건을 보존해야 하는가**: `evaluateOffer`는 `offerNumber >= maxOffers`면 무조건
+ * 결렬이다. 타결은 1~2회차에서만 일어나므로, 조건을 버리고 창구로 돌려보내면 플레이어가
+ * 무슨 선택지를 누르든 그것이 3회차라서 즉시 결렬된다 — "열린 채로 유지"가 실질적으로
+ * 파기가 된다. 기록: `design/quick-specs/assignment-reluctance-2026-08-09.md` §5.
+ */
+export interface SettledTerms {
+  /** 흥정이 끝난 최종 보상. 완수하면 전액 들어온다 */
+  readonly agreedReward: number;
+  /** 위험을 고지했는가. 숨겼으면 사망 시 신뢰 하락폭이 커진다 */
+  readonly discloseRisk: boolean;
 }
 
 /**
@@ -323,8 +342,6 @@ export interface MutableKnowledge {
   readonly revealedFacts: Set<string>;
   /** 들은 사실의 상세. `revealedFacts`와 **항상 같이** 채운다 */
   readonly heardFacts: Map<string, HeardRumor>;
-  /** 미지급으로 들통난 의뢰인의 실제 지불 여력. `clientId → wealth` */
-  readonly knownWealth: Map<string, number>;
 }
 
 /**
