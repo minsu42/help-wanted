@@ -23,7 +23,7 @@
  */
 import { createContract, type ContractConfig } from './contract';
 import { resolveDispatch, type DispatchConfig, type DispatchResult } from './dispatch';
-import { receiveAdvance, resolveDailyEconomy, type EconomyConfig } from './economy';
+import { resolveDailyEconomy, type EconomyConfig } from './economy';
 import { resolveHallAttendance, type HallAttendance } from './hall';
 import { resolveDispatchAftermath, type ReputationConfig } from './reputation';
 import type { NamePool } from './person';
@@ -42,17 +42,13 @@ export interface ActiveDispatch {
   /** 이 날 아침에 판정한다 */
   readonly resolveOnDay: number;
   /**
-   * 협상에서 미리 받아둔 금액. **사망해도 남는다** — 선불 축의 존재 이유다.
-   * 파견 시점에 이미 자금에 들어간다.
-   */
-  readonly advancePaid: number;
-  /**
-   * 타결액에서 선불을 뺀 나머지. 의뢰를 완수해야 받고, 그때도 `wealth` 판정을 통과해야 한다.
+   * 타결액. 완수(success/injured)하면 전액 들어오고, 사망이면 무조건 못 받는다.
    *
-   * 사망이면 무조건 못 받는다. **선불로 받아둔 몫과 이것의 차이가 흥정에서 선불 축을
-   * 미는 이유 전부다.**
+   * > 2026-08-09 개정 — `remainingReward`에서 `agreedReward`로 개명했다. 선불 축이
+   * > 사라지면서 "타결액에서 선불을 뺀 나머지"였던 원래 뜻이 없어졌다 — 이제 이
+   * > 값 자체가 타결액 전부다.
    */
-  readonly remainingReward: number;
+  readonly agreedReward: number;
   /**
    * 실제 위험을 알고도 고지하지 않았는가.
    *
@@ -179,7 +175,6 @@ export function createGameState(seed: number, config: GameConfig): GameState {
       discoveredContacts: new Set(),
       revealedFacts: new Set(),
       heardFacts: new Map(),
-      knownWealth: new Map(),
     },
     rng,
     usedNames,
@@ -211,8 +206,7 @@ export function dispatchParty(
   contractId: string,
   partyIds: readonly string[],
   options: {
-    readonly advancePaid?: number;
-    readonly remainingReward?: number;
+    readonly agreedReward?: number;
     readonly concealedKnownRisk?: boolean;
   } = {},
 ): ActiveDispatch {
@@ -246,19 +240,14 @@ export function dispatchParty(
   }
   state.openContracts.splice(contractIndex, 1);
 
-  const advancePaid = options.advancePaid ?? 0;
   const dispatch: ActiveDispatch = {
     contract,
     partyIds: [...partyIds],
     resolveOnDay: state.day + contract.durationDays,
-    advancePaid,
-    remainingReward: options.remainingReward ?? 0,
+    agreedReward: options.agreedReward ?? 0,
     concealedKnownRisk: options.concealedKnownRisk ?? false,
   };
   state.activeDispatches.push(dispatch);
-
-  // 선불은 파견과 동시에 지갑에 들어온다. 판정이 없다 — 그것이 선불 축의 존재 이유다.
-  state.funds = receiveAdvance(state.funds, advancePaid);
 
   return dispatch;
 }
@@ -397,30 +386,24 @@ function applyOutcome(
 }
 
 /**
- * 오늘 판정된 파견들의 자금·명성을 반영하고, 떼인 의뢰인의 지불 여력을 영구 기록한다.
+ * 오늘 판정된 파견들의 자금·명성을 반영한다.
  *
  * 계산은 `economy.ts`(순수 함수)가 하고 여기서는 제자리에 적기만 한다 — 이 파일의
  * "판정은 순수하게, 적용은 제자리에서" 경계를 그대로 따른다.
+ *
+ * > 2026-08-09 개정 — 잔금 미지급 제거로 `resolveDailyEconomy`가 더 이상 rng를
+ * > 받지 않는다. 떼인 의뢰인의 지불 여력을 영구 기록하던 절차(`knownWealth`)도
+ * > 함께 사라졌다.
  */
 function applyEconomy(
   state: GameState,
   resolved: readonly ResolvedDispatch[],
   config: GameConfig,
 ): void {
-  const settled = resolveDailyEconomy(
-    resolved,
-    state.funds,
-    state.reputation,
-    state.rng,
-    config.economy,
-  );
+  const settled = resolveDailyEconomy(resolved, state.funds, state.reputation, config.economy);
 
   state.funds = settled.funds;
   state.reputation = settled.reputation;
-
-  for (const reveal of settled.wealthReveals) {
-    state.knowledge.knownWealth.set(reveal.clientId, reveal.wealth);
-  }
 }
 
 /**

@@ -10,7 +10,6 @@ import {
 /** 설정은 balance.json에서 조립한다 — 테스트가 곧 "수치가 파일에서 온다"의 증거다. */
 const CONFIG: NegotiationConfig = {
   wReward: balance.negotiation.wReward,
-  wAdvance: balance.negotiation.wAdvance,
   toleranceBase: balance.negotiation.toleranceBase,
   wealthWeight: balance.negotiation.wealthWeight,
   urgencyWeight: balance.negotiation.urgencyWeight,
@@ -26,10 +25,9 @@ const BASELINE: NegotiationClient = {
   hasAlternative: false,
 };
 
-/** 부담이 0인 기준 제안 — 기준가, 선불 없음, 고지 없음. */
+/** 부담이 0인 기준 제안 — 기준가, 고지 없음. */
 const NEUTRAL_OFFER: Offer = {
   rewardMultiplier: 1,
-  advanceRatio: 0,
   discloseRisk: false,
 };
 
@@ -65,7 +63,7 @@ function maxAcceptedRewardMultiplier(target: NegotiationClient, base: Offer = NE
 describe("evaluateOffer", () => {
   it("test_identical_inputs_always_produce_identical_result", () => {
     // Arrange — 결정론이 이 시스템의 존재 이유다. 난수가 들어가면 정보가 흥정력을 잃는다.
-    const proposal = offer({ rewardMultiplier: 1.4, advanceRatio: 0.3 });
+    const proposal = offer({ rewardMultiplier: 1.4 });
     const target = client({ wealth: 0.7, urgency: 0.2, hasAlternative: true });
 
     // Act
@@ -78,13 +76,15 @@ describe("evaluateOffer", () => {
   });
 
   it("test_burden_matches_the_specified_formula", () => {
-    const proposal = offer({ rewardMultiplier: 1.5, advanceRatio: 0.4 });
+    // Arrange — 축이 'reward' 하나뿐이므로 burden은 rewardBurden과 같다
+    const proposal = offer({ rewardMultiplier: 1.5 });
 
+    // Act
     const result = evaluateOffer(proposal, client(), CONFIG, FIRST_OFFER);
 
+    // Assert
     expect(result.rewardBurden).toBeCloseTo(CONFIG.wReward * 0.5, 10);
-    expect(result.advanceBurden).toBeCloseTo(CONFIG.wAdvance * 0.4, 10);
-    expect(result.burden).toBeCloseTo(result.rewardBurden + result.advanceBurden, 10);
+    expect(result.burden).toBeCloseTo(result.rewardBurden, 10);
   });
 
   it("test_tolerance_matches_the_specified_formula", () => {
@@ -117,13 +117,20 @@ describe("evaluateOffer", () => {
   });
 
   it("test_offer_exactly_at_tolerance_is_accepted", () => {
-    // 경계는 수락 쪽이다 (burden ≤ tolerance). 부등호가 뒤집히면 밸런싱 감각이 달라진다.
+    // Arrange — 경계는 수락 쪽이다 (burden ≤ tolerance). 부등호가 뒤집히면 밸런싱 감각이 달라진다.
+    //
+    // **이 테스트만 balance.json이 아니라 정확 산술이 가능한 값을 쓴다.** 경계를 재려면
+    // burden과 tolerance가 부동소수점으로 정확히 같아야 하는데, 실제 값에서 역산하면
+    // (`1 + 0.35 / 1` → `1.35 - 1` = 0.35000000000000009) 마지막 비트가 어긋나
+    // 경계가 아니라 반올림 오차를 재게 된다. 2의 거듭제곱 분수만 쓰면 오차가 0이다.
+    const exact: NegotiationConfig = { ...CONFIG, wReward: 1, toleranceBase: 0.5 };
     const target = client({ wealth: 0, urgency: 0 });
-    const exact = CONFIG.toleranceBase / CONFIG.wAdvance;
 
-    const result = evaluateOffer(offer({ advanceRatio: exact }), target, CONFIG, FIRST_OFFER);
+    // Act — burden = 1 × (1.5 − 1) = 0.5, tolerance = 0.5. 둘 다 정확히 표현된다.
+    const result = evaluateOffer(offer({ rewardMultiplier: 1.5 }), target, exact, FIRST_OFFER);
 
-    expect(result.burden).toBeCloseTo(result.tolerance, 10);
+    // Assert
+    expect(result.burden).toBe(result.tolerance);
     expect(result.outcome).toBe("accepted");
   });
 
@@ -175,8 +182,8 @@ describe("evaluateOffer", () => {
     // Arrange — 고지 없이는 거부되지만 보너스를 얹으면 통과하는 지점
     const target = client({ wealth: 0.2, urgency: 0.2 });
     const base = CONFIG.toleranceBase + CONFIG.wealthWeight * 0.2 + CONFIG.urgencyWeight * 0.2;
-    const justOver = (base + CONFIG.disclosureBonus / 2) / CONFIG.wAdvance;
-    const proposal = offer({ advanceRatio: Math.min(1, justOver) });
+    const justOverMultiplier = 1 + (base + CONFIG.disclosureBonus / 2) / CONFIG.wReward;
+    const proposal = offer({ rewardMultiplier: justOverMultiplier });
 
     // Act
     const silent = evaluateOffer(proposal, target, CONFIG, FIRST_OFFER);
@@ -187,37 +194,16 @@ describe("evaluateOffer", () => {
     expect(disclosed.outcome).toBe("accepted");
   });
 
-  it("test_rejected_first_offer_contests_the_dominant_axis", () => {
-    // Given: 보상배율 1.0 + 선불 0.9 → 선불 기여도가 압도적
-    const proposal = offer({ rewardMultiplier: 1, advanceRatio: 0.9 });
+  it("test_rejected_first_offer_always_contests_the_reward_axis", () => {
+    // Arrange — 축이 'reward' 하나뿐이므로 반박은 항상 이것을 지목한다
+    const proposal = offer({ rewardMultiplier: 4 });
     const target = client({ wealth: 0, urgency: 0 });
 
+    // Act
     const result = evaluateOffer(proposal, target, CONFIG, FIRST_OFFER);
 
+    // Assert
     expect(result.outcome).toBe("countered");
-    expect(result.contestedAxis).toBe("advance");
-  });
-
-  it("test_rejected_first_offer_contests_reward_when_reward_dominates", () => {
-    const proposal = offer({ rewardMultiplier: 4, advanceRatio: 0.05 });
-    const target = client({ wealth: 0, urgency: 0 });
-
-    const result = evaluateOffer(proposal, target, CONFIG, FIRST_OFFER);
-
-    expect(result.outcome).toBe("countered");
-    expect(result.contestedAxis).toBe("reward");
-  });
-
-  it("test_contested_axis_is_stable_when_contributions_tie", () => {
-    // 동점에서 흔들리면 결정론이 깨진다. 어느 쪽이든 고정이어야 한다.
-    // 선불을 최대로 밀고, 보상 축이 그와 같은 기여를 내도록 배율을 역산한다.
-    const tiedMultiplier = 1 + CONFIG.wAdvance / CONFIG.wReward;
-    const proposal = offer({ rewardMultiplier: tiedMultiplier, advanceRatio: 1 });
-    const target = client({ wealth: 0, urgency: 0 });
-
-    const result = evaluateOffer(proposal, target, CONFIG, FIRST_OFFER);
-
-    expect(result.rewardBurden).toBeCloseTo(result.advanceBurden, 10);
     expect(result.contestedAxis).toBe("reward");
   });
 
@@ -282,15 +268,6 @@ describe("evaluateOffer", () => {
     expect(() => evaluateOffer(offer(), client(), CONFIG, 0)).toThrow(/offerNumber/);
     expect(() => evaluateOffer(offer(), client(), CONFIG, -1)).toThrow(/offerNumber/);
     expect(() => evaluateOffer(offer(), client(), CONFIG, 1.5)).toThrow(/offerNumber/);
-  });
-
-  it("test_advance_ratio_outside_unit_interval_throws", () => {
-    expect(() => evaluateOffer(offer({ advanceRatio: -0.1 }), client(), CONFIG, 1)).toThrow(
-      /선불 비율/,
-    );
-    expect(() => evaluateOffer(offer({ advanceRatio: 1.1 }), client(), CONFIG, 1)).toThrow(
-      /선불 비율/,
-    );
   });
 
   it("test_max_offers_is_read_from_config_not_hardcoded", () => {

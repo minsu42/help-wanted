@@ -139,22 +139,6 @@
       }
     },
 
-    "counterAdvance": {
-      "_vars": ["client"],
-      "lines": {
-        "default": [
-          "{client|이/가} 난색을 표했다. “선불은 도저히 안 되겠소.”",
-          "{client|이/가} 손을 저었다. “먼저 드릴 돈이 지금은 없습니다.”"
-        ],
-        "cautious": [
-          "{client|이/가} 조심스럽게 말했다. “일이 끝난 뒤에 드리면 안 되겠습니까.”"
-        ],
-        "bitter": [
-          "{client|이/가} 쏘아붙였다. “못 믿겠다는 말씀이십니까.”"
-        ]
-      }
-    },
-
     "negotiationBroken": {
       "_vars": ["client"],
       "lines": {
@@ -256,11 +240,8 @@
     "_comment": "창구 흥정에서 플레이어(길드마스터)가 고르는 대사. situations와 달리 성격 필터를 거치지 않는다 — 말하는 사람이 플레이어이고 플레이어에게는 성격 태그가 없기 때문이다. 그래서 narrate()가 아니라 문자열 그대로 렌더된다. 각 id는 balance.json의 negotiation.moves에 같은 id로 수치가 있다: 여기는 문안만, 저기는 수치만.",
     "pressReward": "“이 일에 그 값은 박합니다. 조금 더 쓰셔야겠습니다.”",
     "pressRewardHard": "“사람 목숨이 걸린 일입니다. 값을 크게 올려 주십시오.”",
-    "askAdvance": "“얼마간은 먼저 받아야 사람을 움직입니다.”",
-    "askAdvanceHalf": "“절반은 선불로 주십시오.”",
     "disclose": "“한 가지 말씀드리죠. 그곳은 당신이 적어 온 것보다 위험합니다.”",
     "backDownReward": "“값 이야기는 접겠습니다.”",
-    "backDownAdvance": "“선불은 없던 걸로 하죠.”",
     "takeAsIs": "“그 조건대로 받겠습니다.”"
   },
 

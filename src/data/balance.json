@@ -30,7 +30,7 @@
   },
 
   "session": {
-    "_comment": "15일 회차. 컨셉 문서의 MVP 정의에서 온다 — 짧아야 다시 하고, 다시 해야 정보의 가치를 배운다.",
+    "_comment": "~~15일 회차. 컨셉 문서의 MVP 정의에서 온다 — 짧아야 다시 하고, 다시 해야 정보의 가치를 배운다.~~ → 근거 소멸 (2026-08-09). 컨셉 전면 개정으로 3일 마감 전제와 15일 고정 회차 자체가 폐기됐고 캠페인은 8~15시간 규모로 늘었다. 값 15는 그대로 두지만 의미가 바뀌었다 — 이제 하드 종료가 아니라 임시 상한이며, 로드맵 P7의 「막 전환」이 이 자리를 대체할 예정이다. 늘릴 때는 반드시 ending.reputationLow/reputationHigh를 같이 조정할 것 — 그 경계가 15일 수입 곡선에 맞춰 잡혀 있어, totalDays만 올리면 모든 회차가 high 등급에 도달해 버린다. 두 값이 이 파일 안에서 서로를 모르는 채 따로 튜닝되는 것이 가장 비싼 실수다.",
     "totalDays": 15
   },
 
@@ -66,23 +66,19 @@
   "negotiation": {
     "_comment": "수용 판정은 결정론이다. 난수가 들어가면 정보가 흥정력이 되지 못한다.",
     "wReward": 1.0,
-    "wAdvance": 0.8,
     "toleranceBase": 0.35,
     "wealthWeight": 0.5,
     "urgencyWeight": 0.6,
     "alternativePenalty": 0.25,
     "disclosureBonus": 0.4,
     "maxOffers": 3,
-    "_movesComment": "흥정은 대화다 — 선택지 하나가 곧 제안 한 번이고 evaluateOffer를 한 번 부른다. reward/advance는 증분이 아니라 그 축이 도달할 절대값이며, 생략된 축은 직전 상태를 유지한다. 문안은 text.json의 moves 절에 같은 id로 있다. maxOffers가 2에서 3으로 오른 것은 이 인터페이스 변경 때문이다 — 슬라이더는 세 축을 한 번에 정하고 제안했지만 대화는 한 수에 한 축만 움직이므로, 2회로는 반박을 듣고 물러설 기회가 없어 결렬만 남는다.",
+    "_movesComment": "흥정은 대화다 — 선택지 하나가 곧 제안 한 번이고 evaluateOffer를 한 번 부른다. reward는 증분이 아니라 도달할 절대값이며, 생략하면 직전 상태를 유지한다. 문안은 text.json의 moves 절에 같은 id로 있다. 2026-08-09 컨셉 개정으로 선불(advance) 축이 통째로 빠졌다 — wAdvance와 askAdvance/askAdvanceHalf/backDownAdvance 세 수가 사라졌다. maxOffers는 그래도 3을 유지한다: 남은 수가 pressReward/pressRewardHard/disclose/backDownReward/takeAsIs 다섯이고, 한 수에 한 축(reward)만 움직이는 인터페이스이므로 2회로는 값을 올려 보고(press) 반박을 들은 뒤 물러설(backDown) 여유가 없어 결렬만 남는다.",
     "moves": [
       { "id": "pressReward", "reward": 1.4 },
       { "id": "pressRewardHard", "reward": 2.0 },
-      { "id": "askAdvance", "advance": 0.3 },
-      { "id": "askAdvanceHalf", "advance": 0.5 },
       { "id": "disclose", "disclose": true },
       { "id": "backDownReward", "reward": 1.0 },
-      { "id": "backDownAdvance", "advance": 0.0 },
-      { "id": "takeAsIs", "reward": 1.0, "advance": 0.0 }
+      { "id": "takeAsIs", "reward": 1.0 }
     ]
   },
 
@@ -135,7 +131,7 @@
   },
 
   "ending": {
-    "_comment": "결산 화면의 명성 구간 경계. 미만이면 low, 이상이면 high, 사이는 mid. 15일 총수입 곡선상 '좋은 회차'가 50~60에 닿으므로 high=60은 최상급 회차만 도달한다 — story-018 밸런스 패스에서 3종이 실제로 다 나오는지 확인하고 조정할 것.",
+    "_comment": "결산 화면의 명성 구간 경계. 미만이면 low, 이상이면 high, 사이는 mid. 15일 총수입 곡선상 '좋은 회차'가 50~60에 닿으므로 high=60은 최상급 회차만 도달한다 — story-018 밸런스 패스에서 3종이 실제로 다 나오는지 확인하고 조정할 것. 이 경계는 session.totalDays=15에 맞춰 잡혀 있다 — totalDays를 늘리면 이 값도 같이 조정해야 한다(그 반대도 마찬가지). 자세한 근거는 session.totalDays의 _comment 참조.",
     "reputationLow": 20,
     "reputationHigh": 60
   },
