@@ -36,6 +36,8 @@ Desktop.ini
 .env.*.local
 *.pem
 *.key
+# LLM 프로토타입의 로컬 API 키 (config.example.js만 추적한다)
+prototypes/llm-intake-ab/config.js
 
 # 외부 CC0 에셋 원본 아카이브. 저장소에 넣지 않는다 —
 # tools/asset-pipeline이 여기서 필요한 조각만 구워 src/assets/에 내보낸다.

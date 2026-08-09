@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>청취 프로토타입 A/B</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1 id="mode-title">…</h1>
+  <div class="hud">행동 칸 <b id="budget">8</b> · <a href="index.html">← 모드 선택</a></div>
+</header>
+
+<main>
+  <section class="chat">
+    <div id="log"></div>
+    <div id="chat-controls">
+      <input id="q" type="text" placeholder="" autocomplete="off">
+      <button id="send">묻기</button>
+      <button id="end-intake" class="ghost">청취 종료</button>
+    </div>
+
+    <div id="commission" style="display:none">
+      <h2>의뢰서</h2>
+
+      <div id="fee-phase">
+        <b>보수 흥정 — 마르타는 아직 창구 앞에 있다</b>
+        <div class="judge-row">
+          <label>의뢰비 제시 (은화)
+            <input id="fee" type="number" min="1" max="200" value="30" style="width:70px">
+          </label>
+          <input id="fee-line" type="text" placeholder="한마디 곁들이기 (선택) — 예: 상황이 상황인지라…" style="flex:1">
+          <button id="fee-offer">제시한다</button>
+        </div>
+        <div id="fee-result" class="note"></div>
+      </div>
+
+      <div id="sheet-phase" style="display:none">
+      <b>받아쓰기 — 청취로 확인된 것</b>
+      <ul id="dictation"></ul>
+      <b>판단 칸 — 네가 정한다</b>
+      <div class="judge-row">
+        <label>추정 위험도
+          <select id="risk">
+            <option>D</option><option selected>C</option><option>B</option><option>A</option><option>S</option>
+          </select>
+        </label>
+        <span id="fee-display" class="fee-display"></span>
+      </div>
+      <label>특이사항 (자유 서술 — 여기 쓴 문장이 그대로 모험가에게 간다)</label>
+      <textarea id="notes" rows="4" placeholder="예: 야간 활동 짐승으로 추정. 낮에 접근할 것. 규모 미확인이므로 퇴로 확보."></textarea>
+      <button id="commission-submit">게시판에 붙인다</button>
+      <div id="prep-result"></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <h2 id="panel-title">…</h2>
+    <div id="panel-body"></div>
+  </aside>
+</main>
+
+<script src="config.js"></script>
+<script src="case-marta.js"></script>
+<script src="case-marta-c.js"></script>
+<script src="llm.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
