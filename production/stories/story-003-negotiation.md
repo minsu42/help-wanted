@@ -1,9 +1,21 @@
 # Story 003: 계약 협상 판정 (3축 burden/tolerance)
 
-> **Day**: 1 | **Status**: Implemented — `/story-done` 대기 | **Layer**: Feature | **Type**: Logic
+> **Day**: 1 | **Status**: Superseded | **Layer**: Feature | **Type**: Logic
 > **Estimate**: 1.5h | **Last Updated**: 2026-08-08
 > **Spec**: `design/quick-specs/contract-negotiation-2026-08-08.md` §3–4
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
+
+> **2026-08-09 전면 개정 영향** — 이 스토리는 3일 마감판의 as-built 기록이다.
+> 본문은 당시 구현을 그대로 서술하며 수정하지 않는다.
+>
+> **폐기된 것**: **3축 전제 전체.** 흥정은 보상/위험 고지 2축이 된다. 구체적으로
+> AC-1의 `burden`에서 `wAdvance × 선불비율` 항, `NegotiationAxis`의 `'advance'`와
+> QA 케이스가 고정한 `contestedAxis === 'advance'` 지목, `Offer.advanceRatio`와
+> Implementation Deviations 3번의 `advanceRatio ∈ [0,1]` 입력 검증이 전부 사라진다.
+> 잔금 미지급이 함께 폐지되므로 선불 축의 페이오프도 없다 — 둘은 같이 서고 같이 눕는다.
+> **대체·확장**: `production/roadmap.md` **P0**(선불 축 제거) 및 **P3**(근거 기반
+> 협상 — 알아낸 사실을 근거로 들 때마다 요구 배율 상한이 오른다).
+> 새 요구사항은 그쪽이 소유한다. `tolerance` 공식과 결정론 요구는 생존한다.
 
 ## Context
 

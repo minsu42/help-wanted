@@ -1,9 +1,25 @@
 # Story 008: 파견 배정 + 결과 화면 (최소판)
 
-> **Day**: 1 | **Status**: Implemented — `/story-done` 대기 | **Layer**: Presentation | **Type**: UI
+> **Day**: 1 | **Status**: Superseded | **Layer**: Presentation | **Type**: UI
 > **Estimate**: 2h
 > **Spec**: `design/quick-specs/dispatch-resolution-2026-08-08.md` §1, §4
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
+
+> **2026-08-09 전면 개정 영향** — 이 스토리는 3일 마감판의 as-built 기록이다.
+> 본문은 당시 구현을 그대로 서술하며 수정하지 않는다.
+>
+> **폐기된 것**: **배정 거부의 근거.** AC-3(`goal === 'survival'` + 공개 위험도 >
+> `survivalRefusalRisk`), AC-4(`trust < assignmentTrustThreshold`), AC-5(`goal ===
+> 'glory'` 강조 + Implementation Deviations 2번이 새로 뗀 `dispatch.gloryVolunteerRisk`)
+> 는 전부 **목표 4종과 신뢰 수치**만으로 거부를 판정한다. 개정판에서 모험가는 스탯이
+> 아니라 **가치관을 가진 사람**이며, 거부의 근거가 두 갈래로 갈린다 — ① 의뢰서에 적힌
+> 위험도(플레이어가 적은 값), ② 가치관·과거 악연·공포 대상. 공개 위험도(`statedRisk`)
+> 기준 판정은 자리를 내준다.
+> **대체·확장**: `production/roadmap.md` **P2**(모험가가 의뢰서를 보고 배정을 거부하거나
+> 수당을 요구 — "의도된 부패"가 실체를 갖는 곳) 및 **P4**(가치관 기반 거부, 강제 배정의
+> 결과 — 충성도 하락·임무 중 이탈·길드 탈퇴).
+> 새 요구사항은 그쪽이 소유한다. Implementation Deviations의 **결정 1**(`advanceDay`는
+> 화면이 아니라 `main.ts`가 부른다)과 `inGuild` 필터 회귀 테스트는 생존한다.
 
 ## Context
 

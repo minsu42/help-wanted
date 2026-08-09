@@ -1,6 +1,6 @@
 # Story 006: 서술 텍스트 조립 (템플릿 엔진)
 
-> **Day**: 1 | **Status**: Implemented — `/story-done` 대기 | **Layer**: Core | **Type**: Logic
+> **Day**: 1 | **Status**: Complete | **Layer**: Core | **Type**: Logic
 > **Estimate**: 1h | **Last Updated**: 2026-08-08
 > **Spec**: 인라인 정의. 제약 근거는 `design/gdd/game-concept.md` Scope Risks
 > **ADR**: N/A — 3일 마감으로 ADR 파이프라인 생략
