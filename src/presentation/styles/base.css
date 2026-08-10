@@ -10,6 +10,9 @@
   --ink: #2b2118;
   --ink-faint: #6b5a45;
   --seal: #8b2320;
+  --wood: #6d4829;
+  --wood-dark: #21160e;
+  --focus: #f0c079;
 
   --font-serif: "Nanum Myeongjo", "Batang", Georgia, serif;
 }
@@ -21,9 +24,30 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--desk-dark);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 63px, rgb(0 0 0 / 12%) 63px 65px),
+    var(--desk-dark);
   color: var(--ink);
   font-family: var(--font-serif);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .desk {

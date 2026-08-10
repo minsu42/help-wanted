@@ -78,7 +78,7 @@
       "id": "client-portrait-expressions-v1",
       "role": "counter client portrait expression atlas",
       "path": "src/assets/client-portrait-expressions.png",
-      "status": "candidate",
+      "status": "approved",
       "technical": {
         "dimensions": "256x64",
         "frame_dimensions": "64x64",
@@ -108,9 +108,9 @@
       },
       "verification": {
         "native_scale_reviewed": true,
-        "in_engine_reviewed": false,
+        "in_engine_reviewed": true,
         "technical_checks_passed": true,
-        "approved_by": ""
+        "approved_by": "runtime art lock — 1280x720 and 390x844"
       }
     },
     {
@@ -123,7 +123,7 @@
         "src/assets/counter-handbook.png",
         "src/assets/counter-response-tools.png"
       ],
-      "status": "candidate",
+      "status": "approved",
       "technical": {
         "logical_dimensions": ["72x52", "168x80", "54x62", "54x48"],
         "alpha": true,
@@ -150,9 +150,9 @@
       },
       "verification": {
         "native_scale_reviewed": true,
-        "in_engine_reviewed": false,
+        "in_engine_reviewed": true,
         "technical_checks_passed": true,
-        "approved_by": ""
+        "approved_by": "runtime art lock — 1280x720 and 390x844"
       }
     },
     {
@@ -177,7 +177,7 @@
       },
       "verification": {
         "native_scale_reviewed": true,
-        "in_engine_reviewed": false,
+        "in_engine_reviewed": true,
         "technical_checks_passed": true,
         "approved_by": "implementation lock"
       }

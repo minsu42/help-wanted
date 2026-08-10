@@ -110,8 +110,8 @@
   grid-template-columns: 13rem minmax(0, 1fr);
   background: var(--paper);
   color: var(--ink);
-  border-radius: 0 2px 2px 2px;
-  box-shadow: 0 2px 12px rgb(0 0 0 / 35%);
+  border: 4px solid #6d4829;
+  box-shadow: 6px 6px 0 rgb(0 0 0 / 35%);
   overflow: hidden;
 }
 
@@ -352,9 +352,11 @@
 
 .counter__nav {
   padding: 0.5rem 1.5rem;
-  background: transparent;
-  border: 1px solid var(--paper-dim);
-  border-radius: 2px;
+  background: none;
+  border-style: solid;
+  border-width: 8px;
+  border-image: url("../../assets/ui-button.png") 3 fill repeat;
+  image-rendering: pixelated;
   color: var(--paper);
   font-family: inherit;
   font-size: 0.9375rem;
@@ -363,5 +365,11 @@
 }
 
 .counter__nav:hover {
-  background: rgb(232 220 192 / 12%);
+  border-image-source: url("../../assets/ui-button-hover.png");
+}
+
+@media (max-width: 760px) {
+  .counter { padding: 1rem 0.75rem 3rem; }
+  .counter__header { align-items: flex-start; flex-direction: column; }
+  .counter__actions { flex-wrap: wrap; }
 }

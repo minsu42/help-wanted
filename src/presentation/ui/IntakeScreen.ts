@@ -53,6 +53,7 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
 
   let handbookOpen = !deps.state.ratesIntroduced;
   let activeBook: IntakeMaterial['book'] = handbookOpen ? 'rates' : 'bestiary';
+  let stampOpen = false;
   if (handbookOpen) deps.state.ratesIntroduced = true;
   let destroyed = false;
   const onClick = (event: Event): void => handleClick(event);
@@ -84,6 +85,9 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
     } else if (action === 'grade' && !sheet.sealed) {
       const grade = control.dataset.grade as RiskGrade | undefined;
       if (grade !== undefined && RISK_GRADES.includes(grade)) sheet.playerGrade = grade;
+      render();
+    } else if (action === 'toggle-stamp' && !sheet.sealed) {
+      stampOpen = !stampOpen;
       render();
     } else if (action === 'seal' && !sheet.sealed) {
       sheet.sealed = true;
@@ -246,13 +250,16 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
         <header><span>의뢰인 진술: <b>${deps.statedGrade}</b></span><span>길드 판정: <b>${sheet.playerGrade ?? ''}</b></span></header>
         <div class="commission-form__slots">${slots}</div>
         ${renderMaterials()}
-        <fieldset class="commission-form__grades" ${sheet.sealed ? 'disabled' : ''}>
-          <legend>위험도 등급</legend>
-          ${RISK_GRADES.map((grade) => `<button type="button" data-action="grade" data-grade="${grade}" class="${sheet.playerGrade === grade ? 'is-selected' : ''}">${grade}</button>`).join('')}
-        </fieldset>
-        <button type="button" class="commission-form__seal" data-action="seal" ${sheet.sealed ? 'disabled' : ''}>
-          ${sheet.sealed ? '도장 완료' : '의뢰서에 도장 찍기'}
-        </button>
+        <div class="commission-form__stamp-area">
+          ${stampOpen && !sheet.sealed ? `<fieldset class="commission-form__grades">
+            <legend>도장 면을 고른다</legend>
+            ${RISK_GRADES.map((grade) => `<button type="button" data-action="grade" data-grade="${grade}" class="${sheet.playerGrade === grade ? 'is-selected' : ''}">${grade}</button>`).join('')}
+          </fieldset>` : ''}
+          <button type="button" class="commission-form__stamp-tool" data-action="${stampOpen ? 'seal' : 'toggle-stamp'}"
+                  aria-expanded="${stampOpen}" ${sheet.sealed ? 'disabled' : ''}>
+            ${sheet.sealed ? '도장 완료' : stampOpen ? `${sheet.playerGrade ?? '등급 없이'} 날인` : '위험도 도장'}
+          </button>
+        </div>
       </article>`;
   }
 

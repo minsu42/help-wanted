@@ -177,9 +177,10 @@
   gap: 1rem;
   margin: 0;
   padding: 14px;
+  background: #2a1b11;
   border-style: solid;
   border-width: 14px;
-  border-image: url("../../assets/ui-panel.png") 5 fill repeat;
+  border-image: url("../../assets/ui-panel.png") 5 repeat;
   image-rendering: pixelated;
   color: #f3ead6;
 }
@@ -209,7 +210,7 @@
   image-rendering: pixelated;
   border-style: solid;
   border-width: 10px;
-  border-image: url("../../assets/ui-inset.png") 5 fill repeat;
+  border-image: url("../../assets/ui-inset.png") 5 repeat;
 }
 
 .hall-dialogue__head {
@@ -331,7 +332,7 @@
   margin-top: 1.5rem;
   padding: 1rem 1.25rem;
   border: 1px solid var(--ink-faint);
-  border-radius: 2px;
+  border: 3px solid #6d4829;
   color: var(--paper);
 }
 
@@ -359,9 +360,11 @@
 .hall__return,
 .hall__end-day {
   padding: 0.5rem 1.5rem;
-  background: transparent;
-  border: 1px solid var(--paper-dim);
-  border-radius: 2px;
+  background: none;
+  border-style: solid;
+  border-width: 8px;
+  border-image: url("../../assets/ui-button.png") 3 fill repeat;
+  image-rendering: pixelated;
   color: var(--paper);
   font-family: inherit;
   font-size: 0.9375rem;
@@ -371,7 +374,14 @@
 
 .hall__return:hover,
 .hall__end-day:hover {
-  background: rgb(232 220 192 / 12%);
+  border-image-source: url("../../assets/ui-button-hover.png");
+}
+
+@media (max-width: 760px) {
+  .hall { padding: 1rem 0.75rem 3rem; }
+  .hall__header { align-items: flex-start; flex-direction: column; }
+  .hall-dialogue { grid-template-columns: 4rem minmax(0, 1fr); padding: 8px; border-width: 10px; }
+  .hall__actions { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

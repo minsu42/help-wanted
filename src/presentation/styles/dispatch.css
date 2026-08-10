@@ -13,6 +13,33 @@
   padding: 2rem 1.5rem 4rem;
 }
 
+.dispatch--assignment {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.8fr) minmax(24rem, 1.4fr);
+  gap: 1.25rem;
+}
+
+.dispatch--assignment .dispatch__actions { grid-column: 1 / -1; }
+.dispatch--assignment .dispatch__header { display: contents; }
+.dispatch--assignment .dispatch__title {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--ink-faint);
+  color: var(--paper);
+}
+.dispatch--assignment .dispatch__facts {
+  grid-column: 1;
+  min-height: 25rem;
+  align-content: start;
+  align-items: stretch;
+  flex-direction: column;
+  background: var(--paper) url("../../assets/counter-commission-form.png") center / 100% 100% no-repeat;
+}
+.dispatch--assignment .dispatch__facts div { justify-content: space-between; padding-bottom: 0.45rem; border-bottom: 1px dashed var(--ink-faint); }
+.dispatch--assignment .roster-list { grid-column: 2; grid-row: 2; margin: 0; max-height: 31rem; overflow: auto; padding: 0 0.35rem; }
+.dispatch--assignment .dispatch__forcing { grid-column: 2; margin: 0; }
+
 .dispatch__header {
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--ink-faint);
@@ -33,7 +60,8 @@
   padding: 1rem 1.25rem;
   background: var(--paper);
   color: var(--ink);
-  border-radius: 2px;
+  border: 3px solid #6d4829;
+  box-shadow: 5px 5px 0 rgb(0 0 0 / 22%);
 }
 
 .dispatch__facts div {
@@ -79,8 +107,8 @@
   padding: 0.875rem 1.25rem;
   background: var(--paper);
   color: var(--ink);
-  border-radius: 2px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+  border: 3px solid #6d4829;
+  box-shadow: 4px 4px 0 rgb(0 0 0 / 25%);
 }
 
 .roster-row--glory {
@@ -107,6 +135,17 @@
   align-items: center;
   gap: 0.75rem;
   cursor: pointer;
+}
+
+.roster-row__portrait {
+  flex: 0 0 3rem;
+  width: 3rem;
+  aspect-ratio: 1;
+  background: url("../../assets/cast-faces.png");
+  background-size: calc(24 * 100%) 100%;
+  background-position-x: calc(var(--cast) / 23 * 100%);
+  border: 2px solid var(--wood-dark);
+  image-rendering: pixelated;
 }
 
 .roster-row__check {
@@ -175,10 +214,12 @@
 .dispatch__advance,
 .dispatch__return {
   padding: 0.5rem 1.5rem;
-  background: var(--desk);
+  background: none;
   color: var(--paper);
-  border: none;
-  border-radius: 2px;
+  border-style: solid;
+  border-width: 8px;
+  border-image: url("../../assets/ui-button.png") 3 fill repeat;
+  image-rendering: pixelated;
   font-family: inherit;
   font-size: 1rem;
   letter-spacing: 0.08em;
@@ -188,11 +229,12 @@
 .dispatch__confirm:hover,
 .dispatch__advance:hover,
 .dispatch__return:hover {
-  background: var(--desk-dark);
+  border-image-source: url("../../assets/ui-button-hover.png");
 }
 
 .dispatch__confirm:disabled {
-  background: var(--ink-faint);
+  border-image-source: url("../../assets/ui-button-disabled.png");
+  opacity: 0.65;
   cursor: not-allowed;
 }
 
@@ -212,6 +254,8 @@
   margin-left: auto;
   background: transparent;
   color: var(--paper-dim);
+  border-image: none;
+  border-width: 1px;
   box-shadow: inset 0 0 0 1px var(--paper-dim);
 }
 
@@ -233,8 +277,21 @@
   padding: 0.875rem 1.25rem;
   background: var(--paper);
   color: var(--ink);
-  border-radius: 2px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+  border: 3px solid #6d4829;
+  box-shadow: 4px 4px 0 rgb(0 0 0 / 25%);
+}
+
+@media (max-width: 760px) {
+  .dispatch { padding: 1rem 0.75rem 3rem; }
+  .dispatch--assignment { grid-template-columns: 1fr; }
+  .dispatch--assignment .dispatch__header,
+  .dispatch--assignment .dispatch__title,
+  .dispatch--assignment .dispatch__facts,
+  .dispatch--assignment .roster-list,
+  .dispatch--assignment .dispatch__forcing,
+  .dispatch--assignment .dispatch__actions { grid-column: 1; grid-row: auto; }
+  .dispatch__actions { align-items: stretch; flex-wrap: wrap; }
+  .dispatch__return.dispatch__return--aside { margin-left: 0; }
 }
 
 .result-row__name {

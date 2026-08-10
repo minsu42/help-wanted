@@ -7,6 +7,7 @@
  * 잡히지 않고 그냥 조잡해 보인다.
  */
 import type { Goal, Grade, Trait } from '../domain/types';
+import hallLayout from '../data/hall-layout.json';
 
 /**
  * 모든 화면 모듈이 돌려주는 것.
@@ -30,6 +31,15 @@ export function escapeHtml(value: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/** 같은 인물은 창구 밖 모든 화면에서 같은 캐스트 아틀라스 칸을 쓴다. */
+export function castIndexOf(id: string): number {
+  let hash = 0;
+  for (let index = 0; index < id.length; index += 1) {
+    hash = (hash * 31 + id.charCodeAt(index)) >>> 0;
+  }
+  return hash % hallLayout.castCount;
 }
 
 /**

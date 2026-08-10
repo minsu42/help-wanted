@@ -52,7 +52,7 @@ import type { DispatchOutcome, DispatchResult } from '../../domain/dispatch';
 import { concealedKnownRisk } from '../../domain/negotiation';
 import { narrate, type TextBank } from '../../domain/text';
 import { gradeOf, type Adventurer, type Contract, type GradeThresholds } from '../../domain/types';
-import { escapeHtml, GOAL_LABELS, GRADE_LABELS, TRAIT_LABELS, type ScreenHandle } from '../screen';
+import { castIndexOf, escapeHtml, GOAL_LABELS, GRADE_LABELS, TRAIT_LABELS, type ScreenHandle } from '../screen';
 import type { Settlement } from './CounterScreen';
 
 export type { ScreenHandle };
@@ -346,7 +346,7 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
     const forcing = reluctantSelection().length;
 
     return `
-      <section class="dispatch">
+      <section class="dispatch dispatch--assignment">
         ${renderHeader('파견 배정')}
         <ul class="roster-list">
           ${rows === '' ? '<li class="roster-list__empty">배정 가능한 길드원이 없다.</li>' : rows}
@@ -395,6 +395,7 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
         <label class="roster-row__label">
           <input type="checkbox" class="roster-row__check" data-field="member" data-id="${member.id}"
                  ${checked ? 'checked' : ''} ${atCapacity ? 'disabled' : ''} />
+          <span class="roster-row__portrait" style="--cast: ${castIndexOf(member.id)}" aria-hidden="true"></span>
           <span class="roster-row__name">${escapeHtml(member.name)}</span>
           <span class="roster-row__grade">${GRADE_LABELS[gradeOf(member.capability, deps.gradeThresholds)]}</span>
           <span class="roster-row__traits">${member.traits.map((trait) => TRAIT_LABELS[trait]).join(' · ')}</span>

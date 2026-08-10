@@ -31,7 +31,7 @@
 import type { GameState } from '../../domain/gameState';
 import { narrate, type TextBank } from '../../domain/text';
 import type { Adventurer } from '../../domain/types';
-import { escapeHtml, type ScreenHandle } from '../screen';
+import { castIndexOf, escapeHtml, type ScreenHandle } from '../screen';
 
 export type { ScreenHandle };
 
@@ -169,6 +169,7 @@ export function mountEndingScreen(root: HTMLElement, deps: EndingScreenDeps): Sc
 
     return `
       <li class="ending__roll-row">
+        <span class="ending__roll-portrait" style="--cast: ${castIndexOf(member.id)}" aria-hidden="true"></span>
         <span class="ending__roll-name">${escapeHtml(member.name)}</span>
         <p class="ending__roll-line">${escapeHtml(line)}</p>
       </li>

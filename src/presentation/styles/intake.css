@@ -47,11 +47,13 @@
   background-size: 400% 100%;
   background-position-x: 0;
   image-rendering: pixelated;
+  transform-origin: 50% 100%;
 }
 
 .intake__window[data-expression="tell"] .intake__portrait { background-position-x: 33.333%; }
 .intake__window[data-expression="ignorance"] .intake__portrait { background-position-x: 66.666%; }
 .intake__window[data-expression="concealment"] .intake__portrait { background-position-x: 100%; }
+.intake__window:not([data-expression="neutral"]) .intake__portrait { animation: portrait-react 180ms steps(2, end); }
 
 .intake__window strong { font-size: 1.5rem; align-self: end; }
 .intake__window > span:last-child { align-self: start; color: var(--paper-dim); }
@@ -136,22 +138,56 @@
 .slot--knowledge { border-style: solid; background-image: radial-gradient(circle at 85% 50%, rgb(91 66 43 / 24%) 0 12%, transparent 13%); }
 .slot--disclosure { border-style: solid; background-image: linear-gradient(108deg, transparent 82%, rgb(91 66 43 / 45%) 83% 86%, transparent 87%); }
 
-.commission-form__grades { display: flex; align-items: center; gap: 0.4rem; margin: 1rem 0 0; border: 0; padding: 0; }
-.commission-form__grades legend { float: left; margin-right: 0.75rem; font-size: 0.78rem; }
+.commission-form__stamp-area { position: relative; display: flex; justify-content: flex-end; margin-top: 0.75rem; }
+.commission-form__grades {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.4rem);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.6rem;
+  background: #2a1b11;
+  border: 3px solid #6d4829;
+  animation: tool-open 120ms steps(2, end);
+}
+.commission-form__grades legend { color: #f3ead6; font-size: 0.72rem; white-space: nowrap; }
 .commission-form__grades button,
-.commission-form__seal,
+.commission-form__stamp-tool,
 .intake__materials button,
 .intake__handbook-tool button,
 .intake__nav button {
   padding: 0.45rem 0.75rem;
-  border: 2px solid #21160e;
-  background: #6d4829;
+  border-style: solid;
+  border-width: 8px;
+  border-image: url("../../assets/ui-button.png") 3 fill repeat;
+  background: none;
   color: #f3ead6;
   font-family: inherit;
   cursor: pointer;
+  image-rendering: pixelated;
 }
+.commission-form__grades button:hover,
+.commission-form__stamp-tool:hover:not(:disabled),
+.intake__materials button:hover,
+.intake__handbook-tool button:hover,
+.intake__nav button:hover { border-image-source: url("../../assets/ui-button-hover.png"); }
+.commission-form__stamp-tool:disabled { border-image-source: url("../../assets/ui-button-disabled.png"); cursor: not-allowed; opacity: 0.7; }
 .commission-form__grades button.is-selected { background: #c68d42; color: #21160e; transform: translateY(2px); }
-.commission-form__seal { float: right; margin-top: 0.75rem; background: #c68d42; color: #21160e; }
+.commission-form__stamp-tool { position: relative; min-width: 9.5rem; padding-right: 3.5rem; color: #f3ead6; }
+.commission-form__stamp-tool::after {
+  content: "";
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  width: 3rem;
+  height: 2.7rem;
+  background: url("../../assets/counter-response-tools.png") right center / auto 2.7rem no-repeat;
+  image-rendering: pixelated;
+  transform: translateY(-50%);
+}
 
 .intake__materials { position: absolute; inset: 3.5rem 1.25rem 4.5rem; z-index: 3; padding: 0.75rem; background: #2a1b11; color: #f3ead6; border: 4px solid #6d4829; overflow: auto; }
 .intake__materials header { display: flex; justify-content: space-between; align-items: center; }
@@ -159,7 +195,7 @@
 
 .intake__handbook-tool { position: relative; background-image: url("../../assets/counter-handbook.png"); background-size: 75%; }
 .intake__handbook-tool > button { position: relative; z-index: 5; width: 100%; margin-top: 8rem; }
-.handbook { position: absolute; right: 0; top: 0; z-index: 4; width: min(34rem, 74vw); max-height: 31rem; overflow: auto; padding: 0.75rem; background: #d0ad70; border: 4px solid #21160e; }
+.handbook { position: absolute; right: 0; top: 0; z-index: 4; width: min(34rem, 74vw); max-height: 31rem; overflow: auto; padding: 0.75rem; background: #d0ad70; border: 4px solid #21160e; animation: tool-open 120ms steps(2, end); }
 .handbook > header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.5rem; }
 .handbook nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.25rem; }
 .handbook nav .is-active { background: #c68d42; color: #21160e; }
@@ -178,9 +214,21 @@
   .intake__desk { grid-template-columns: 1fr; }
   .commission-form { order: -1; min-height: 0; background-image: none; }
   .commission-form__slots { grid-template-columns: 1fr; }
+  .commission-form__grades { position: static; flex-wrap: wrap; margin-bottom: 0.5rem; }
   .intake__notebook, .intake__handbook-tool { min-height: 10rem; }
   .intake__handbook-tool > button { margin-top: 5rem; }
   .handbook { position: fixed; inset: 3rem 0.5rem auto; width: auto; max-height: 75vh; }
+}
+
+@keyframes portrait-react {
+  0% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(2px) scaleY(0.98); }
+  100% { transform: translateY(0) scaleY(1); }
+}
+
+@keyframes tool-open {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {

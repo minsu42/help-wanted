@@ -54,7 +54,7 @@ import type {
 } from '../../domain/types';
 import { gradeOf } from '../../domain/types';
 import type { Rng } from '../../domain/rng';
-import { escapeHtml, GRADE_LABELS, TRAIT_LABELS, type ScreenHandle } from '../screen';
+import { castIndexOf, escapeHtml, GRADE_LABELS, TRAIT_LABELS, type ScreenHandle } from '../screen';
 
 export type { ScreenHandle };
 
@@ -344,6 +344,7 @@ export function mountOutcomeScreen(root: HTMLElement, deps: OutcomeScreenDeps): 
 
     return `
       <li class="outcome__party-member${isCasualty ? ' outcome__party-member--dead' : ''}">
+        <span class="outcome__party-portrait" style="--cast: ${castIndexOf(member.id)}" aria-hidden="true"></span>
         <span class="outcome__party-name">${escapeHtml(member.name)}</span>
         <span class="outcome__party-grade">${grade}</span>
       </li>

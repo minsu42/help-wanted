@@ -73,7 +73,7 @@ import {
 import { discoveredContactKey, resolveTalk, type RumorConfig, type TalkResult } from '../../domain/rumor';
 import { narrate, type TextBank } from '../../domain/text';
 import { gradeOf, type Adventurer, type Contract, type GradeThresholds } from '../../domain/types';
-import { escapeHtml, GRADE_LABELS, TRAIT_LABELS, type ScreenHandle } from '../screen';
+import { castIndexOf, escapeHtml, GRADE_LABELS, TRAIT_LABELS, type ScreenHandle } from '../screen';
 import layout from '../../data/hall-layout.json';
 
 export type { ScreenHandle };
@@ -102,12 +102,6 @@ export interface GuildHallScreenDeps {
  * 얼굴이 바뀌고, 그러면 "저 친구 말은 늘 과장이더라" 같은 기억이 성립하지 않는다 —
  * 성격 필터를 학습 가능하게 만드는 연결이 얼굴에서부터 끊긴다.
  */
-function castIndexOf(id: string): number {
-  let hash = 0;
-  for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  return hash % layout.castCount;
-}
-
 /**
  * 길드 홀 화면을 그린다.
  *
