@@ -1,4 +1,45 @@
-import type { ClientCase, KnowledgeEntry, PartyCandidate } from '../domain/casework';
+import { RISK_POWER, type ClientCase, type Directive, type KnowledgeEntry, type PartyCandidate } from '../domain/casework';
+
+/**
+ * 아침 공문 — 그날부터 게시 심사에 걸리는 지침.
+ *
+ * 전부 **의뢰서에 적힌 내용만** 본다. 사건의 실제 진실을 보는 지침은 반려 문구가 곧
+ * 정답 공개가 되므로 만들지 않는다.
+ */
+export const DIRECTIVES: readonly Directive[] = [
+  {
+    id: 'd-blank-sheet',
+    activeFromDay: 1,
+    title: '백지 의뢰서 금지',
+    text: '목표와 대상을 모두 미상으로 둔 의뢰서는 게시할 수 없다.',
+    violation: (sheet) => sheet.entries.objective.confidence === 'unknown' && sheet.entries.target.confidence === 'unknown'
+      ? '목표와 대상이 모두 미상입니다. 최소한 둘 중 하나는 확인해 기재하십시오.'
+      : undefined,
+  },
+  {
+    id: 'd-medic-for-high-risk',
+    activeFromDay: 2,
+    title: '고위험 의뢰 응급 처치 의무',
+    text: 'B급 이상으로 기록한 의뢰는 응급 처치 인원을 요구하지 않으면 게시할 수 없다.',
+    violation: (sheet) => RISK_POWER[sheet.risk] >= RISK_POWER.B && !sheet.preparations.includes('응급 처치')
+      ? `${sheet.risk}급으로 기록했으나 응급 처치가 준비 항목에 없습니다.`
+      : undefined,
+  },
+  {
+    id: 'd-no-unfounded-certainty',
+    activeFromDay: 2,
+    title: '확정 기재 증빙 강화',
+    text: '확정으로 기재한 항목이 셋을 넘으면 감사 대상이 되므로 게시를 보류한다.',
+    violation: (sheet) => {
+      const confirmed = Object.values(sheet.entries).filter((entry) => entry.confidence === 'confirmed').length;
+      return confirmed > 3
+        ? `확정 기재가 ${confirmed}건입니다. 직접 확인하지 않은 항목은 추정으로 낮추십시오.`
+        : undefined;
+    },
+  },
+];
+
+
 
 /**
  * 의뢰서에 기재할 수 있는 준비 항목의 고정 순서.
@@ -27,6 +68,8 @@ export const KNOWLEDGE: readonly KnowledgeEntry[] = [
   { id: 'k-b-rate', book: 'rules', category: '표준 보수', tags: ['규정', '시세', 'B급'], title: 'B급 시세', text: 'B급 의뢰의 최소 보수는 은화 36닢이다.' },
   { id: 'k-magic-premium', book: 'rules', category: '위험수당', tags: ['규정', '시세', '마력'], title: '마력 위험수당', text: '마력성 위험에는 기본 보수의 20% 이상을 가산한다.', imageQuadrant: 'crystal' },
   { id: 'k-rescue-rule', book: 'rules', category: '목표 우선순위', tags: ['규정', '구조', '생존자'], title: '구조 우선 원칙', text: '생존자 가능성이 있는 의뢰는 회수보다 구조를 우선 기록한다.' },
+  { id: 'k-medic-mandate', activeFromDay: 2, book: 'rules', category: '접수 금지', tags: ['규정', '공문', '구조'], title: '공문 · 고위험 응급 처치 의무', text: 'B급 이상으로 기록한 의뢰는 응급 처치 인원을 요구하지 않으면 게시할 수 없다.' },
+  { id: 'k-certainty-audit', activeFromDay: 2, book: 'rules', category: '증빙 기준', tags: ['규정', '공문', '증빙'], title: '공문 · 확정 기재 증빙 강화', text: '확정으로 기재한 항목이 셋을 넘으면 감사 대상이 되므로 게시를 보류한다.' },
 ];
 
 export const CASES: readonly ClientCase[] = [

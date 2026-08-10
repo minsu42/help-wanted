@@ -6,6 +6,8 @@ export type Intent = 'ask' | 'challenge' | 'negotiate' | 'accuse' | 'reassure' |
 
 export interface KnowledgeEntry {
   id: string;
+  /** 이 조항이 게시판에 붙는 날. 없으면 첫날부터 유효하다. */
+  activeFromDay?: number;
   book: 'bestiary' | 'rules';
   title: string;
   text: string;
@@ -113,6 +115,21 @@ export interface IntakeSession {
   usedTurnIds: string[];
   receipts: Record<string, ToolReceipt>;
   challengedClaimIds: string[];
+}
+
+/**
+ * 아침 공문 — 그날부터 게시 심사에 적용되는 길드 지침.
+ *
+ * 판정은 **의뢰서에 적힌 내용만** 본다. 사건의 실제 진실을 참조하는 지침은 만들지 않는다.
+ * 그렇게 하면 반려 문구가 곧 정답 공개가 되어 대조 퍼즐이 무너진다.
+ */
+export interface Directive {
+  id: string;
+  activeFromDay: number;
+  title: string;
+  text: string;
+  /** 위반이면 반려 사유를 반환하고, 통과면 undefined를 반환한다. */
+  violation: (sheet: CommissionSheet) => string | undefined;
 }
 
 export interface CommissionEntry {

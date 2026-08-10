@@ -1,7 +1,11 @@
 import portraitAtlas from '../assets/client-portrait-expressions.png';
 import handbookImage from '../assets/counter-handbook.png';
 import bestiaryPlate from '../assets/bestiary-creature-plate-v1.png';
-import { CASES, KNOWLEDGE, PARTIES, PREPARATION_OPTIONS } from '../data/casework';
+import { CASES, DIRECTIVES, KNOWLEDGE, PARTIES, PREPARATION_OPTIONS } from '../data/casework';
+import {
+  CASES_PER_DAY, checkDirectives, dayOfCase, isLastCaseOfDay, knowledgeForDay, newDirectivesOn,
+  type DirectiveRejection, type PendingDispatch,
+} from '../domain/dayCycle';
 import {
   COMMISSION_SLOTS, SLOT_LABELS, createSession, emptyCommission,
   type ClientCase, type CommissionSheet, type DispatchResult, type IntakeSession,
@@ -11,7 +15,7 @@ import { getPartyApplications, resolveDispatch } from '../domain/dispatchEngine'
 import { compareClaim, resolveTurn, type ClaimComparison } from '../domain/intakeEngine';
 import { createClientAgent, type ClientAgent } from '../llm/clientAgent';
 
-type AppPhase = 'briefing' | 'intake' | 'commission' | 'applications' | 'outcome' | 'summary';
+type AppPhase = 'briefing' | 'morning' | 'intake' | 'commission' | 'applications' | 'filed' | 'summary';
 type Overlay = 'book' | 'ledger' | undefined;
 
 export interface CaseworkAppOptions { agent?: ClientAgent; }
@@ -20,7 +24,6 @@ export class CaseworkApp {
   private phase: AppPhase = 'briefing';
   private caseIndex = 0;
   private session: IntakeSession = createSession(CASES[0]!);
-  private readonly results: DispatchResult[] = [];
   private readonly agent: ClientAgent;
   private busy = false;
   private draft = '';
@@ -33,7 +36,10 @@ export class CaseworkApp {
   private comparison?: ClaimComparison;
   private sealedSheet?: CommissionSheet;
   private applications: PartyApplication[] = [];
-  private lastResult?: DispatchResult;
+  /** 오늘 처리한 파견. 결과는 다음 날 아침 보고서에서만 열린다. */
+  private pending: PendingDispatch[] = [];
+  private reported: PendingDispatch[] = [];
+  private rejections: DirectiveRejection[] = [];
 
   constructor(private readonly root: HTMLElement, options: CaseworkAppOptions = {}) {
     const endpoint = import.meta.env.VITE_AGENT_ENDPOINT as string | undefined;
@@ -42,6 +48,13 @@ export class CaseworkApp {
   }
 
   destroy(): void { this.root.replaceChildren(); }
+
+  private get day(): number { return dayOfCase(this.caseIndex); }
+
+  /** 오늘 펼칠 수 있는 자료. 내일 붙을 공문은 오늘 백과사전에 없다. */
+  private get knowledge(): readonly (typeof KNOWLEDGE)[number][] {
+    return knowledgeForDay(KNOWLEDGE, this.day);
+  }
 
   private get caseData(): ClientCase {
     const value = CASES[this.caseIndex];
@@ -54,7 +67,8 @@ export class CaseworkApp {
     else if (this.phase === 'intake') this.renderIntake();
     else if (this.phase === 'commission') this.renderCommission();
     else if (this.phase === 'applications') this.renderApplications();
-    else if (this.phase === 'outcome') this.renderOutcome();
+    else if (this.phase === 'morning') this.renderMorning();
+    else if (this.phase === 'filed') this.renderFiled();
     else this.renderSummary();
   }
 
@@ -75,7 +89,7 @@ export class CaseworkApp {
     if (button) button.disabled = true;
     if (status) status.textContent = '봉랍 통신선을 확인하는 중…';
     await this.agent.checkHealth();
-    this.phase = 'intake'; this.render();
+    this.phase = 'morning'; this.render();
   }
 
   private renderIntake(): void {
@@ -83,7 +97,7 @@ export class CaseworkApp {
     const recentTurns = this.session.turns.slice(-4);
     const canTalk = this.session.patience > 0;
     const claim = this.caseData.openingClaims.find((candidate) => candidate.id === this.selectedClaimId);
-    const evidence = KNOWLEDGE.find((entry) => entry.id === this.selectedKnowledgeId);
+    const evidence = this.knowledge.find((entry) => entry.id === this.selectedKnowledgeId);
     const challengeMode = Boolean(this.comparison?.valid);
     this.root.innerHTML = `<main class="casework safe-frame">
       ${this.header('접수 심사')}
@@ -136,7 +150,7 @@ export class CaseworkApp {
 
   private applyComparison(): void {
     if (!this.selectedClaimId || !this.selectedKnowledgeId) return;
-    const comparison = compareClaim(this.caseData, this.selectedClaimId, this.selectedKnowledgeId, KNOWLEDGE);
+    const comparison = compareClaim(this.caseData, this.selectedClaimId, this.selectedKnowledgeId, this.knowledge);
     this.comparison = comparison.valid ? comparison : undefined;
     this.error = comparison.valid ? '' : '이 진술을 확인하는 근거가 아닙니다. 종류 태그를 바꾸거나 다른 문장을 골라 보십시오.';
     this.render();
@@ -148,13 +162,13 @@ export class CaseworkApp {
     const turnId = `${this.caseData.id}-${Date.now()}-${previous.usedTurnIds.length + 1}`;
     this.busy = true; this.error = ''; this.render();
     try {
-      const interpreted = await this.agent.interpret({ turnId, utterance: text, caseData: this.caseData, session: previous, knowledge: KNOWLEDGE });
+      const interpreted = await this.agent.interpret({ turnId, utterance: text, caseData: this.caseData, session: previous, knowledge: this.knowledge });
       const interpretation = activeComparison ? {
         ...interpreted, intent: 'challenge' as const,
         targetSlots: [activeComparison.slot],
         citedKnowledgeIds: [...new Set([...interpreted.citedKnowledgeIds, activeComparison.knowledgeId])],
       } : interpreted;
-      const resolved = resolveTurn(this.caseData, previous, turnId, interpretation, KNOWLEDGE);
+      const resolved = resolveTurn(this.caseData, previous, turnId, interpretation, this.knowledge);
       const utterance = await this.agent.respond({ turnId, utterance: text, caseData: this.caseData, session: resolved.session, receipt: resolved.receipt });
       this.session = { ...resolved.session, challengedClaimIds: activeComparison ? [...new Set([...resolved.session.challengedClaimIds, activeComparison.claimId])] : resolved.session.challengedClaimIds,
         turns: [...previous.turns, { id: `${turnId}-player`, speaker: 'player', text }, { id: `${turnId}-client`, speaker: 'client', text: utterance }] };
@@ -166,7 +180,9 @@ export class CaseworkApp {
   private bookOverlay(): string {
     const filtered = this.filteredKnowledge;
     const pages = filtered.slice(this.bookPage, this.bookPage + 2);
-    const tags = ['전체', '괴물', '규정', '위장종', '정령종', '거인종', '마력', '시세', '구조'];
+    // '공문'은 그날 붙은 조항이 있을 때만 노출한다 — 빈 태그를 눌러 빈 책장을 보게 하지 않는다.
+    const tags = ['전체', '괴물', '규정', '공문', '위장종', '정령종', '거인종', '마력', '시세', '구조']
+      .filter((tag) => tag === '전체' || this.knowledge.some((entry) => entry.tags.includes(tag)));
     return `<div class="overlay" role="dialog" aria-modal="true" aria-label="길드 백과사전"><button class="overlay-close" type="button" data-action="close-overlay" aria-label="닫기">×</button>
       <section class="book-spread"><header><div><p class="eyebrow">ROYAL GUILD CODEX</p><h2>길드 백과사전</h2></div><div class="book-tags" aria-label="백과사전 종류">${tags.map((tag) => `<button type="button" data-book-tag="${tag}" class="${tag === this.bookTag ? 'is-selected' : ''}">${tag}</button>`).join('')}</div><span>${filtered.length ? `${this.bookPage + 1}–${Math.min(this.bookPage + 2, filtered.length)} / ${filtered.length}` : '0 / 0'}</span></header>
       <div class="book-pages">${pages.map((entry) => `<article class="book-page"><p class="book-category">${escapeHtml(entry.category)}</p><h3>${escapeHtml(entry.title)}</h3>${entry.imageQuadrant ? `<div class="bestiary-art bestiary-art--${entry.imageQuadrant}" style="--plate:url('${bestiaryPlate}')" role="img" aria-label="${escapeHtml(entry.title)} 삽화"></div>` : '<div class="rule-crest" aria-hidden="true">§</div>'}
@@ -176,7 +192,7 @@ export class CaseworkApp {
   }
 
   private get filteredKnowledge(): readonly (typeof KNOWLEDGE)[number][] {
-    return this.bookTag === '전체' ? KNOWLEDGE : KNOWLEDGE.filter((entry) => entry.tags.includes(this.bookTag));
+    return this.bookTag === '전체' ? this.knowledge : this.knowledge.filter((entry) => entry.tags.includes(this.bookTag));
   }
 
   private ledgerOverlay(): string {
@@ -192,6 +208,7 @@ export class CaseworkApp {
       <div class="commission-lower"><fieldset><legend>위험 등급</legend><div class="grade-row">${(['D','C','B','A','S'] as const).map((grade) => `<label><input type="radio" name="risk" value="${grade}" ${grade === 'D' ? 'checked' : ''}><span>${grade}</span></label>`).join('')}</div></fieldset>
       <fieldset><legend>파티에 요구할 준비</legend><div class="check-grid">${preparations.map((item) => `<label><input type="checkbox" name="preparation" value="${escapeHtml(item)}">${escapeHtml(item)}</label>`).join('')}</div></fieldset>
       <fieldset><legend>처리 결정</legend><label><input type="radio" name="decision" value="accept" checked> 게시판에 의뢰 게시</label><label><input type="radio" name="decision" value="reject"> 의뢰 거절</label></fieldset></div>
+      ${this.rejections.length ? `<section class="rejection-stamp" role="alert"><p class="eyebrow">REJECTED</p><h3>게시 반려</h3><ul>${this.rejections.map((item) => `<li><b>${escapeHtml(item.title)}</b> — ${escapeHtml(item.reason)}</li>`).join('')}</ul></section>` : ''}
       <p class="form-note">도장을 찍으면 내용이 잠기며, 모험가들은 이 서류만 보고 지원합니다.</p><div class="document-actions"><button type="button" data-action="back">심문으로 돌아가기</button><button class="seal-button" type="submit">게시 도장 찍기</button></div>
     </form></main>`;
     this.onClick('back', () => { this.phase = 'intake'; this.render(); });
@@ -206,6 +223,9 @@ export class CaseworkApp {
       sheet.entries[slot] = { factId: factId || undefined, confidence: confidence === 'confirmed' || confidence === 'inferred' ? confidence : 'unknown' };
     }
     sheet.risk = riskValue(form.get('risk')); sheet.preparations = form.getAll('preparation').map(stringValue).filter(Boolean); sheet.accepted = form.get('decision') !== 'reject';
+    // 거절은 게시가 아니므로 공문 심사를 거치지 않는다 — 반려는 게시판에 붙일 서류에만 찍힌다.
+    this.rejections = sheet.accepted ? checkDirectives(DIRECTIVES, this.day, sheet) : [];
+    if (this.rejections.length) { this.render(); return; }
     this.sealedSheet = sheet;
     if (!sheet.accepted) { this.finishDispatch(undefined); return; }
     this.applications = getPartyApplications(sheet, PARTIES, this.session.reward);
@@ -231,26 +251,62 @@ export class CaseworkApp {
     if (!this.sealedSheet) throw new Error('의뢰서가 없다.');
     this.sealedSheet.partyId = partyId;
     const party = PARTIES.find((candidate) => candidate.id === partyId);
-    this.lastResult = resolveDispatch(this.caseData, this.sealedSheet, party, this.session.reward, this.session.disclosedFactIds);
-    this.results.push(this.lastResult); this.phase = 'outcome'; this.render();
+    const result = resolveDispatch(this.caseData, this.sealedSheet, party, this.session.reward, this.session.disclosedFactIds);
+    this.pending.push({ caseIndex: this.caseIndex, clientName: this.caseData.clientName, premise: this.caseData.premise, result });
+    this.phase = 'filed'; this.render();
   }
 
-  private renderOutcome(): void {
-    const result = this.lastResult; if (!result) throw new Error('파견 결과가 없다.'); const outcome = outcomeCopy(result.outcome);
-    const calculation = result.outcome === 'rejected' || result.outcome === 'unassigned' ? '<div class="result-equation"><span>파견 없음</span><b>접수원 판단으로 종결</b></div>' : `<div class="result-equation"><span>파티 전력</span><b>+</b><span>정보 ${result.completeness}</span><b>+</b><span>준비 ${result.preparation}</span><b>−</b><span>위협 ${this.caseData.threat}</span><b>= ${result.score}</b></div>`;
-    this.root.innerHTML = `<main class="outcome-screen safe-frame">${this.header('결과 보고')}<section class="outcome-report outcome-report--${result.outcome}"><p class="eyebrow">DISPATCH REPORT</p><h2>${outcome.title}</h2><p class="outcome-lead">${outcome.body}</p>${calculation}<div class="comparison-grid"><article><h3>최초 주장</h3><p>${escapeHtml(this.caseData.opening)}</p></article><article><h3>실제 사건</h3><ul>${this.caseData.facts.map((fact) => `<li><b>${SLOT_LABELS[fact.slot]}</b> ${escapeHtml(fact.value)}</li>`).join('')}</ul></article></div><ul class="report-notes">${result.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join('')}</ul><div class="document-actions"><button class="seal-button" type="button" data-action="continue">${this.caseIndex + 1 < CASES.length ? '다음 의뢰인 호출' : '최종 결산'}</button></div></section></main>`;
+  /**
+   * 서류를 접수한 직후 화면. 결과는 여기서 열지 않는다.
+   *
+   * 오늘의 서류가 오늘 채점되면 잘못 쓴 대가가 즉시 보정 가능한 실수로 끝난다.
+   * 결과는 다음 날 아침 보고서로 미뤄야 어제의 서명이 오늘 나를 찾아온다.
+   */
+  private renderFiled(): void {
+    const dayClosed = isLastCaseOfDay(this.caseIndex, CASES.length);
+    const filed = this.pending[this.pending.length - 1];
+    this.root.innerHTML = `<main class="outcome-screen safe-frame">${this.header('서류 접수')}<section class="filed-note"><p class="eyebrow">FILED</p><h2>${escapeHtml(filed?.premise ?? '')}</h2>
+      <p class="filed-lead">서류가 파발로 넘어갔습니다. ${filed?.result.outcome === 'rejected' ? '거절 처리된 의뢰는 게시판에 붙지 않습니다.' : '파견 결과는 내일 아침 보고서로 돌아옵니다.'}</p>
+      <p class="filed-hint">지금은 무엇이 잘못됐는지 알 수 없습니다. 그것을 아는 사람은 이미 길 위에 있습니다.</p>
+      <div class="document-actions"><button class="seal-button" type="button" data-action="continue">${dayClosed ? `${dayOfCase(this.caseIndex)}일차 근무 종료` : '다음 의뢰인 호출'}</button></div></section></main>`;
     this.onClick('continue', () => this.advance()); this.focus('[data-action="continue"]');
   }
 
-  private advance(): void { if (this.caseIndex + 1 >= CASES.length) { this.phase = 'summary'; this.render(); return; } this.caseIndex += 1; this.resetCase(); this.phase = 'intake'; this.render(); }
-  private renderSummary(): void {
-    const totalReward = this.results.reduce((sum, result) => sum + result.reward, 0); const deaths = this.results.filter((result) => result.outcome === 'death').length; const successful = this.results.filter((result) => result.outcome === 'complete' || result.outcome === 'success').length;
-    this.root.innerHTML = `<main class="summary-screen safe-frame"><section class="summary-paper"><p class="eyebrow">SHIFT CLOSED</p><h1>오늘의 접수 결산</h1><div class="summary-numbers"><article><b>${totalReward}</b><span>획득 은화</span></article><article><b>${successful}</b><span>성공 의뢰</span></article><article><b>${deaths}</b><span>사망자</span></article></div><ol>${this.results.map((result, index) => `<li><span>${CASES[index]?.clientName ?? '의뢰인'}</span><b>${outcomeCopy(result.outcome).title}</b><small>정보 ${result.completeness} · 준비 ${result.preparation}</small></li>`).join('')}</ol><p class="summary-verdict">${deaths > 0 ? '서류의 빈칸은 전장에서 피로 채워졌습니다.' : successful === CASES.length ? '정확한 질문이 모두를 집으로 돌려보냈습니다.' : '살아 돌아온 이들이 다음 접수를 기다립니다.'}</p><button class="seal-button" type="button" data-action="restart">새 근무 시작</button></section></main>`;
-    this.onClick('restart', () => { this.caseIndex = 0; this.results.splice(0); this.lastResult = undefined; this.resetCase(); this.phase = 'briefing'; this.render(); });
+  private advance(): void {
+    if (!isLastCaseOfDay(this.caseIndex, CASES.length)) { this.caseIndex += 1; this.resetCase(); this.phase = 'intake'; this.render(); return; }
+    if (this.caseIndex + 1 >= CASES.length) { this.reported = [...this.reported, ...this.pending]; this.pending = []; this.phase = 'summary'; this.render(); return; }
+    this.caseIndex += 1; this.resetCase(); this.phase = 'morning'; this.render();
   }
 
-  private resetCase(): void { this.session = createSession(this.caseData); this.draft = ''; this.error = ''; this.overlay = undefined; this.bookPage = 0; this.bookTag = '전체'; this.selectedClaimId = undefined; this.selectedKnowledgeId = undefined; this.comparison = undefined; this.sealedSheet = undefined; this.applications = []; }
-  private header(stage: string): string { return `<header class="shift-header"><div><p class="eyebrow">HELP WANTED</p><h1>길드 접수 창구</h1></div><div class="shift-progress"><span>${escapeHtml(stage)} · <i class="agent-status agent-status--${this.agent.mode}">${this.agent.mode === 'remote' ? '실시간 AI' : '규칙 폴백'}</i></span><b>의뢰 ${this.caseIndex + 1} / ${CASES.length}</b>${this.agent.mode === 'remote' ? '' : '<small class="agent-notice">AI 연결에 실패해 규칙 폴백으로 진행합니다.</small>'}</div></header>`; }
+  /** 하루의 시작. 어제 보낸 사람들의 소식과 오늘부터 걸리는 공문이 같이 온다. */
+  private renderMorning(): void {
+    const day = dayOfCase(this.caseIndex);
+    const overnight = this.pending;
+    const fresh = newDirectivesOn(DIRECTIVES, day);
+    this.root.innerHTML = `<main class="morning-screen safe-frame">${this.header(`${day}일차 아침`)}<section class="morning-paper">
+      <p class="eyebrow">MORNING POST</p><h1>${day}일차 근무</h1>
+      ${overnight.length ? `<section class="overnight"><h2>지난밤 도착한 파견 보고</h2><ol class="overnight-list">${overnight.map((item) => {
+        const copy = outcomeCopy(item.result.outcome);
+        const detail = item.result.outcome === 'rejected' || item.result.outcome === 'unassigned'
+          ? '파견 없음'
+          : `정보 ${item.result.completeness} · 준비 ${item.result.preparation} · 위협 ${CASES[item.caseIndex]?.threat ?? 0} → 점수 ${item.result.score}`;
+        return `<li class="overnight-item overnight-item--${item.result.outcome}"><div><b>${escapeHtml(item.clientName)}</b><span>${escapeHtml(item.premise)}</span></div><div><b>${copy.title}</b><small>${escapeHtml(detail)}</small></div><p>${escapeHtml(item.result.notes[0] ?? '')}</p></li>`;
+      }).join('')}</ol></section>` : ''}
+      ${fresh.length ? `<section class="directives"><h2>오늘부터 적용되는 공문</h2>${fresh.map((directive) => `<article class="directive"><b>${escapeHtml(directive.title)}</b><p>${escapeHtml(directive.text)}</p></article>`).join('')}<p class="directive-note">어제 통하던 게시가 오늘은 반려될 수 있습니다. 백과사전 규정 항목에도 실렸습니다.</p></section>` : ''}
+      <div class="document-actions"><button class="seal-button" type="button" data-action="open-counter">창구 열기</button></div>
+    </section></main>`;
+    this.onClick('open-counter', () => { this.reported = [...this.reported, ...this.pending]; this.pending = []; this.phase = 'intake'; this.render(); });
+    this.focus('[data-action="open-counter"]');
+  }
+  private renderSummary(): void {
+    const results = this.reported.map((item) => item.result);
+    const totalReward = results.reduce((sum, result) => sum + result.reward, 0); const deaths = results.filter((result) => result.outcome === 'death').length; const successful = results.filter((result) => result.outcome === 'complete' || result.outcome === 'success').length;
+    this.root.innerHTML = `<main class="summary-screen safe-frame"><section class="summary-paper"><p class="eyebrow">SHIFT CLOSED</p><h1>오늘의 접수 결산</h1><div class="summary-numbers"><article><b>${totalReward}</b><span>획득 은화</span></article><article><b>${successful}</b><span>성공 의뢰</span></article><article><b>${deaths}</b><span>사망자</span></article></div><ol>${this.reported.map((item) => `<li><span>${escapeHtml(item.clientName)}</span><b>${outcomeCopy(item.result.outcome).title}</b><small>정보 ${item.result.completeness} · 준비 ${item.result.preparation}</small></li>`).join('')}</ol><p class="summary-verdict">${deaths > 0 ? '서류의 빈칸은 전장에서 피로 채워졌습니다.' : successful === CASES.length ? '정확한 질문이 모두를 집으로 돌려보냈습니다.' : '살아 돌아온 이들이 다음 접수를 기다립니다.'}</p><button class="seal-button" type="button" data-action="restart">새 근무 시작</button></section></main>`;
+    this.onClick('restart', () => { this.caseIndex = 0; this.pending = []; this.reported = []; this.resetCase(); this.phase = 'briefing'; this.render(); });
+  }
+
+  private resetCase(): void { this.session = createSession(this.caseData); this.draft = ''; this.error = ''; this.overlay = undefined; this.bookPage = 0; this.bookTag = '전체'; this.selectedClaimId = undefined; this.selectedKnowledgeId = undefined; this.comparison = undefined; this.sealedSheet = undefined; this.applications = []; this.rejections = []; }
+  private header(stage: string): string { return `<header class="shift-header"><div><p class="eyebrow">HELP WANTED</p><h1>길드 접수 창구</h1></div><div class="shift-progress"><span>${escapeHtml(stage)} · <i class="agent-status agent-status--${this.agent.mode}">${this.agent.mode === 'remote' ? '실시간 AI' : '규칙 폴백'}</i></span><b>${this.day}일차 · 오늘 ${(this.caseIndex % CASES_PER_DAY) + 1} / ${CASES_PER_DAY}</b>${this.agent.mode === 'remote' ? '' : '<small class="agent-notice">AI 연결에 실패해 규칙 폴백으로 진행합니다.</small>'}</div></header>`; }
   private focus(selector: string): void { window.setTimeout(() => this.root.querySelector<HTMLElement>(selector)?.focus(), 0); }
   private onClick(action: string, handler: () => void): void { this.root.querySelector<HTMLButtonElement>(`[data-action="${action}"]`)?.addEventListener('click', handler); }
 }
