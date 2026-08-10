@@ -87,13 +87,65 @@ GATE에서 Core hypothesis를 검증하며, 실패하면 P4로 넘어가지 않�
 `story-020` 으로 잇지 **않는다.** 단계 접두사를 쓴다:
 
 ```
-story-P1-001-intake-slots.md
-story-P1-002-question-catalog.md
+story-P1-001-contract-slots.md
+story-P1-006-guildmaster-handbook.md
 story-P2-001-form-to-dispatch.md
 ```
 
 이유 둘 — 파일명만 보고 어느 단계 소유인지 읽히고, **001~019가 "MVP 블록"으로
 시각적으로 닫힌다.**
+
+> **2026-08-10 정정.** 예시가 ~~`story-P1-002-question-catalog.md`~~ 였다.
+> **질문 카탈로그는 폐기된 개념이다** — 칸을 짚는 것이 곧 질문이므로 질문이라는
+> 개체가 없다 (`intake-system.md` R4). 죽은 개념을 명명 예시로 두면 그것부터
+> 만들게 된다.
+
+---
+
+## 4. P1 — 청취 + 의뢰서 (2026-08-10 신설, 16개)
+
+**순서는 의존 관계다.** `production/roadmap.md`의 P1 절이 소유한다.
+
+> ### ⚠ 착수 1순위는 **006**이다 — 번호 순서가 아니다
+>
+> **story-P1-006(길드마스터북)이 P1의 유일한 Hard 병목이다.** 책은 일깨우기
+> 재료의 **P1 유일 공급원**이며(소문은 P4), **없으면 무지 칸을 하나도 못 뚫는다.**
+> 공개 등급 기준표의 게재처이기도 하다 — 그것이 없으면 플레이어는 `D/C/B/A/S`가
+> 무슨 뜻인지 모른 채 등급을 적는다.
+>
+> 001~005는 006과 **병렬로 진행 가능**하다. 009 이후 화면 작업은 006이 없으면
+> 빈 껍데기만 검증된다.
+
+### A. 데이터 · 도메인
+
+| # | 스토리 | GDD 근거 |
+|---|---|---|
+| P1-001 ✅ | [의뢰서의 칸 — 타입과 저장](story-P1-001-contract-slots.md) | intake R1·F1 / ADR-001 · **ADR-004(반영)** |
+| P1-002 | [의뢰인 직업](story-P1-002-client-occupation.md) | intake F1 / ADR-001 D5·D7 |
+| P1-003 | [`balance.json` `intake`·`commission` 절](story-P1-003-balance-intake-section.md) | intake F4 (**빌드 게이트**) |
+| P1-004 | [청취 판정](story-P1-004-intake-resolution.md) | intake R10·F2·F3 |
+| P1-005 | [인내와 두 개의 열쇠](story-P1-005-patience-and-leverage.md) | intake R5·R6·Edge「인내」 |
+| **P1-006** | [**길드마스터북 4권**](story-P1-006-guildmaster-handbook.md) | intake U3·Q2 / commission-form F1 — **병목** |
+| P1-007 | [의뢰 템플릿 v6.1 스키마](story-P1-007-quest-templates.md) | intake R2·F1 / **`T`↔진실 정합 = 빌드 게이트** |
+| P1-008 | [선제 진술 + 깊이 노브](story-P1-008-preemptive-statement.md) | intake R3·Q7 |
+
+### B. 화면
+
+| # | 스토리 | GDD 근거 |
+|---|---|---|
+| P1-009 | [청취 화면 — 창과 종이](story-P1-009-intake-screen.md) | intake U1·U2·V1·V2·V3 |
+| P1-010 | [수첩](story-P1-010-notebook.md) | intake U3·AC-UI-05 |
+| P1-011 | [의뢰서 화면](story-P1-011-commission-form-screen.md) | commission-form R1~R8·AC-CF-01~21 |
+| P1-012 | [하루 진행 — 의뢰인 3명 고정 순서](story-P1-012-day-flow.md) | intake Dependencies 하류 / ADR-002 D5 |
+
+### C. 인프라
+
+| # | 스토리 | GDD·ADR 근거 |
+|---|---|---|
+| P1-013 | [LLM 연기 배선](story-P1-013-llm-persona-wiring.md) | intake R11 / ADR-003 D3·D5·D6 |
+| P1-014 | [프록시 배포 배선](story-P1-014-proxy-deploy.md) | ADR-003 D2·D5·D8 — **키 없는 심사자 완주 검증** |
+| P1-015 | [세이브/로드 구현](story-P1-015-persistence.md) | ADR-002 D1~D9 — **코드가 0줄이다** |
+| P1-016 | [화면 간 배선 통합 테스트](story-P1-016-intake-wiring-integration.md) | 이 저장소의 2회 사고 — **완료 기준** |
 
 ---
 
