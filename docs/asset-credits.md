@@ -101,3 +101,17 @@ node tools/asset-pipeline/build-hall-assets.cjs "<압축 푼 Ninja Adventure 팩
 
 생성 원본과 크로마키 제거본은 `design/art/source/`에 보존한다. 게임용 아틀라스는
 프레임 정렬, 공통 팔레트 양자화, 하드 알파 처리를 거친 파생물이다.
+
+### 창구 책상 오브젝트 패밀리
+
+| | |
+|---|---|
+| 결과물 | `src/assets/counter-{notebook,commission-form,handbook,response-tools}.png` |
+| 생성일 | 2026-08-10 |
+| 제작 | OpenAI 내장 이미지 생성 + `build-counter-targets.py` 정규화 |
+| 참조 | 승인된 `counter-visual-target-v2`, Ninja Adventure 형태·팔레트 |
+| 규격 | 개별 투명 PNG, 하드 알파, 각 47색, 320×180 논리 화면용 |
+| 상태 | 기술·합성 검증 통과, 게임 내 검증 대기 |
+
+프롬프트, 크로마키 원본, 파생 규칙과 QA는
+`design/art/source/counter-desk-objects-v1.md`에 기록한다.

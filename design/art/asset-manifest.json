@@ -112,6 +112,75 @@
         "technical_checks_passed": true,
         "approved_by": ""
       }
+    },
+    {
+      "id": "counter-desk-objects-v1",
+      "role": "counter notebook, commission form, handbook, response tokens, and single stamp",
+      "path": "design/art/source/counter-desk-objects-v1.md",
+      "runtime_paths": [
+        "src/assets/counter-notebook.png",
+        "src/assets/counter-commission-form.png",
+        "src/assets/counter-handbook.png",
+        "src/assets/counter-response-tools.png"
+      ],
+      "status": "candidate",
+      "technical": {
+        "logical_dimensions": ["72x52", "168x80", "54x62", "54x48"],
+        "alpha": true,
+        "filtering": "nearest",
+        "max_colors_each": 48,
+        "runtime_asset": true
+      },
+      "visual_locks": [
+        "palette-roles",
+        "top-front-camera",
+        "upper-left-light",
+        "hard-pixel-clusters",
+        "single-active-document",
+        "single-stamp-tool"
+      ],
+      "source": {
+        "kind": "generated-and-normalized",
+        "url_or_tool": "OpenAI built-in image generation plus local Pillow normalization",
+        "creator": "OpenAI / Codex-assisted direction",
+        "created_at": "2026-08-10",
+        "license": "generated media; inherited references are CC0 1.0",
+        "attribution": "Ninja Adventure Asset Pack — Pixel-boy, AAA",
+        "prompt_or_source_record": "design/art/source/counter-desk-objects-v1.md"
+      },
+      "verification": {
+        "native_scale_reviewed": true,
+        "in_engine_reviewed": false,
+        "technical_checks_passed": true,
+        "approved_by": ""
+      }
+    },
+    {
+      "id": "submission-screen-wireframes-v1",
+      "role": "dispatch, outcome, guild hall, and ending layout and reuse lock",
+      "path": "design/art/targets/submission-screen-wireframes-v1.md",
+      "status": "approved-for-implementation",
+      "technical": {
+        "dimensions": "1280x720",
+        "logical_dimensions": "320x180",
+        "filtering": "nearest",
+        "runtime_asset": false
+      },
+      "source": {
+        "kind": "deterministic-wireframe",
+        "url_or_tool": "tools/asset-pipeline/build-counter-targets.py",
+        "creator": "Codex-assisted direction",
+        "created_at": "2026-08-10",
+        "license": "project-authored; hall background derives from credited CC0 source",
+        "attribution": "Ninja Adventure Asset Pack — Pixel-boy, AAA",
+        "prompt_or_source_record": "design/art/targets/submission-screen-wireframes-v1.md"
+      },
+      "verification": {
+        "native_scale_reviewed": true,
+        "in_engine_reviewed": false,
+        "technical_checks_passed": true,
+        "approved_by": "implementation lock"
+      }
     }
   ]
 }
