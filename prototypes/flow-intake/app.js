@@ -119,7 +119,8 @@ function offer(options) {
 function expire(options) {
   clearTimer(); $('#offer').innerHTML = '';
   for (const o of options) if (o.nodeId) S.missed.add(o.nodeId);
-  note('말이 이어진다 — 물어볼 틈을 놓쳤다.', 'miss');
+  // 실패 문구를 띄우지 않는다 (U2) — 선택지는 조용히 사라지고, 기계적 신호는
+  // 「놓친 것」 패널이 는 것 하나뿐이다. "놓쳤습니다"는 대화를 시험으로 만든다.
   advance(null, RAMBLE[Math.floor(Math.random()*RAMBLE.length)]);
 }
 
