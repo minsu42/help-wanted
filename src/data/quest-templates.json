@@ -19,113 +19,257 @@
     "  소문(P4)이 나중에 같은 모양의 항목을 추가한다.",
     "  ⚠ 통하지 않는 항목도 섞여 있어야 한다 — 무엇이 통할지 아는 것이 곧 퍼즐이다."
   ],
-
   "version": 2,
-
   "questTypes": {
     "조사": {
       "baseFee": 50,
-      "intro": "숲에 이상한 것이 있습니다. 밤마다 잠을 못 잡니다.",
       "slots": {
         "대상": {
           "weight": 3,
-          "hintTags": ["짐승", "발자국"],
-          "steps": [
-            {
-              "level": "vague",
-              "topic": "무엇을 보았는지",
-              "fact": "숲에서 커다란 발자국을 봤다",
-              "leverageTag": null
-            },
-            {
-              "level": "certain",
-              "topic": "그 생김새",
-              "fact": "사람 발만 한데 발가락이 셋이었다",
-              "leverageTag": "절차"
-            }
+          "hintTags": [
+            "짐승",
+            "흔적",
+            "도둑",
+            "물"
           ]
         },
         "규모": {
           "weight": 2,
-          "hintTags": ["무리", "개체수"],
-          "steps": [
-            {
-              "level": "vague",
-              "topic": "한 마리였는지 여럿이었는지",
-              "fact": "자국이 한 갈래가 아니라 여러 갈래였다",
-              "leverageTag": null
-            },
-            {
-              "level": "certain",
-              "topic": "정확한 수",
-              "fact": "큰 자국이 둘, 작은 자국이 예닐곱이었다",
-              "leverageTag": "손익"
-            }
+          "hintTags": [
+            "무리",
+            "개체수",
+            "손실",
+            "병"
           ]
         },
         "장소": {
           "weight": 1,
-          "hintTags": ["지형", "서쪽숲"],
-          "steps": [
-            {
-              "level": "vague",
-              "topic": "대략 어디쯤인지",
-              "fact": "서쪽 숲, 물레방아 근처였다",
-              "leverageTag": null
-            },
-            {
-              "level": "certain",
-              "topic": "정확한 자리",
-              "fact": "물레방아 위쪽 비탈에 사람이 안 다니는 동굴이 있다",
-              "leverageTag": "절차"
-            }
+          "hintTags": [
+            "지형",
+            "서쪽숲",
+            "장터",
+            "폐광"
           ]
         }
-      }
+      },
+      "scenarios": [
+        {
+          "id": "sc-forest",
+          "fits": [
+            "주민",
+            "관리"
+          ],
+          "intro": "숲에 이상한 것이 있습니다. 밤마다 잠을 못 잡니다.",
+          "slots": {
+            "대상": {
+              "steps": [
+                {
+                  "topic": "무엇을 보았는지",
+                  "fact": "숲에서 커다란 발자국을 봤다",
+                  "leverageTag": null
+                },
+                {
+                  "topic": "그 생김새",
+                  "fact": "사람 발만 한데 발가락이 셋이었다",
+                  "leverageTag": "절차"
+                }
+              ]
+            },
+            "규모": {
+              "steps": [
+                {
+                  "topic": "한 마리였는지 여럿이었는지",
+                  "fact": "자국이 한 갈래가 아니라 여러 갈래였다",
+                  "leverageTag": null
+                },
+                {
+                  "topic": "정확한 수",
+                  "fact": "큰 자국이 둘, 작은 자국이 예닐곱이었다",
+                  "leverageTag": "손익"
+                }
+              ]
+            },
+            "장소": {
+              "steps": [
+                {
+                  "topic": "대략 어디쯤인지",
+                  "fact": "서쪽 숲, 물레방아 근처였다",
+                  "leverageTag": null
+                },
+                {
+                  "topic": "정확한 자리",
+                  "fact": "물레방아 위쪽 비탈에 사람이 안 다니는 동굴이 있다",
+                  "leverageTag": "절차"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "sc-warehouse",
+          "fits": [
+            "상인",
+            "갱단"
+          ],
+          "intro": "창고 물건이 밤사이 자꾸 축납니다. 장부가 안 맞아요.",
+          "slots": {
+            "대상": {
+              "steps": [
+                {
+                  "topic": "무엇이 없어졌는지",
+                  "fact": "곡식 자루와 절인 고기만 골라 없어졌다",
+                  "leverageTag": null
+                },
+                {
+                  "topic": "누구 짓으로 보이는지",
+                  "fact": "자물쇠가 부서진 게 아니라 열려 있었다",
+                  "leverageTag": "절차"
+                }
+              ]
+            },
+            "규모": {
+              "steps": [
+                {
+                  "topic": "얼마나 없어졌는지",
+                  "fact": "한 번에 조금씩, 여러 밤에 걸쳐 없어졌다",
+                  "leverageTag": null
+                },
+                {
+                  "topic": "정확한 손실",
+                  "fact": "닷새 동안 자루 열둘, 은으로 치면 서른 남짓이다",
+                  "leverageTag": "손익"
+                }
+              ]
+            },
+            "장소": {
+              "steps": [
+                {
+                  "topic": "어느 창고인지",
+                  "fact": "장터 뒷골목의 둘째 창고다",
+                  "leverageTag": null
+                },
+                {
+                  "topic": "어디로 빠져나갔는지",
+                  "fact": "뒷벽 널판 하나가 헐거워 사람이 드나들 만하다",
+                  "leverageTag": "손익"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "sc-well",
+          "fits": [
+            "귀족",
+            "관리",
+            "주민"
+          ],
+          "intro": "우물 물맛이 변했습니다. 마을 사람 절반이 앓아누웠어요.",
+          "slots": {
+            "대상": {
+              "steps": [
+                {
+                  "topic": "물에 무엇이 섞였는지",
+                  "fact": "물에서 쇳내가 나고 바닥이 붉게 앉았다",
+                  "leverageTag": null
+                },
+                {
+                  "topic": "어디서 흘러든 것인지",
+                  "fact": "위쪽 폐광에서 물이 스며든 자국이 있다",
+                  "leverageTag": "체면"
+                }
+              ]
+            },
+            "규모": {
+              "steps": [
+                {
+                  "topic": "몇이나 앓는지",
+                  "fact": "어른 아이 할 것 없이 여러 집이 앓는다",
+                  "leverageTag": null
+                },
+                {
+                  "topic": "정확한 수",
+                  "fact": "스무 집 중 아홉 집, 노인 둘은 일어나지 못한다",
+                  "leverageTag": "체면"
+                }
+              ]
+            },
+            "장소": {
+              "steps": [
+                {
+                  "topic": "어느 우물인지",
+                  "fact": "영지 북쪽 어귀의 공동 우물이다",
+                  "leverageTag": null
+                },
+                {
+                  "topic": "물길이 어디서 오는지",
+                  "fact": "그 우물은 폐광 아래 물길과 이어져 있다",
+                  "leverageTag": "절차"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   },
-
   "handbook": [
     {
       "id": "hb-troll",
       "book": "도감",
       "text": "트롤은 발가락이 셋이고 사람 발만 한 자국을 남긴다",
-      "hintTags": ["짐승", "발자국"],
+      "hintTags": [
+        "짐승",
+        "발자국"
+      ],
       "leverageTag": null
     },
     {
       "id": "hb-brood",
       "book": "도감",
       "text": "짐승이 뼈를 한곳에 쌓는 것은 새끼를 친 자리라는 뜻이다",
-      "hintTags": ["무리", "개체수"],
+      "hintTags": [
+        "무리",
+        "개체수"
+      ],
       "leverageTag": null
     },
     {
       "id": "hb-goblin",
       "book": "도감",
       "text": "고블린은 몸집이 작고 예닐곱씩 무리를 지어 다닌다",
-      "hintTags": ["무리", "짐승"],
+      "hintTags": [
+        "무리",
+        "짐승"
+      ],
       "leverageTag": null
     },
     {
       "id": "hb-oldmine",
       "book": "지역",
       "text": "서쪽 숲 물레방아 위쪽 비탈에는 버려진 굴이 하나 있다",
-      "hintTags": ["지형", "서쪽숲"],
+      "hintTags": [
+        "지형",
+        "서쪽숲"
+      ],
       "leverageTag": "절차"
     },
     {
       "id": "hb-landtitle",
       "book": "지역",
       "text": "그 비탈은 등기가 정리되지 않아 소유가 불분명하다",
-      "hintTags": ["지형"],
+      "hintTags": [
+        "지형"
+      ],
       "leverageTag": "절차"
     },
     {
       "id": "hb-millguild",
       "book": "조직",
       "text": "방앗간 조합이 그 일대의 통행과 벌목을 관리한다",
-      "hintTags": ["지형"],
+      "hintTags": [
+        "지형"
+      ],
       "leverageTag": "절차"
     },
     {
@@ -146,14 +290,18 @@
       "id": "hb-hazardpay",
       "book": "시세",
       "text": "대형 짐승이 끼면 위험 수당이 따로 붙는다",
-      "hintTags": ["짐승"],
+      "hintTags": [
+        "짐승"
+      ],
       "leverageTag": "손익"
     },
     {
       "id": "hb-headcount",
       "book": "시세",
       "text": "머릿수가 늘면 파티를 키워야 해서 비용이 배로 뛴다",
-      "hintTags": ["개체수"],
+      "hintTags": [
+        "개체수"
+      ],
       "leverageTag": "손익"
     },
     {
@@ -168,6 +316,64 @@
       "book": "지역",
       "text": "장은 닷새마다 서고 그때는 길이 붐빈다",
       "hintTags": [],
+      "leverageTag": null
+    },
+    {
+      "id": "hb-thief",
+      "book": "조직",
+      "text": "장터 뒷골목은 밤에 파수가 서지 않는다",
+      "hintTags": [
+        "도둑",
+        "장터"
+      ],
+      "leverageTag": "절차"
+    },
+    {
+      "id": "hb-inside",
+      "book": "조직",
+      "text": "자물쇠가 멀쩡한 채 열렸다면 열쇠를 가진 사람이 있다는 뜻이다",
+      "hintTags": [
+        "도둑"
+      ],
+      "leverageTag": "손익"
+    },
+    {
+      "id": "hb-ledger",
+      "book": "시세",
+      "text": "곡식 한 자루는 은 두 닢 반, 절인 고기는 그 배다",
+      "hintTags": [
+        "손실"
+      ],
+      "leverageTag": "손익"
+    },
+    {
+      "id": "hb-mine",
+      "book": "지역",
+      "text": "북쪽 폐광은 십수 년 전 물이 차서 버려졌다",
+      "hintTags": [
+        "폐광",
+        "물"
+      ],
+      "leverageTag": "체면"
+    },
+    {
+      "id": "hb-rust",
+      "book": "도감",
+      "text": "쇳내와 붉은 앙금은 광산 물이 섞였다는 표시다",
+      "hintTags": [
+        "물",
+        "병"
+      ],
+      "leverageTag": null
+    },
+    {
+      "id": "hb-plague",
+      "book": "도감",
+      "text": "한 우물을 쓰는 집이 함께 앓으면 물을 먼저 의심한다",
+      "hintTags": [
+        "병",
+        "개체수"
+      ],
       "leverageTag": null
     }
   ]

@@ -144,3 +144,12 @@ button:disabled { opacity: .5; cursor: default; }
 .lev .src { margin-right: 6px; }
 .sys.good { color: #4a7a41; font-weight: bold; }
 .sys.stamp { color: #8a2f22; font-weight: bold; }
+
+/* 수첩 — 권별로 갈라 놓는다 (2회차) */
+.nb-head { font-size: 11px; letter-spacing: .08em; color: #7a6741;
+  border-bottom: 1px solid #b09a6d; margin: 8px 0 3px; padding-bottom: 2px; }
+.nb-head:first-child { margin-top: 0; }
+.nb-item { border-bottom: none; padding: 3px 4px; }
+.nb-item.heard { color: #2e2416; }
+.nb-item.book { color: #6b5a45; }
+#notebook { max-height: 260px; overflow-y: auto; }
