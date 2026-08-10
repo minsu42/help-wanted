@@ -16,8 +16,5 @@ MODEL = "meta/llama-3.1-70b-instruct"
 ALLOWED_ORIGINS = "https://minsu42.github.io,http://localhost:5173,http://localhost:8789"
 
 # 남용 방어 (D2). 격리 단위 best-effort라는 한계는 worker.js의 checkRateLimit 주석 참조.
-RATE_LIMIT_PER_MINUTE = "20"
+RATE_LIMIT_PER_MINUTE = "30"
 DAILY_CALL_CAP = "3000"
-
-TEMPERATURE = "0.9"
-MAX_TOKENS = "500"

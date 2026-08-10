@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VITE_AGENT_ENDPOINT: https://help-wanted-intake.nan2026.workers.dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

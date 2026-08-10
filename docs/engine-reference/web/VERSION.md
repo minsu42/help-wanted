@@ -1,139 +1,42 @@
-# 웹 스택 — Version Reference
+# Web Runtime Version Reference
 
-> **2026-08-09 정정 — 이 문서는 사실이 아니었다.**
->
-> 이 문서는 "Vite 5.4로 고정"이라고 적고 있었으나 실제 `package.json`은
-> **`vite ^7.3.6`** 이었다. 이미 두 메이저 올라가 정상 동작 중이었고(테스트
-> 407개 통과, GitHub Pages 배포 성공) 문서만 몰랐다. `^` 범위 때문에 다음
-> `npm install`에서 또 조용히 움직일 수 있는 상태였다.
->
-> 조치: 아래 표를 **실측값**으로 고치고 `package.json`의 `^`를 **정확한 핀**으로
-> 바꿨다. lockfile을 커밋한다. 검증: `npm run check` 통과 (테스트 407/407,
-> Vite 7.3.6 프로덕션 빌드 성공, gzip JS 21.03KB + CSS 7.29KB).
->
-> **Vite 7로 올라간 것은 사고가 아니었다** — 5.4에 esbuild 개발 서버 취약점 2건이
-> 있어 story-007 작업 중 의도적으로 올렸고, Vite 7도 LLM 학습 범위 안이라 아래
-> 근거 3을 해치지 않는다. 문서에 반영하는 것을 잊었을 뿐이다.
->
-> 그리고 고정 근거 3개 중 2개가 3일 마감 해제로 소멸했다 —
-> 「왜 최신 버전을 쓰지 않는가」 절 참조. 결정 기록은
-> `production/roadmap.md`의 「버전 정책」 절이 소유한다.
+> **검증일:** 2026-08-10
 
-| Field | Value |
-|-------|-------|
-| **Engine** | 없음 — 웹 네이티브 (DOM + CSS) |
-| **Language** | TypeScript **5.5.4** (strict) |
-| **Build** | Vite **7.3.6** |
-| **Test** | Vitest **4.1.10** + happy-dom **20.11.2** |
-| **Runtime Deps** | 없음 |
-| **Project Pinned** | 2026-08-09 (정확한 핀. `^`/`~` 범위 사용 금지) |
-| **Last Docs Verified** | 2026-08-10 |
-| **LLM Knowledge Cutoff** | 2026년 5월 |
-| **Risk Level** | **LOW** — Vite 7·TS 5.5 모두 LLM 학습 범위 안이다 |
+| 구성 | 고정 버전 |
+|---|---|
+| Engine | 없음 — 웹 네이티브 DOM + CSS |
+| Language | TypeScript 5.5.4 strict |
+| Build | Vite 7.3.6 |
+| Test | Vitest 4.1.10 + happy-dom 20.11.2 |
+| Runtime npm dependencies | 0 |
+| Worker runtime | Cloudflare Workers 표준 `fetch` |
 
-## 왜 최신 버전을 쓰지 않는가
+## Required Configuration
 
-2026-08-08 기준 최신 버전은 이 프로젝트가 고정한 것보다 훨씬 앞서 있다.
+- `vite.config.ts`의 `base: "./"`를 유지한다.
+- 빌드 타깃은 `es2020`이다.
+- 버전 범위 기호 없이 정확히 핀한다.
+- UI 프레임워크, Canvas, WebGL을 추가하지 않는다.
+- LLM SDK를 브라우저 번들에 넣지 않는다.
 
-| | 최신 (2026-08-08) | 이 프로젝트 고정 | LLM 학습 범위 |
-|---|---|---|---|
-| TypeScript | **7.0.2** (2026-08-05 출시) | 5.5 | 5.x |
-| Vite | **8.x** (8.0 = 2026-04, 현재 8.2 라인) | 5.4 | 5 / 6 |
+## Performance Budgets
 
-**TypeScript 7.0은 이 결정을 내린 시점에서 사흘 전에 나왔고, 컴파일러를 Go로 다시
-쓴 메이저 버전이다** (전체 빌드 8~12배 속도 향상). TypeScript 6.0은 2026-03-23에
-나온 마지막 JS 기반 릴리스다.
+| 항목 | 예산 |
+|---|---:|
+| 초기 전송 gzip | 1MB 이하 |
+| JS | 200KB 이하 |
+| CSS | 200KB 이하 |
+| 이미지 | 500KB 이하 |
+| 규칙 조작 | 100ms 이내 |
+| AI 대기 연출 시작 | 전송 후 2초 이내 |
+| AI 응답 목표 | 8초 이내 |
+| 메모리 | 200MB 이하 |
 
-고정 근거 세 가지 — **2026-08-09 기준 하나만 살아남았다:**
+## Layer Boundaries
 
-1. ~~**검증된 조합이다.** 동일 스택이 `minsu42/NAN2026`에서 137커밋 동안 정상
-   동작했다. 3일 마감 프로젝트에 "새 버전 설정 디버깅" 예산은 없다.~~
-   → **폐기 (2026-08-09).** 3일 마감이 해제됐고, 게다가 **Vite 7로 이미 올려놓고
-   문제가 없었다** — 근거 자체가 반증됐다.
-2. ~~**최신 버전의 이득이 없다.** TS 7의 10배 빠른 빌드는 3일 규모에서 체감되지
-   않는다.~~ → **근거는 바뀌었으나 결론은 생존.** 시간 제약과 무관하게, 전체 JS가
-   gzip **20.6KB**이고 tsc는 이미 병목이 아니다. TS 7의 8~12배는 10만 줄급에서
-   의미가 있다.
-3. **LLM 조수의 신뢰도.** 고정 버전이 LLM 학습 데이터 안에 있으면 API를 지어내지
-   않는다. → **생존하며, 오히려 더 무거워졌다.** 3일 프로젝트에서 환각 비용은
-   사흘치였다. 이제 이 프로젝트는 P0~P8을 거치는 장기 개발이고 **에이전트 주도
-   개발이 기본 작업 방식**이므로, 환각 비용이 전 기간에 누적된다.
-   **실질적으로 이것이 유일하게 남은 이유다.**
+- `src/domain/**`: 순수 규칙. DOM·네트워크 import 금지.
+- `src/llm/**`: Worker 계약과 스키마 검증.
+- `src/presentation/**`: DOM·CSS와 입력 상태.
+- `workers/**`: 키·프롬프트·도구 오케스트레이션.
 
-> 다음 사람에게: **근거가 셋인 척하지 마라.** 하나를 반박당하면 전체가 무너진 줄
-> 안다. 지금 이 고정을 지탱하는 것은 3번 하나이며, 그것으로 충분하다.
-
-## 경고
-
-> **TypeScript 7 / Vite 8로 올리면 이 문서의 Risk Level은 즉시 HIGH가 된다.**
-> 둘 다 LLM 학습 데이터(2026년 5월) 이후에 나왔으며, TS 7은 컴파일러 구현 자체가
-> Go로 교체된 메이저 버전이다.
->
-> **재검토 시점: 로드맵의 GATE 통과 후.** P1~P3은 설계 불확실성이 가장 높은
-> 구간이라 툴체인 디버깅에 주의를 빼앗기는 것이 가장 비싸다.
->
-> **미루는 비용이 거의 0이라는 점이 중요하다** — TS 7.0은 언어 변경이 아니라
-> 컴파일러 재구현이므로 마이그레이션 비용의 대부분이 설정·툴체인이고 **코드 줄
-> 수에 비례하지 않는다.** "지금 해야 싸다"가 성립하지 않는다.
->
-> 올릴 때는 `/setup-engine upgrade`로 마이그레이션 감사를 먼저 받는다.
-
-### 이 결정이 옳았는지 아는 법
-
-GATE까지 가는 동안 **툴체인 관련 막힘이 0건**이면 고정이 옳았다.
-반대로 *"이 API가 이 버전에 있나"* 확인에 세션당 여러 번 걸린다면 근거 3이 이미
-죽은 것이고, 그때는 올려야 한다.
-
-## GitHub Pages 관련 고정 사항
-
-- `vite.config.ts`에 **`base: "./"`** 를 반드시 유지한다. 저장소 하위 경로
-  (`https://<user>.github.io/<repo>/`)에서 에셋이 404가 나는 것을 막는 유일한 설정이며,
-  로컬 dev 서버에서는 문제가 드러나지 않으므로 배포 후에야 발견된다.
-- 정적 호스팅이므로 **커스텀 HTTP 헤더를 설정할 수 없다.** COOP/COEP가 필요한 기능
-  (SharedArrayBuffer, WASM 멀티스레드)은 사용 불가.
-- 서버가 없으므로 모든 상태는 클라이언트에 있다. 외부 API 호출이 필요해지면 별도
-  프록시(예: Cloudflare Worker)가 필요하며, 그것은 설계 변경이다.
-  → **그 설계 변경이 2026-08-10에 일어났다** — ADR-003이 런타임 LLM용 전용 Worker
-  프록시를 도입했다. 게임 본체의 Pages 배포와 이 문서의 나머지 고정 사항은 불변이다.
-
-## 프록시 Worker의 핀 — **컷오프를 넘는 유일한 것** *(2026-08-10 신설, ADR-003)*
-
-`workers/intake-proxy/wrangler.toml`:
-
-```toml
-compatibility_date = "2026-08-10"
-```
-
-**이것이 이 저장소에서 LLM 학습 컷오프(2026년 5월)를 넘는 유일한 핀이다.** 위 표의
-Risk Level LOW는 게임 본체의 툴체인에 대한 것이고, 이 한 줄은 그 밖에 있다.
-
-**그런데도 Risk Level을 올리지 않는 근거**: Worker 코드가 쓰는 것이 **`fetch`·
-`Response`·`URL` 셋뿐이고 의존성이 0개**다 (ADR-003 D8 — "LLM 호출은 `fetch` 하나다").
-이 셋은 컷오프 훨씬 이전부터 안정된 웹 표준이며 compatibility date가 바꾸는 대상이
-아니다. **즉 날짜가 앞서 있어도 그 날짜가 관장하는 표면을 우리가 건드리지 않는다** —
-VERSION.md의 살아남은 고정 근거("LLM이 API를 지어내지 않는다")가 걸릴 API가 없다.
-
-> ⚠ **이 면제는 조건부다. Workers 고유 API를 도입하면 즉시 끝난다** — KV · Durable
-> Object · Cache API · Queues 중 하나라도 들이는 순간 컷오프 이후 표면에 의존하게 되고,
-> 그때는 이 절을 다시 쓰고 `wrangler` 버전을 정확히 핀해야 한다.
->
-> **이 문이 열릴 지점이 이미 코드에 적혀 있다** — `worker.js`의 `checkRateLimit`
-> 주석이 *"정확한 상한이 필요해지면 KV나 Durable Object를 붙여야 하고, 그것은 상태를
-> 가진 인프라를 들이는 **결정**"* 이라고 적어 두었다. 그 결정이 내려지는 날이 이 면제가
-> 끝나는 날이다.
-
-`wrangler` 자체는 **아직 설치되지도 핀되지도 않았다** (`package.json`
-devDependencies에 없다). `docs/tech-debt-register.md` 참조.
-
-## 참고 링크
-
-- Vite 8.0 릴리스: https://vite.dev/blog/announcing-vite8
-- Vite 릴리스 정책: https://vite.dev/releases
-- TypeScript 7.0 정식 출시 (InfoQ, 2026-08): https://www.infoq.com/news/2026/08/typescript-7-released/
-- TypeScript 6.0 변경사항: https://codersera.com/blog/typescript-6-0-whats-new-breaking-changes-2026/
-
-## 참고: 미사용 레퍼런스
-
-`docs/engine-reference/godot/`는 프로젝트 템플릿에서 온 것이며 이 프로젝트에서는
-사용하지 않는다. `CLAUDE.md`의 import는 이 파일을 가리킨다. 향후 Godot로 전환하는
-일이 생기면 그때 import를 되돌린다.
+아키텍처 정본은 `docs/architecture/adr-002-web-runtime-boundaries.md`다.

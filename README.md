@@ -1,60 +1,74 @@
 # Help Wanted
 
-*사람을 구합니다*
+**비밀과 사정을 가진 AI 의뢰인을 자유롭게 심문하고 보수를 협상해, 자료집으로 거짓을 가려내고 모험가의 생사를 좌우하는 의뢰서를 작성하는 중세 판타지 길드 접수 심사 게임.**
 
-다 망한 용병 길드를 물려받은 신임 길드마스터가 되어, 창구에 앉아 의뢰를 흥정하고
-모험가를 파견하는 경영 시뮬레이션입니다. 의뢰인은 늘 뭔가를 숨기고, 당신은 이 도시의
-누구도 모릅니다. 길드원들에게서 주워들은 소문이 유일한 무기입니다.
-
-**잘못 보내면 사람이 죽습니다.**
+NAN 2026 Game × AI Hackathon 예선 제출을 목표로 한다.
 
 ## 플레이
 
-**[▶ 브라우저에서 바로 실행](https://minsu42.github.io/help-wanted/)**
+플레이어는 왕도 모험가 길드의 신입 접수 심사관이다.
 
-설치 없이 열립니다. 마우스만 씁니다.
+1. 의뢰인의 선제 진술을 듣는다.
+2. 자신의 문장으로 자유롭게 질문한다.
+3. 자료집 조항과 증빙을 읽고 필요한 근거를 문장 안에 직접 언급한다.
+4. 보수와 위험수당을 협상한다.
+5. 확보한 사실로 의뢰서를 작성한다.
+6. 적합한 파티에 인계한다.
+7. 실제 사건과 생환 결과를 대조한다.
 
-## 무엇을 하는 게임인가
+별도의 공감·압박·논증 버튼은 없다. 말투는 플레이어가 쓴 문장에서 드러나고, 핵심 사실 공개와 결과는 규칙 엔진이 검증한다.
 
-핵심 원리는 하나입니다 — **정보가 곧 흥정력입니다.**
+## AI 설계
 
-| 알아낸 정보 | 창구에서 쓸 수 있는 흥정 카드 |
-| ---- | ---- |
-| 이 의뢰, 다른 길드 두 곳에서 거절당했다 | 보상 2배 요구 |
-| 그 숲에 실제로는 트롤이 있다 | 위험 수당 요구 — 또는 숨기고 싼 인력 투입 |
-| 의뢰인이 사실 파산 직전이다 | 선불 요구 |
+AI 의뢰인은 플레이어 발화를 이해하고, 이전 대화를 기억하고, 허용된 게임 도구를 요청하며, 결과를 캐릭터로 연기한다.
 
-정보 없이 흥정하는 것은 눈 가리고 도박하는 것입니다. 그래서 플레이어는 강제되지 않고도
-자발적으로 길드원들과 이야기하게 됩니다.
+- AI: 자연어 이해, 도구 선택, 대사·표정 연기
+- 규칙 엔진: 진실, 정보 공개, 지불 한도, 의뢰서, 성공·부상·사망
 
-그리고 모험가가 죽으면 **사람만 잃는 게 아니라 정보원을 잃습니다.** 5년 근속한 베테랑은
-도시 전체와 아는 사이라 소문의 절반이 그를 통해 옵니다. 그를 위험한 의뢰에 보내는 것은
-정보망 자체를 도박에 거는 일입니다.
+AI는 핵심 런타임이다. 연결되지 않으면 새 심문 턴을 진행하지 않는다.
 
-## 실행 방법
+## 실행
 
 ```bash
 npm install
-npm run dev      # 개발 서버
-npm run check    # 타입 검사 + 테스트 + 빌드. 커밋 전 통과 기준
+npm run dev
+npm run check
 ```
 
-## 개발
+로컬 Vite 개발 서버는 API 키 없이 규칙과 UI를 확인할 수 있는 개발 전용 에이전트 시뮬레이터를 사용한다. 프로덕션 빌드는 배포된 AI Worker 주소가 필요하다.
 
-TypeScript + Vite. **런타임 의존성이 없습니다** — 게임 엔진도, UI 프레임워크도 쓰지
-않고 DOM과 CSS로만 만듭니다. 이 게임은 전부 UI이고, 그것이 HTML/CSS가 정확히 잘하는
-일이기 때문입니다.
+```bash
+VITE_AGENT_ENDPOINT=https://<worker-host> npm run build
+```
 
-시드 기반 결정론을 지킵니다. 같은 시드에 같은 입력이면 언제나 같은 결과가 나옵니다.
+Windows PowerShell에서는 `$env:VITE_AGENT_ENDPOINT='https://<worker-host>'`를 먼저 설정한다. 주소가 없거나 헬스체크에 실패하면 게임은 심문을 시작하지 않는다.
 
-- 설계 문서: [`design/gdd/game-concept.md`](design/gdd/game-concept.md)
-- 기술 스택 근거: [`docs/engine-reference/web/VERSION.md`](docs/engine-reference/web/VERSION.md)
+## 기술 기준
+
+- TypeScript 5.5.4 strict
+- Vite 7.3.6
+- DOM + CSS
+- Vitest + happy-dom
+- Cloudflare Worker 기반 AI 에이전트 게이트웨이
+- 런타임 npm 의존성 0개
+
+## 정본 문서
+
+- [게임 콘셉트](design/gdd/game-concept.md)
+- [한 문장 자유 심문](design/gdd/intake-dialogue.md)
+- [AI 의뢰인 에이전트](design/gdd/ai-client-agent.md)
+- [의뢰서·인계·결과](design/gdd/commission-dispatch.md)
+- [시스템 인덱스](design/gdd/systems-index.md)
+- [시장조사](design/research/nan2026-market-2026-08-10.md)
+- [제작 로드맵](production/roadmap.md)
 
 ## 구조
 
-```
-src/domain/        게임 규칙 (브라우저 API를 쓰지 않는다)
-src/simulation/    하루 진행, 판정, 결과 생성
-src/presentation/  화면과 스타일
-tests/             규칙 테스트 (브라우저 없이 돈다)
+```text
+src/domain/        순수 게임 규칙
+src/data/          사건·자료집·파티·밸런스
+src/llm/           AI 게이트웨이와 검증
+src/presentation/  DOM 화면과 CSS
+workers/           AI 프롬프트·도구 오케스트레이션
+tests/             규칙·통합·화면 테스트
 ```
