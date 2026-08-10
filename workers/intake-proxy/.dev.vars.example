@@ -1,0 +1,3 @@
+# 로컬 개발용 시크릿. `.dev.vars`로 복사해서 쓴다 — **`.dev.vars`는 gitignore된다.**
+# 배포본의 키는 이 파일이 아니라 `wrangler secret put LLM_API_KEY`로 넣는다.
+LLM_API_KEY=nvapi-...
