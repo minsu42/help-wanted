@@ -66,7 +66,10 @@ main { max-width: 1000px; margin: 0 auto; display: flex; gap: 12px; align-items:
 .tag { font-size: 10px; opacity: .55; margin-left: 4px; }
 
 .modal { position: fixed; inset: 0; background: #0008; display: flex;
-  align-items: center; justify-content: center; }
+  align-items: center; justify-content: center; z-index: 10; }
+/* ⚠ display:flex가 [hidden]의 display:none을 이긴다 — 이 한 줄이 없으면
+   모달이 안 보이면서도 화면 전체를 덮어 모든 클릭을 삼킨다. */
+.modal[hidden] { display: none; }
 .modal-body { background: #f3e7c9; border: 2px solid #7a6741; padding: 16px;
   width: min(560px, 92vw); max-height: 80vh; overflow-y: auto; }
 .modal-body h3 { font-size: 15px; margin-bottom: 4px; }
