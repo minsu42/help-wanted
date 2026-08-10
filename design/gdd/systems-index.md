@@ -2,7 +2,7 @@
 
 > **Status**: In Review — 2026-08-09 전면 개정 반영 중
 > **Created**: 2026-08-08
-> **Last Updated**: 2026-08-09
+> **Last Updated**: 2026-08-10 (청취 3차 개정 반영 — #24 재정의, #26 4권, #27 값 정정)
 > **Source Concept**: `design/gdd/game-concept.md` (2026-08-09 전면 개정판)
 > **Source Plan**: `production/roadmap.md` (P0~P8 단계 — 이 문서의 "Phase" 열은
 > roadmap의 단계를 그대로 참조한다)
@@ -97,13 +97,13 @@ P4로 가지 않는다 (roadmap.md의 GATE 절 참조).
 | 18 | ~~배경 사건 척추~~ | Narrative | — | **폐기 (2026-08-09)** — → 세력 평판(#33) · 세계 변화(#34) · 메인 스토리 3막(#36)이 대체 | — | 일일 진행, 의뢰 생성, 엔딩 |
 | 19 | 모험가 영입 | Economy | 기반 (구현) / **P4 (하이브리드 확장)** | In Design (개정 대상) | `design/quick-specs/guild-scale-and-difficulty-2026-08-08.md` §3 | 모험가 명부, 길드 경제, 소문 네트워크, 모험가 가치관(#30) |
 | 20 | 길드 확장 | Economy | 기반 (구현) | In Design | `design/quick-specs/guild-scale-and-difficulty-2026-08-08.md` §4 | 모험가 영입, 길드 경제 |
-| 21 | **청취 (Intake)** *(신설)* | Gameplay | **P1** | **In Review** — 설계 리뷰 1차 개정 완료 (2026-08-09) | **`design/gdd/intake-system.md`** (정식 8섹션 GDD) · 리뷰 로그 `design/gdd/reviews/intake-system-review-log.md` | 에이전트 시뮬레이션, 의뢰인 생성, 밸런스 데이터, 시드 PRNG, 질문 카탈로그(#24), **서술 텍스트 조립(#6 — Hard)** |
+| 21 | **청취 (Intake)** *(신설)* | Gameplay | **P1** | **In Review** — 3차 개정(단서 그물 + LLM 분류) 및 설계 리뷰 2차 반영 완료 (2026-08-10) | **`design/gdd/intake-system.md`** (정식 8섹션 GDD) · 리뷰 로그 `design/gdd/reviews/intake-system-review-log.md` | 에이전트 시뮬레이션, 의뢰인 생성, 밸런스 데이터, 시드 PRNG, 단서 그물 템플릿(#24), **LLM 게이트웨이(ADR-003 — Hard\*)**, 서술 텍스트 조립(#6 — 폴백) |
 | 22 | **의뢰인 직업 (Client Occupation)** *(신설)* | Gameplay | **P1** | **In Review** | `intake-system.md`에 포함 (F4 직업 분포 + R10 문안 레지스터) | 에이전트 시뮬레이션, 밸런스 데이터 |
 | 23 | **무지 격차 (Ignorance Gap)** *(신설)* | Gameplay | **P1** | **In Review** | `intake-system.md`에 포함 (F1·F2 · R3~R6) | 의뢰인 직업(#22), 의뢰 생성 |
-| 24 | **질문 카탈로그 (Question Catalog)** *(신설)* | Core/Narrative | **P1** | **In Review** | `intake-system.md`에 포함 (`questions.json` — **완성 문장은 담지 않는다, R10**). **슬롯 6개 × 깊이 2등급 = 질문 12개 확정** | 서술 텍스트 조립, 밸런스 데이터 |
+| 24 | ~~질문 카탈로그~~ → **단서 그물 템플릿 (Clue Net Templates)** *(3차 개정 재정의)* | Core/Narrative | **P1** | **In Review** | `intake-system.md`에 포함 (**`quest-templates.json`** — 종류별 노드 정의 `{id·부모·내용·슬롯 효과·기색·gateCandidate}` + 폴백 키워드. **응답 문안은 담지 않는다, R11**). **의뢰 종류 4 × 노드 10~15 = 노드 40~60개** | 서술 텍스트 조립(폴백), 밸런스 데이터, LLM 게이트웨이 |
 | 25 | **의뢰서 작성 (Commission Form)** *(신설)* | Gameplay/UI | **P1** | Not Started | `design/quick-specs/commission-form-*.md` (⬜ 미작성) | 청취(#21), 의뢰 생성 |
-| 26 | **길드마스터북 (Guildmaster's Handbook)** *(신설)* | UI/Narrative | **P1** | Not Started | commission-form-*.md에 포함 예정 — Open Question 8 (노출 시점) 미해결 | 질문 카탈로그(#24), 청취(#21) |
-| 27 | **하루 행동 횟수 (Daily Action Budget)** *(신설)* | Progression | **P1 최소판 / P3 본체** | Not Started | `intake-system.md` Tuning Knobs가 **잠정값 12 = 의뢰인 4 × 슬롯 3** 을 정의. 본체는 `day-economy-*.md` (⬜) | 일일 진행, 청취(#21), 계약 협상 |
+| 26 | **길드마스터북 (Guildmaster's Handbook)** *(신설)* | UI/Narrative | **P1** | Not Started | `commission-form.md`가 공동 소유. **4권 구성: 도감 · 시세 · 지역 · 조직.** 노출 시점(Q5) 미해결. ⚠ **시세권은 첫 계약 전에 1회 노출되어야 한다** — 없으면 R12의 "시세의 네 배 = 경보"가 무의미 (`intake-system.md` Dependencies) | 청취(#21), 단서 그물 템플릿(#24) |
+| 27 | **하루 행동 횟수 (Daily Action Budget)** *(신설)* | Progression | **P1 최소판 / P3 본체** | Not Started | `intake-system.md` Tuning Knobs가 **잠정값 9 = 의뢰인 3 × 파고들기 깊이 3** 을 정의 *(3차 개정 — 표면 진술 무료화로 옛 공식 12 폐기)*. **숫자가 아니라 티켓 뭉치로 표시**(아트 바이블 §5.7). 본체는 `day-economy-*.md` (⬜) | 일일 진행, 청취(#21), 계약 협상 |
 | 28 | **대기 목록 (Waiting Queue)** *(신설)* | Gameplay | **P3** | Not Started | day-economy-*.md에 포함 예정 | 하루 행동 횟수(#27), 의뢰 생성 |
 | 29 | **고정비 (Fixed Costs)** *(신설)* | Economy | **P3** | Not Started | day-economy-*.md에 포함 예정 | 길드 경제(#13), 모험가 명부 |
 | 30 | **모험가 가치관 (Adventurer Values)** *(신설)* | Gameplay | **P4** | Not Started | `design/quick-specs/adventurer-values-*.md` (⬜ 미작성) | 에이전트 시뮬레이션, 모험가 명부 |
@@ -123,7 +123,7 @@ P4로 가지 않는다 (roadmap.md의 GATE 절 참조).
 
 | Category | Description | Systems in This Project |
 |----------|-------------|--------------------------|
-| **Core** | 모든 것이 딛고 서는 기반 | 시드 PRNG, 밸런스 데이터, 질문 카탈로그 |
+| **Core** | 모든 것이 딛고 서는 기반 | 시드 PRNG, 밸런스 데이터, 단서 그물 템플릿 |
 | **Gameplay** | 실제로 플레이어가 판단을 내리는 곳 | 에이전트 시뮬레이션, 의뢰인 생성, 의뢰인 직업, 무지 격차, 모험가 명부, 의뢰 생성, 소문 네트워크, 계약 협상, 파견 판정, 청취, 의뢰서 작성, 대기 목록, 모험가 가치관, 배정 거부·이탈 |
 | **Progression** | 세션이 시간에 따라 어떻게 진행되는가 | 일일 진행, 하루 행동 횟수 |
 | **Economy** | 자금·평판의 순환과 난이도 스케일링 | 길드 경제, 고정비, 세력 평판, 모험가 영입, 길드 확장 |
@@ -173,7 +173,10 @@ P4로 가지 않는다 (roadmap.md의 GATE 절 참조).
 1. **시드 PRNG** *(구현 완료)* — 결정론 요구의 기반. 모든 절차 생성·판정이 여기서 난수를 뽑음
 2. **밸런스 데이터 (balance.json)** — 하드코딩 금지 규칙의 유일한 방어선
 3. **에이전트 시뮬레이션** — 모험가·의뢰인이 공유하는 데이터 스키마(목표/성격/인맥/기억). 이 스키마가 흔들리면 하위 전부가 흔들림
-4. **질문 카탈로그** *(신설)* — 슬롯 단위 공용 질문 데이터. 의뢰 종류와 독립적으로 존재해야 조합 폭발을 막는다 (`game-concept.md` Technical Challenges #1)
+4. **단서 그물 템플릿** *(신설 — 3차 개정에서 「질문 카탈로그」를 대체)* — 의뢰 종류별
+   노드 DAG 데이터. ~~슬롯 단위 공용~~ → **종류 단위 공용 + 시드 변주**가 조합 폭발을
+   막는다. 플레이어의 질문 표현은 LLM 분류가 흡수하므로 저작 대상이 아니다
+   (`intake-system.md` 「콘텐츠 크기」)
 
 ### Core Layer (Foundation에만 의존)
 
@@ -186,12 +189,15 @@ P4로 가지 않는다 (roadmap.md의 GATE 절 참조).
 
 ### Intake Layer (Core에 의존) *(신설 — P1)*
 
-1. **청취** — depends on: 에이전트 시뮬레이션, 의뢰인 생성, 질문 카탈로그, 밸런스 데이터,
-   시드 PRNG, **서술 텍스트 조립 (Hard — `intake-system.md` R10)**
-   > 텍스트 조립이 Hard인 이유: 응답 문안이 `(슬롯 × reach × limiter)` 키로 조립되며,
+1. **청취** — depends on: 에이전트 시뮬레이션, 의뢰인 생성, **단서 그물 템플릿**,
+   밸런스 데이터, 시드 PRNG, **LLM 게이트웨이 (Hard\* — ADR-003)**,
+   서술 텍스트 조립 (폴백 — `intake-system.md` R11)
+   > **\*장애 시 폴백으로 Hard가 풀린다** — 폴백만으로 완주 가능해야 한다 (ADR-003 D5).
+   > 텍스트 조립은 3차 개정에서 본선 → 폴백으로 강등됐으나 **사라지지 않았다**:
    > `무지`/`은폐`의 문안 구별이 없으면 판정은 돌지만 **판별 판타지가 죽는다.**
+   > 그 요구는 이제 LLM **연기 지시의 불변축**으로도 살아 있다 (R11).
 2. **의뢰서 작성** — depends on: 청취(받아쓰기 칸의 원천), 의뢰 생성
-3. **길드마스터북** — depends on: 질문 카탈로그, 청취
+3. **길드마스터북** — depends on: 청취, 단서 그물 템플릿
 
 ### Feature Layer (Core/Intake에 의존)
 
@@ -242,7 +248,7 @@ P4로 가지 않는다 (roadmap.md의 GATE 절 참조).
 | 2 | 밸런스 데이터 | 기반 | Foundation | systems-designer / economy-designer | S (재사용) |
 | 3 | 에이전트 시뮬레이션 | 기반 | Foundation | gameplay-programmer | S (재사용) |
 | 4 | — P0 정리 (선불 축·잔금 미지급·15일 고정 제거) | **P0** | 전체 | gameplay-programmer / lead-programmer | S |
-| 5 | 질문 카탈로그 | P1 | Foundation | systems-designer | M |
+| 5 | 단서 그물 템플릿 | P1 | Foundation | systems-designer | **L** *(3차 개정 — 질문 12개 → 노드 40~60개)* |
 | 6 | 의뢰인 직업 | P1 | Core | systems-designer / gameplay-programmer | S |
 | 7 | 무지 격차 | P1 | Core | systems-designer | S |
 | 8 | 의뢰 생성 (개정) | P1 | Core | systems-designer | M |
@@ -301,7 +307,7 @@ roadmap.md에 시간 계획이 없는 것과 별개로 순수 작업량 감이�
 | System | Risk Type | Risk Description | Mitigation |
 |--------|-----------|-------------------|------------|
 | 의뢰서 작성 (#25) | Design | **클릭 노동이 될 위험 — 이번 개정의 1순위 리스크** (`game-concept.md` Design Risks) | 받아쓰기/판단 칸 분리, 타입 제약 토큰, 처리량 압박, 반복 압축. 검증 기준은 `design/research/paperwork-ux-2026-08-09.md` §6 |
-| 청취 (#21) / 질문 카탈로그 (#24) | ~~Technical~~ → **해소 (2026-08-09)** | ~~조합 폭발~~ — **일어나지 않는다.** 카탈로그는 의뢰 종류가 아니라 **슬롯 어휘에만** 비례하고 어휘는 6개에서 멈춘다. 의뢰 종류를 12종으로 늘려도 질문은 안 늘어난다 | 질문·문안 모두 슬롯이 소유(R10). **위험은 정반대였다 — 어휘 빈곤.** `depth` 2등급으로 12개 확보 |
+| 청취 (#21) / 단서 그물 템플릿 (#24) | ~~Technical~~ → **해소, 단 근거가 교체됨 (2026-08-10)** | ~~조합 폭발~~ — 여전히 일어나지 않으나 **2026-08-09의 근거("슬롯 어휘 6개에서 멈춘다")는 3차 개정과 함께 폐기됐다.** 저작 단위가 질문 12개 → **노드 40~60개**로 바뀌었고, 이제 의뢰 종류에 비례한다 | 방어가 둘로 바뀌었다: ① 노드 템플릿은 **종류 단위 공용 + 시드 변주**(무지 종단·게이트 위치가 매번 다름) ② **플레이어의 질문 표현은 저작 대상이 아니다** — LLM 분류가 흡수한다. **어휘 빈곤 위험도 함께 해소됐다** (자유 타이핑) |
 | 전체 — **예선 심사 시간** | **Business/Scope** *(신설 2026-08-09)* | **캠페인은 8~15시간인데 예선 심사에서 실제로 플레이되는 것은 첫 20~30분이다.** 로드맵 전체가 "완주 가능성"을 향해 정렬되어 있어 **첫인상 작업을 잊기 쉽다** | 배포는 **GitHub Pages 고정**(NAN2026 예선 — 재검토 없음)이라 회피 경로가 없다. GATE 통과 기준에 *"첫 30분만 본 사람도 이 게임이 무엇인지 말할 수 있다"* 추가. 첫 화면 1초 예산이 **심사 리스크**로 격상. 근거: `production/roadmap.md` 「배포 채널」 |
 | 세계 변화 (#34) | Design/Technical | 인과가 안 보이면 후과가 무작위 사건처럼 느껴짐 (기둥 7의 실패 모드). 후과의 후과를 무한히 따라가면 디버깅 불가 | 후과가 나타날 때 원인이 된 의뢰를 명시적으로 참조. 깊이 1로 제한 |
 | 배정 거부·이탈 (#31) / 위험도를 낮춰 적는 유인 | Design | 낮게 적으면 값을 더 받고 모험가도 거부하지 않음 — 대가가 약하면 지배 전략이 됨 (`game-concept.md` Design Risks) | 오판의 사망률 연동을 충분히 가파르게. 모험가들이 기억한다 (Memory 기록) |
