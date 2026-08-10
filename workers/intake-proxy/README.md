@@ -16,9 +16,9 @@ POST /respond
 
 ## Environment
 
-- `LLM_API_KEY`: 공급자 API 키
-- `PROVIDER`: `nvidia` 또는 `openai`
-- `MODEL`: OpenAI 호환 Chat Completions 모델
+- `LLM_API_KEY`: OpenAI API 키. Cloudflare Secret으로만 저장한다.
+- `PROVIDER`: `openai`
+- `MODEL`: `gpt-5.6-luna` — 짧은 대화를 반복하는 비용 민감형 설정
 - `ALLOWED_ORIGINS`: 쉼표로 구분한 게임 배포 출처
 - `DAILY_CALL_CAP`: 일일 호출 상한
 - `RATE_LIMIT_PER_MINUTE`: IP당 분당 상한

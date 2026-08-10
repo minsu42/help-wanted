@@ -196,11 +196,15 @@ async function callModel(system, user, env, temperature) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LIMITS.timeoutMs);
   try {
-    const response = await fetch(PROVIDERS[providerOf(env)], {
+    const provider = providerOf(env);
+    const generation = provider === 'openai'
+      ? { max_completion_tokens: 500, reasoning_effort: 'none' }
+      : { max_tokens: 500, temperature };
+    const response = await fetch(PROVIDERS[provider], {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.LLM_API_KEY}` },
       body: JSON.stringify({
-        model: modelOf(env), temperature, max_tokens: 500,
+        model: modelOf(env), ...generation,
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       }),
@@ -217,12 +221,12 @@ async function callModel(system, user, env, temperature) {
 }
 
 function providerOf(env) {
-  const provider = String(env.PROVIDER || 'nvidia').toLowerCase();
-  return Object.hasOwn(PROVIDERS, provider) ? provider : 'nvidia';
+  const provider = String(env.PROVIDER || 'openai').toLowerCase();
+  return Object.hasOwn(PROVIDERS, provider) ? provider : 'openai';
 }
 
 function modelOf(env) {
-  return env.MODEL || 'meta/llama-3.1-70b-instruct';
+  return env.MODEL || 'gpt-5.6-luna';
 }
 
 async function readJson(request) {

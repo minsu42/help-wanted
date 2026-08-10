@@ -6,9 +6,9 @@ compatibility_date = "2026-08-10"
 #     wrangler secret put LLM_API_KEY
 # 저장소는 공개이고 이 파일은 커밋된다 (ADR-003 D2).
 [vars]
-# nvidia (1순위) | openai (예비). 공급자 전환은 클라이언트 코드가 아니라 여기다.
-PROVIDER = "nvidia"
-MODEL = "meta/llama-3.1-70b-instruct"
+# 브라우저는 공급자와 키를 알지 못하며 이 Worker만 OpenAI를 호출한다.
+PROVIDER = "openai"
+MODEL = "gpt-5.6-luna"
 
 # 게임 본체가 뜨는 출처만 연다. 쉼표로 구분한다.
 #   - GitHub Pages 배포본
