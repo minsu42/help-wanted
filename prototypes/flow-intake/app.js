@@ -61,7 +61,11 @@ function realize(occ, seed) {
 
 /* ---------- 상태 ---------- */
 const reachable = n => n.parents.every(p => S.opened.has(p));
-const candidates = () => Q.nodes.filter(n => !S.opened.has(n.id) && reachable(n));
+// ⚠ 한 번 제시됐다가 놓친 화제는 흐름에 다시 나오지 않는다 — 되짚기(응대권 1)로만.
+//   이게 없으면 기다리기만 해도 그물 전체를 공짜로 판다 (「놓친 것」이 장식이 된다).
+//   재미가 죽으면 `&& !S.missed.has(n.id)` 한 조각만 지우면 원래대로 돌아온다.
+const candidates = () => Q.nodes.filter(n =>
+  !S.opened.has(n.id) && reachable(n) && !S.missed.has(n.id));
 const clueList = () => [...S.opened].map(id => byId[id]);
 const hasKey = () => clueList().some(c => c.leverageTag === S.net.lev);
 
