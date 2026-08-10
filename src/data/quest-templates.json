@@ -1,0 +1,125 @@
+{
+  "_comment": [
+    "단서 그물 템플릿 — design/gdd/intake-system.md R3·F1이 소유한다.",
+    "노드는 '질문'이 아니라 '사실 조각'이다. 플레이어의 질문 표현은 LLM 분류가",
+    "흡수하므로 저작 대상이 아니고, 여기 적는 것은 '이 의뢰인이 알 수 있는 것의",
+    "구조'뿐이다. 대사 문안은 담지 않는다 (R11 — 본선은 LLM 연기, 폴백은 text.json).",
+    "",
+    "노드 필드:",
+    "  id            고유. RNG 소비 순서가 id 사전순이므로 이름을 바꾸면 실현이 바뀐다 (F1)",
+    "  parents       [] 이면 표면 노드 — 착석 즉시 무료 개방 (R2)",
+    "  fact          사실 조각 한 줄. 연기 프롬프트의 입력이지 출력이 아니다",
+    "  slot          {name, level} 또는 없음(메모 노드). level: vague | certain",
+    "  gateCandidate true일 때만 tells가 낮아도 게이트가 될 수 있다 (F1 ②)",
+    "  keywords      폴백 모드의 키워드 매칭용 (LLM 장애 시에만 쓴다). 2음절 이상",
+    "",
+    "검증(빌드 게이트, R3): 순환 없음 / 고아 없음 / 인트로 소재는 표면 노드 /",
+    "노드의 slot.name이 해당 종류의 openSlots에 속할 것"
+  ],
+
+  "version": 1,
+
+  "questTypes": {
+    "조사": {
+      "openSlots": ["대상", "규모", "장소"],
+      "slotWeights": { "대상": 3, "규모": 2, "장소": 1 },
+      "baseFee": 50,
+      "nodes": [
+        {
+          "id": "a-footprint",
+          "parents": [],
+          "fact": "숲에서 커다란 발자국을 봤다",
+          "slot": { "name": "대상", "level": "vague" },
+          "gateCandidate": false,
+          "keywords": ["발자국", "자국", "흔적", "발"]
+        },
+        {
+          "id": "b-mill",
+          "parents": [],
+          "fact": "서쪽 숲, 물레방아 근처였다",
+          "slot": { "name": "장소", "level": "vague" },
+          "gateCandidate": false,
+          "keywords": ["물레방아", "방앗간", "서쪽", "어디", "장소"]
+        },
+        {
+          "id": "c-night-sound",
+          "parents": [],
+          "fact": "밤마다 우는 소리 같은 것이 들렸다",
+          "gateCandidate": false,
+          "keywords": ["소리", "울음", "밤", "들렸"]
+        },
+
+        {
+          "id": "d-toes",
+          "parents": ["a-footprint"],
+          "fact": "사람 발만 한데 발가락이 셋이었다",
+          "slot": { "name": "대상", "level": "certain" },
+          "gateCandidate": true,
+          "keywords": ["발가락", "모양", "생김", "크기"]
+        },
+        {
+          "id": "e-many-tracks",
+          "parents": ["a-footprint"],
+          "fact": "자국이 한 갈래가 아니라 여러 갈래였다",
+          "slot": { "name": "규모", "level": "vague" },
+          "gateCandidate": false,
+          "keywords": ["여러", "갈래", "몇", "수효", "혼자"]
+        },
+        {
+          "id": "f-cave",
+          "parents": ["b-mill"],
+          "fact": "물레방아 위쪽 비탈에 사람이 안 다니는 동굴이 있다",
+          "slot": { "name": "장소", "level": "certain" },
+          "gateCandidate": true,
+          "keywords": ["동굴", "위쪽", "비탈", "굴"]
+        },
+        {
+          "id": "g-directions",
+          "parents": ["c-night-sound"],
+          "fact": "소리가 한 곳이 아니라 여기저기서 났다",
+          "slot": { "name": "규모", "level": "vague" },
+          "gateCandidate": false,
+          "keywords": ["방향", "여기저기", "사방", "어디서"]
+        },
+
+        {
+          "id": "h-track-sizes",
+          "parents": ["e-many-tracks"],
+          "fact": "큰 자국이 둘, 작은 자국이 예닐곱이었다",
+          "slot": { "name": "규모", "level": "certain" },
+          "gateCandidate": false,
+          "keywords": ["둘", "예닐곱", "몇 마리", "새끼", "크고"]
+        },
+        {
+          "id": "i-bones",
+          "parents": ["f-cave"],
+          "fact": "동굴 입구에 뼈가 쌓여 있었다",
+          "gateCandidate": false,
+          "keywords": ["뼈", "입구", "쌓여", "사체"]
+        },
+        {
+          "id": "j-hide-scrap",
+          "parents": ["d-toes"],
+          "fact": "가시에 걸린 가죽 조각을 주워 왔다",
+          "gateCandidate": false,
+          "keywords": ["가죽", "조각", "털", "주웠"]
+        },
+        {
+          "id": "k-neighbor",
+          "parents": ["g-directions"],
+          "fact": "이웃집도 같은 소리를 들었다고 한다",
+          "gateCandidate": false,
+          "keywords": ["이웃", "다른 사람", "누구", "들었다고"]
+        },
+
+        {
+          "id": "l-land-dispute",
+          "parents": ["i-bones"],
+          "fact": "그 비탈의 소유를 두고 방앗간 주인과 다툰 적이 있다",
+          "gateCandidate": true,
+          "keywords": ["땅", "소유", "다툼", "주인", "싸움"]
+        }
+      ]
+    }
+  }
+}
