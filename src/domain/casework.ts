@@ -149,6 +149,19 @@ export interface CommissionSheet {
   partyId?: string;
 }
 
+/**
+ * 파견에서 돌아온 쪽의 진술서.
+ *
+ * 판정 숫자(`정보 0.4 · 준비 1 · 위협 4`)는 **왜 죽었는지를 말해 주지 않는다.**
+ * 어느 칸이 비어서 무엇을 마주쳤는지는 다녀온 사람만 알고, 기둥 6은 그 입을
+ * 거쳐야만 코드 밖으로 나온다. 문장은 손으로 쓰지 않고 슬롯별 템플릿으로 조립한다.
+ */
+export interface FieldReport {
+  /** 진술한 사람 — 전멸이면 시신을 수습한 쪽이 대신 적는다. */
+  speaker: string;
+  lines: readonly string[];
+}
+
 export interface DispatchResult {
   caseId: string;
   score: number;
@@ -157,6 +170,8 @@ export interface DispatchResult {
   outcome: 'complete' | 'success' | 'injured' | 'failed' | 'death' | 'rejected' | 'unassigned';
   reward: number;
   notes: string[];
+  /** 파견이 실제로 나간 경우에만 있다. 거절·미인계에는 진술할 사람이 없다. */
+  report?: FieldReport;
 }
 
 export const COMMISSION_SLOTS: readonly CommissionSlot[] = [

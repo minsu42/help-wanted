@@ -354,7 +354,10 @@ export class CaseworkApp {
         const detail = item.result.outcome === 'rejected' || item.result.outcome === 'unassigned'
           ? '파견 없음'
           : `정보 ${item.result.completeness} · 준비 ${item.result.preparation} · 위협 ${CASES[item.caseIndex]?.threat ?? 0} → 점수 ${item.result.score}`;
-        return `<li class="overnight-item overnight-item--${item.result.outcome}"><div><b>${escapeHtml(item.clientName)}</b><span>${escapeHtml(item.premise)}</span></div><div><b>${copy.title}</b><small>${escapeHtml(detail)}</small></div><p>${escapeHtml(item.result.notes[0] ?? '')}</p></li>`;
+        const report = item.result.report;
+        return `<li class="overnight-item overnight-item--${item.result.outcome}"><div><b>${escapeHtml(item.clientName)}</b><span>${escapeHtml(item.premise)}</span></div><div><b>${copy.title}</b><small>${escapeHtml(detail)}</small></div>
+        ${report ? `<blockquote class="field-report"><p class="field-report__speaker">${escapeHtml(report.speaker)} 진술</p>${report.lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}</blockquote>` : ''}
+        <p class="overnight-math">${escapeHtml(item.result.notes.join(' '))}</p></li>`;
       }).join('')}</ol></section>` : ''}
       ${fresh.length ? `<section class="directives"><h2>오늘부터 적용되는 공문</h2>${fresh.map((directive) => `<article class="directive"><b>${escapeHtml(directive.title)}</b><p>${escapeHtml(directive.text)}</p></article>`).join('')}<p class="directive-note">어제 통하던 게시가 오늘은 반려될 수 있습니다. 백과사전 규정 항목에도 실렸습니다.</p></section>` : ''}
       ${added.length ? `<section class="codex-additions"><h2>자료집에 오른 현장 기록</h2>${added.map((entry) => `<article class="directive"><b>${escapeHtml(entry.title)}</b><p>${escapeHtml(entry.text)}</p><small>출처 · ${escapeHtml(entry.source ?? '파견 보고')}</small></article>`).join('')}<p class="directive-note">자료집은 앉아서 쓴 것이 아닙니다. 다녀온 사람이 있어서 그 쪽이 생겼습니다.</p></section>` : ''}

@@ -69,6 +69,51 @@ describe('의뢰서와 파견 판정', () => {
     expect(result.reward).toBe(0);
   });
 
+  it('빈 칸은 현장 진술서에서 이름과 함께 지목되고, 진실은 사후에 나온다', () => {
+    // Arrange — 목표만 적고 나머지를 비운 서류
+    const caseData = CASES[0]!;
+    const sheet = emptyCommission();
+    sheet.entries.objective = caseData.facts.find((fact) => fact.slot === 'objective')!.id;
+    const disclosed = caseData.facts.map((fact) => fact.id);
+
+    // Act
+    const report = resolveDispatch(caseData, sheet, PARTIES[0], 18, disclosed).report!;
+
+    // Assert — 비운 네 칸이 모두 진술에 나오고, 채운 칸은 나오지 않는다
+    const body = report.lines.join('\n');
+    for (const label of ['대상', '규모', '장소·경로', '특징·약점']) expect(body).toContain(`「${label}」 칸이 비어 있었습니다`);
+    expect(body).not.toContain('「목표」');
+    // 진실은 진술서에서만 공개된다 — 파견 전 화면이 아니라
+    expect(body).toContain(caseData.facts.find((fact) => fact.slot === 'target')!.value);
+    expect(report.speaker).toContain(PARTIES[0]!.name);
+  });
+
+  it('서류가 완전하면 진술서는 접수원을 탓하지 않는다', () => {
+    // Arrange — 모든 칸·등급·준비를 맞춘 서류
+    const caseData = CASES[0]!;
+    const sheet = emptyCommission();
+    sheet.risk = caseData.correctRisk;
+    sheet.preparations = [...caseData.requiredPreparations];
+    for (const slot of COMMISSION_SLOTS) sheet.entries[slot] = caseData.facts.find((fact) => fact.slot === slot)!.id;
+
+    // Act
+    const report = resolveDispatch(caseData, sheet, PARTIES[0], 18, caseData.facts.map((fact) => fact.id)).report!;
+
+    // Assert
+    expect(report.lines.join('\n')).not.toContain('비어 있었습니다');
+    expect(report.lines.length).toBeGreaterThan(1);
+  });
+
+  it('거절과 미인계에는 진술할 사람이 없다', () => {
+    const caseData = CASES[0]!;
+    const rejected = emptyCommission();
+    rejected.accepted = false;
+    const unassigned = emptyCommission();
+    unassigned.accepted = true;
+    expect(resolveDispatch(caseData, rejected, undefined, 18, []).report).toBeUndefined();
+    expect(resolveDispatch(caseData, unassigned, undefined, 18, []).report).toBeUndefined();
+  });
+
   it('불법 의뢰 거절은 파견 없이 규정 준수 결과를 만든다', () => {
     const caseData = CASES[1]!;
     const sheet = emptyCommission();
