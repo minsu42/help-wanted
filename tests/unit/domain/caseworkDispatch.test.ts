@@ -44,10 +44,15 @@ describe('의뢰서와 파견 판정', () => {
     // Arrange · Act
     const positions = CASES.map((item) =>
       item.requiredPreparations.map((need) => PREPARATION_OPTIONS.indexOf(need)));
+    const leadingBlocks = CASES.map((item) => ({
+      required: [...item.requiredPreparations].sort().join('|'),
+      leading: [...PREPARATION_OPTIONS.slice(0, item.requiredPreparations.length)].sort().join('|'),
+    }));
 
-    // Assert — 모든 필수 준비가 선택지에 있고, 어떤 사건도 정답이 목록 맨 앞을 차지하지 않는다
+    // Assert — 모든 필수 준비가 선택지에 있다
     expect(positions.every((row) => row.every((index) => index >= 0))).toBe(true);
-    expect(positions.every((row) => row.join('|') !== row.map((_, index) => index).join('|'))).toBe(true);
+    // Assert — 어떤 사건에서도 정답 묶음이 목록 맨 앞 칸을 그대로 차지하지 않는다 (순서만 다른 경우 포함)
+    expect(leadingBlocks.every((row) => row.required !== row.leading)).toBe(true);
   });
 
   it('게시했으나 인계하지 않으면 파견 없이 미인계로 마감한다', () => {

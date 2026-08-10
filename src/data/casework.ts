@@ -7,13 +7,13 @@ import type { ClientCase, KnowledgeEntry, PartyCandidate } from '../domain/casew
  * 플레이어가 백과사전을 읽지 않고 위치만으로 답을 맞힐 수 있다. 순서는 사건과 무관하게 고정한다.
  */
 export const PREPARATION_OPTIONS: readonly string[] = [
-  '방패',
-  '화염 도구',
-  '마력 감지',
-  '도적 경계',
-  '은 가루',
   '길잡이',
+  '방패',
+  '마력 감지',
+  '은 가루',
+  '화염 도구',
   '응급 처치',
+  '도적 경계',
 ];
 
 export const KNOWLEDGE: readonly KnowledgeEntry[] = [
