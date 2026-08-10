@@ -3,123 +3,245 @@
     "단서 그물 템플릿 — design/gdd/intake-system.md R3·F1이 소유한다.",
     "노드는 '질문'이 아니라 '사실 조각'이다. 플레이어의 질문 표현은 LLM 분류가",
     "흡수하므로 저작 대상이 아니고, 여기 적는 것은 '이 의뢰인이 알 수 있는 것의",
-    "구조'뿐이다. 대사 문안은 담지 않는다 (R11 — 본선은 LLM 연기, 폴백은 text.json).",
+    "구조'뿐이다. 플레이어는 대사의 단어(앵커)를 눌러 화제를 지목하며(R4), 대사 문안은",
+    "담지 않는다 (R11 — 본선은 LLM 연기, 폴백은 text.json).",
     "",
-    "노드 필드:",
     "  id            고유. RNG 소비 순서가 id 사전순이므로 이름을 바꾸면 실현이 바뀐다 (F1)",
     "  parents       [] 이면 표면 노드 — 착석 즉시 무료 개방 (R2)",
     "  fact          사실 조각 한 줄. 연기 프롬프트의 입력이지 출력이 아니다",
     "  slot          {name, level} 또는 없음(메모 노드). level: vague | certain",
     "  gateCandidate true일 때만 tells가 낮아도 게이트가 될 수 있다 (F1 ②)",
-    "  keywords      폴백 모드의 키워드 매칭용 (LLM 장애 시에만 쓴다). 2음절 이상",
+    "  leverageTag   이 노드를 게이트에 들이댈 때의 범주 (절차/손익/체면). null이면 지렛대로 못 쓴다 (R8·R9)",
+    "  anchors       이 노드로 이어지는 앵커 어휘. 의뢰인의 대사에 실제로 등장해야 한다 (R4)",
     "",
-    "검증(빌드 게이트, R3): 순환 없음 / 고아 없음 / 인트로 소재는 표면 노드 /",
-    "노드의 slot.name이 해당 종류의 openSlots에 속할 것"
+    "검증(빌드 게이트, R3·R4): 순환 없음 / 고아 없음 / 인트로 소재는 표면 노드 /",
+    "노드의 slot.name이 해당 종류의 openSlots에 속할 것 / 앵커 1개가 가리키는 노드는",
+    "최대 1개 / 앵커 수 > 미방문 노드 수 / 다른 가지의 노드만으로 열리는 게이트가",
+    "최소 1개 존재할 것 (AC-R8-04 — P1 자기완결)"
   ],
-
   "version": 1,
-
   "questTypes": {
     "조사": {
-      "openSlots": ["대상", "규모", "장소"],
-      "slotWeights": { "대상": 3, "규모": 2, "장소": 1 },
+      "openSlots": [
+        "대상",
+        "규모",
+        "장소"
+      ],
+      "slotWeights": {
+        "대상": 3,
+        "규모": 2,
+        "장소": 1
+      },
       "baseFee": 50,
       "nodes": [
         {
           "id": "a-footprint",
           "parents": [],
           "fact": "숲에서 커다란 발자국을 봤다",
-          "slot": { "name": "대상", "level": "vague" },
+          "slot": {
+            "name": "대상",
+            "level": "vague"
+          },
           "gateCandidate": false,
-          "keywords": ["발자국", "자국", "흔적", "발"]
+          "anchors": [
+            "발자국",
+            "자국",
+            "흔적",
+            "발"
+          ],
+          "leverageTag": null
         },
         {
           "id": "b-mill",
           "parents": [],
           "fact": "서쪽 숲, 물레방아 근처였다",
-          "slot": { "name": "장소", "level": "vague" },
+          "slot": {
+            "name": "장소",
+            "level": "vague"
+          },
           "gateCandidate": false,
-          "keywords": ["물레방아", "방앗간", "서쪽", "어디", "장소"]
+          "anchors": [
+            "물레방아",
+            "방앗간",
+            "서쪽",
+            "어디",
+            "장소"
+          ],
+          "leverageTag": null
         },
         {
           "id": "c-night-sound",
           "parents": [],
           "fact": "밤마다 우는 소리 같은 것이 들렸다",
           "gateCandidate": false,
-          "keywords": ["소리", "울음", "밤", "들렸"]
+          "anchors": [
+            "소리",
+            "울음",
+            "밤",
+            "들렸"
+          ],
+          "leverageTag": null
         },
-
         {
           "id": "d-toes",
-          "parents": ["a-footprint"],
+          "parents": [
+            "a-footprint"
+          ],
           "fact": "사람 발만 한데 발가락이 셋이었다",
-          "slot": { "name": "대상", "level": "certain" },
+          "slot": {
+            "name": "대상",
+            "level": "certain"
+          },
           "gateCandidate": true,
-          "keywords": ["발가락", "모양", "생김", "크기"]
+          "anchors": [
+            "발가락",
+            "모양",
+            "생김",
+            "크기"
+          ],
+          "leverageTag": null
         },
         {
           "id": "e-many-tracks",
-          "parents": ["a-footprint"],
+          "parents": [
+            "a-footprint"
+          ],
           "fact": "자국이 한 갈래가 아니라 여러 갈래였다",
-          "slot": { "name": "규모", "level": "vague" },
+          "slot": {
+            "name": "규모",
+            "level": "vague"
+          },
           "gateCandidate": false,
-          "keywords": ["여러", "갈래", "몇", "수효", "혼자"]
+          "anchors": [
+            "여러",
+            "갈래",
+            "몇",
+            "수효",
+            "혼자"
+          ],
+          "leverageTag": null
         },
         {
           "id": "f-cave",
-          "parents": ["b-mill"],
+          "parents": [
+            "b-mill"
+          ],
           "fact": "물레방아 위쪽 비탈에 사람이 안 다니는 동굴이 있다",
-          "slot": { "name": "장소", "level": "certain" },
+          "slot": {
+            "name": "장소",
+            "level": "certain"
+          },
           "gateCandidate": true,
-          "keywords": ["동굴", "위쪽", "비탈", "굴"]
+          "anchors": [
+            "동굴",
+            "위쪽",
+            "비탈",
+            "굴"
+          ],
+          "leverageTag": null
         },
         {
           "id": "g-directions",
-          "parents": ["c-night-sound"],
+          "parents": [
+            "c-night-sound"
+          ],
           "fact": "소리가 한 곳이 아니라 여기저기서 났다",
-          "slot": { "name": "규모", "level": "vague" },
+          "slot": {
+            "name": "규모",
+            "level": "vague"
+          },
           "gateCandidate": false,
-          "keywords": ["방향", "여기저기", "사방", "어디서"]
+          "anchors": [
+            "방향",
+            "여기저기",
+            "사방",
+            "어디서"
+          ],
+          "leverageTag": null
         },
-
         {
           "id": "h-track-sizes",
-          "parents": ["e-many-tracks"],
+          "parents": [
+            "e-many-tracks"
+          ],
           "fact": "큰 자국이 둘, 작은 자국이 예닐곱이었다",
-          "slot": { "name": "규모", "level": "certain" },
+          "slot": {
+            "name": "규모",
+            "level": "certain"
+          },
           "gateCandidate": false,
-          "keywords": ["둘", "예닐곱", "몇 마리", "새끼", "크고"]
+          "anchors": [
+            "둘",
+            "예닐곱",
+            "몇 마리",
+            "새끼",
+            "크고"
+          ],
+          "leverageTag": null
         },
         {
           "id": "i-bones",
-          "parents": ["f-cave"],
-          "fact": "동굴 입구에 뼈가 쌓여 있었다",
+          "parents": [
+            "b-mill"
+          ],
+          "fact": "물레방아 뒤편에 짐승 뼈가 쌓여 있었다",
           "gateCandidate": false,
-          "keywords": ["뼈", "입구", "쌓여", "사체"]
+          "anchors": [
+            "뼈",
+            "입구",
+            "쌓여",
+            "사체"
+          ],
+          "leverageTag": "손익"
         },
         {
           "id": "j-hide-scrap",
-          "parents": ["d-toes"],
+          "parents": [
+            "a-footprint"
+          ],
           "fact": "가시에 걸린 가죽 조각을 주워 왔다",
           "gateCandidate": false,
-          "keywords": ["가죽", "조각", "털", "주웠"]
+          "anchors": [
+            "가죽",
+            "조각",
+            "털",
+            "주웠"
+          ],
+          "leverageTag": "절차"
         },
         {
           "id": "k-neighbor",
-          "parents": ["g-directions"],
+          "parents": [
+            "c-night-sound"
+          ],
           "fact": "이웃집도 같은 소리를 들었다고 한다",
           "gateCandidate": false,
-          "keywords": ["이웃", "다른 사람", "누구", "들었다고"]
+          "anchors": [
+            "이웃",
+            "다른 사람",
+            "누구",
+            "들었다고"
+          ],
+          "leverageTag": "체면"
         },
-
         {
           "id": "l-land-dispute",
-          "parents": ["i-bones"],
+          "parents": [
+            "f-cave"
+          ],
           "fact": "그 비탈의 소유를 두고 방앗간 주인과 다툰 적이 있다",
           "gateCandidate": true,
-          "keywords": ["땅", "소유", "다툼", "주인", "싸움"]
+          "anchors": [
+            "땅",
+            "소유",
+            "다툼",
+            "주인",
+            "싸움"
+          ],
+          "leverageTag": null
         }
-      ]
+      ],
+      "keyLeverageNote": "게이트를 여는 단서 범주는 balance.json의 occupation.keyLeverage가 정한다 (R9)"
     }
   }
 }
