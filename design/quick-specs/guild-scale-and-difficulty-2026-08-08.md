@@ -27,6 +27,37 @@
 > 아래 각 절에 지엽적 개정 표기를 달았다. 무작위 배치 원칙(Part 2)과 결정론 원칙은
 > 그대로 유효하다.
 
+> **2026-08-10 — 한 항목이 무효가 됐다. 그리고 이 문서가 소유한 숫자의 무게가 올라갔다.**
+>
+> **무효: Part 2-3 (파견 판정 = 마진 반비례 무작위).** 파견 판정의 소유가
+> `design/gdd/assignment-dispatch.md` **F3(`D = P + C − T`, 5구간)** 으로 갔고
+> **그것은 결정론적이다.** *"여유 있게 보내면 확정 성공, 아슬아슬하면 도박"* 이라는
+> 배치는 더 이상 이 게임의 파견 판정이 아니다. 난수 항은 *"P2에서 ±1 시드 롤 검토
+> (없어도 성립)"* 으로 열려 있을 뿐이다. **판단 재료는
+> `design/quick-specs/dispatch-resolution-2026-08-08.md` 상단 2026-08-10 표기를 볼 것** —
+> 완전 결정론이 되살리는 위험(정보가 완벽하면 아무도 안 죽는다)이 거기 적혀 있다.
+>
+> **반대로, 더 중요해진 것 — 여기를 만지면 D/C/B/A/S의 뜻이 바뀐다.**
+>
+> **Part 2-1의 위험도·은폐폭 공식과 Tuning Knobs 표(`riskBase` 35 ·
+> `riskPerReputation` 1.35 · `riskSpread` 0.20 · `concealmentMin/Max` 0.0/0.45 ·
+> `temptationRiskMultiplier` 1.6)는 살아 있는 숫자의 소유자다.**
+> `design/gdd/commission-form.md` **F1의 등급 밴드(40/80/120/170)가 이 숫자 위에 서
+> 있다** — 밴드 폭 40이 균일한 근거가 `riskSpread = 0.2`(명성 50 구간에서 흔들림
+> ±20.5 ≈ 정확히 한 밴드)이고, *"2밴드 오차는 은폐에서 온다 → 사람이 죽는다"* 는
+> 관계가 `concealmentMax = 0.45`에서 나온다. **밸런싱하지 않았는데 성립한 관계이므로
+> 여기를 건드리면 조용히 깨진다.** F1의 「경계 처리」가 `temptationRiskMultiplier`를
+> 직접 인용하는 것도 같은 이유다.
+>
+> *(주의: `commission-form.md` F1이 함께 인용하는 `dispatch.successRatio` ·
+> `adventurer.gradeThresholds` · `scaling.maxPartySizeCap`은 이 문서의 소유가 아니다.
+> 이 문서가 대는 것은 **위험도 곡선 쪽 숫자**다.)*
+>
+> **정원 상한 12 — 결론은 같고 근거가 갈렸다.** Part 4는 근거를 컨셉의 "모험가
+> 8~12명"에 두었으나, 현행 근거는 시장조사다 — `assignment-dispatch.md` R1
+> (**로스터 10±2**, 얼굴이 기억되는 한계 8~16, Tuning 「12 초과 금지」).
+> Part 4의 표 자체는 그대로 유효하다.
+
 ---
 
 ## Overview
