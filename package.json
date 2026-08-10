@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run test && vite build"
+    "check": "npm run typecheck && npm run test && vite build && npm run size",
+    "size": "node tools/build/report-size.cjs"
   },
   "devDependencies": {
     "happy-dom": "20.11.2",
