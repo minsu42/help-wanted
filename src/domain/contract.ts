@@ -32,6 +32,7 @@ import {
   type SlotTruth,
 } from './types';
 import { rollWeightedIndex } from './weighted';
+import { realizeIntake, type IntakeGenerationConfig } from './occupation';
 
 /** 의뢰 생성에 필요한 수치. 전부 `balance.json`에서 온다. */
 export interface ContractConfig {
@@ -60,6 +61,8 @@ export interface ContractConfig {
   /** 근속 가중치의 지수. 높을수록 정보가 베테랑에 집중된다 = 죽음이 더 아프다 */
   readonly tenureWeightExponent: number;
   readonly factsPerContract: number;
+  /** 없으면 기존 `legacy` 의뢰를 만든다. */
+  readonly intake?: IntakeGenerationConfig;
 }
 
 /** 의뢰 하나를 만드는 데 필요한 바깥 상황. */
@@ -78,6 +81,7 @@ export interface ContractContext {
   readonly questKind?: string;
   /** P1-002의 진실 실현 결과. 전달하지 않으면 아직 슬롯이 없는 기존 의뢰다. */
   readonly slots?: ReadonlyMap<SlotName, SlotTruth>;
+  readonly scenarioId?: string;
 }
 
 /**
@@ -126,6 +130,7 @@ export function createContract(
 
   const knownByCount = rng.int(config.knownByMin, config.knownByMax);
   const knownBy = pickByTenureWeight(rng, roster, knownByCount, config.tenureWeightExponent);
+  const intake = config.intake === undefined ? undefined : realizeIntake(rng, config.intake);
 
   const client: Client = {
     id: `${id}-client`,
@@ -138,13 +143,16 @@ export function createContract(
     urgency: rng.range(0, 1),
     hasAlternative: rng.chance(config.alternativeChance),
     knownBy,
+    occupation: intake?.occupation ?? 'resident',
+    keyLeverage: intake?.keyLeverage ?? null,
   };
 
   return {
     id,
     client,
-    questKind: context.questKind ?? 'legacy',
-    slots: context.slots ?? new Map<SlotName, SlotTruth>(),
+    questKind: context.questKind ?? intake?.questKind ?? 'legacy',
+    scenarioId: context.scenarioId ?? intake?.scenarioId ?? 'legacy',
+    slots: context.slots ?? intake?.slots ?? new Map<SlotName, SlotTruth>(),
     statedRisk,
     realRisk,
     concealment,

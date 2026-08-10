@@ -155,7 +155,24 @@ export interface Adventurer extends Person {
  * 의뢰인. `wealth` / `urgency` / `hasAlternative` 세 개가 계약 협상 두 축(보상,
  * 위험 고지)의 수용 범위를 결정하는 숨은 상태다.
  */
+/** 의뢰인의 생업. 무지·은폐 분포와 압박에 통하는 범주를 정한다. */
+export type Occupation = 'resident' | 'merchant' | 'official' | 'noble' | 'gang';
+
+export const OCCUPATIONS: readonly Occupation[] = [
+  'resident',
+  'merchant',
+  'official',
+  'noble',
+  'gang',
+];
+
+/** 들이대기 재료와 의뢰인의 약점이 공유하는 닫힌 어휘. */
+export type LeverageTag = 'procedure' | 'profit' | 'face';
+
 export interface Client extends Person {
+  readonly occupation: Occupation;
+  /** `null`이면 어떤 들이대기 재료도 통하지 않는다. */
+  readonly keyLeverage: LeverageTag | null;
   /** 자금력 — 보상 축의 수용 범위를 정한다 */
   readonly wealth: number;
   /** 급박함 — 양보 폭을 정한다 */
@@ -259,6 +276,8 @@ export interface Contract {
   readonly client: Client;
   /** 이 의뢰의 종류. 후속 템플릿 스키마의 키다. */
   readonly questKind: string;
+  /** 같은 종류 안에서 실제 문안 사슬을 고르는 안정 식별자. */
+  readonly scenarioId: string;
   /** 열린 슬롯의 숨은 진실. 진행 상태는 {@link PlayerKnowledge}에만 둔다. */
   readonly slots: ReadonlyMap<SlotName, SlotTruth>;
   /**
@@ -388,6 +407,30 @@ export interface MutableKnowledge {
   readonly heardFacts: Map<string, HeardRumor>;
   /** 청취 판정만 쓰는 슬롯 진행 상태. */
   readonly slotProgress: Map<string, SlotProgress>;
+}
+
+/** 플레이어가 의뢰서에 직접 찍는 유일한 판단 값. */
+export type RiskGrade = 'D' | 'C' | 'B' | 'A' | 'S';
+
+export const RISK_GRADES: readonly RiskGrade[] = ['D', 'C', 'B', 'A', 'S'];
+
+/** 도장 전후의 의뢰서 상태. 자동 기록 7칸은 `slotProgress`에서만 읽는다. */
+export interface CommissionSheet {
+  readonly contractId: string;
+  playerGrade?: RiskGrade;
+  sealed: boolean;
+}
+
+export type ClientExpression = 'neutral' | 'tell' | 'ignorance' | 'concealment';
+
+/** 화면을 나갔다 돌아와도 유지되어야 하는 의뢰인별 청취 회계. */
+export interface IntakeSession {
+  patience: number;
+  clientPresent: boolean;
+  message: string;
+  expression: ClientExpression;
+  selectedSlot?: SlotName;
+  materialMode?: 'insight' | 'pressure';
 }
 
 /**

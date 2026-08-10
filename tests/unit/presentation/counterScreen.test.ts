@@ -127,6 +127,8 @@ function makeClient(overrides: Partial<Client> = {}): Client {
     urgency: 0.5,
     hasAlternative: false,
     knownBy: [],
+    occupation: 'resident',
+    keyLeverage: null,
     ...overrides,
   };
 }
@@ -136,6 +138,7 @@ function makeContract(client: Client, id: string = CONTRACT_ID): Contract {
     id,
     client,
     questKind: 'legacy',
+    scenarioId: 'legacy',
     slots: new Map(),
     statedRisk: STATED_RISK,
     realRisk: REAL_RISK,

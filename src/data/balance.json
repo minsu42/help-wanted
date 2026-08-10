@@ -40,6 +40,26 @@
     "initialTrust": 0.3
   },
 
+  "intake": {
+    "_comment": "청취 v6.2. 분포 배열 순서는 none/vague/certain이며 P1 착석은 주민·상인·관리만 허용한다.",
+    "patience": 3,
+    "openingStatementDepth": "all",
+    "seatedOccupations": ["resident", "merchant", "official"],
+    "occupations": {
+      "resident": { "knowsDist": [15, 55, 30], "tellsDist": [0, 5, 95], "keyLeverage": null, "walletMult": [0.5, 0.9] },
+      "merchant": { "knowsDist": [10, 35, 55], "tellsDist": [5, 20, 75], "keyLeverage": "profit", "walletMult": [0.9, 1.4] },
+      "official": { "knowsDist": [5, 25, 70], "tellsDist": [10, 35, 55], "keyLeverage": "procedure", "walletMult": [1.0, 1.5] },
+      "noble": { "knowsDist": [5, 20, 75], "tellsDist": [45, 35, 20], "keyLeverage": "face", "walletMult": [2.0, 5.0] },
+      "gang": { "knowsDist": [0, 5, 95], "tellsDist": [70, 25, 5], "keyLeverage": null, "walletMult": [1.5, 4.0] }
+    }
+  },
+
+  "commission": {
+    "_comment": "공개 등급과 실제 위협의 대응. 이번 제출판에서는 도장 표시와 후속 파견 연결의 스키마만 잠근다.",
+    "threatByGrade": { "D": 3, "C": 4, "B": 5, "A": 6, "S": 7 },
+    "statedRiskThresholds": { "C": 30, "B": 50, "A": 70, "S": 90 }
+  },
+
   "economy": {
     "startingFunds": 200,
     "startingReputation": 10,

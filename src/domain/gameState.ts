@@ -33,6 +33,10 @@ import {
 import type { NamePool } from './person';
 import { createWorldRoster, type RosterConfig } from './roster';
 import { createRng, type Rng } from './rng';
+import { openingProgress } from './intake';
+import { scenarioIntro } from './occupation';
+import { slotProgressKey } from './slots';
+import type { CommissionSheet, IntakeSession } from './types';
 import type { Adventurer, Contract, GuildTier, MutableKnowledge, SettledTerms } from './types';
 
 /** 회차가 끝났는지. 끝난 회차는 더 진행할 수 없다. */
@@ -100,6 +104,12 @@ export interface GameState {
    * 시점과 같다. 기록: `design/quick-specs/assignment-reluctance-2026-08-09.md` §5.
    */
   settlements: Record<string, SettledTerms>;
+  /** 새 청취 화면을 나갔다 돌아와도 유지되는 의뢰인별 상태. */
+  intakeSessions: Record<string, IntakeSession>;
+  /** 자동 기록과 분리된 플레이어 판단/도장 상태. */
+  commissionSheets: Record<string, CommissionSheet>;
+  /** 첫 계약 전에 시세권을 자동으로 펼친 적이 있는가. */
+  ratesIntroduced: boolean;
   /**
    * 오늘 길드 홀에 있는 사람들. **하루에 한 번만 뽑아 여기 고정한다.**
    *
@@ -198,6 +208,9 @@ export function createGameState(seed: number, config: GameConfig): GameState {
     nextContractId: 0,
     offersMade: {},
     settlements: {},
+    intakeSessions: {},
+    commissionSheets: {},
+    ratesIntroduced: false,
     // 1일차 홀은 여기서 채운다. `advanceDay`는 2일차부터 도는 함수이므로 거기에만
     // 출석 판정을 두면 첫날 홀이 비어 있고, 플레이어가 정보를 캘 창이 없는 상태로
     // 첫 흥정을 하게 된다.
@@ -291,6 +304,8 @@ export function dispatchParty(
   // 타결 조건은 의뢰가 열린 목록에서 빠지는 것과 같은 시점에 지운다. 안 지우면
   // 회차가 끝날 때까지 죽은 의뢰의 조건이 쌓인다.
   delete state.settlements[contractId];
+  delete state.intakeSessions[contractId];
+  delete state.commissionSheets[contractId];
 
   const dispatch: ActiveDispatch = {
     contract,
@@ -538,8 +553,26 @@ function refillContracts(state: GameState, config: GameConfig): Contract[] {
     });
     state.nextContractId += 1;
     state.openContracts.push(contract);
+    initializeIntake(state, contract, config);
     created.push(contract);
   }
 
   return created;
+}
+
+function initializeIntake(state: GameState, contract: Contract, config: GameConfig): void {
+  const intake = config.contract.intake;
+  if (intake === undefined || contract.questKind === 'legacy') return;
+
+  state.intakeSessions[contract.id] = {
+    patience: intake.patience,
+    clientPresent: true,
+    message: scenarioIntro(intake.questTypes, contract.questKind, contract.scenarioId),
+    expression: 'neutral',
+  };
+  state.commissionSheets[contract.id] = { contractId: contract.id, sealed: false };
+  for (const [slot, truth] of contract.slots) {
+    const progress = openingProgress(truth, intake.openingStatementDepth);
+    if (progress !== undefined) state.knowledge.slotProgress.set(slotProgressKey(contract.id, slot), progress);
+  }
 }

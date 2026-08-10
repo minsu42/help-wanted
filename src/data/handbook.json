@@ -1,0 +1,15 @@
+{
+  "_comment": "처음부터 전부 열려 있는 길드마스터북 10항목. criteria는 표시만 한다.",
+  "entries": [
+    { "id": "hb-tracks", "book": "bestiary", "title": "거대한 발자국", "body": "발가락이 셋인 큰 자국은 흔한 짐승의 것이 아니다. 낮에 흔적이 끊기면 빛을 피하는 습성을 의심한다.", "hintTags": ["beast", "tracks", "sunlight"], "leverageTag": null, "criteria": [{ "when": "한 개체", "grade": "B" }, { "when": "새끼를 거느린 무리", "grade": "A", "open": true }], "caution": "규모가 불명확하면 과소평가하지 말 것." },
+    { "id": "hb-packs", "book": "bestiary", "title": "무리의 흔적", "body": "발자국의 크기와 갈래 수를 함께 보면 우두머리와 새끼를 가늠할 수 있다.", "hintTags": ["pack", "headcount"], "leverageTag": null, "criteria": [{ "when": "소수", "grade": "C" }, { "when": "큰 무리", "grade": "B", "open": true }] },
+    { "id": "hb-minewater", "book": "bestiary", "title": "광산 물", "body": "쇳내와 붉은 앙금이 여러 집에서 함께 나타나면 수원 오염을 먼저 의심한다.", "hintTags": ["water", "illness"], "leverageTag": null, "criteria": [{ "when": "한 집", "grade": "D" }, { "when": "공동 수원", "grade": "B", "open": true }] },
+    { "id": "hb-thieves", "book": "bestiary", "title": "침입 흔적", "body": "잠금이 멀쩡하면 힘보다 열쇠와 동선을 살핀다. 내부 협조자는 같은 길을 반복한다.", "hintTags": ["theft", "stores"], "leverageTag": null, "criteria": [{ "when": "단발 절도", "grade": "D" }, { "when": "조직적 반복", "grade": "C", "open": true }] },
+    { "id": "hb-westwood", "book": "region", "title": "서쪽 숲", "body": "물레방아 위 비탈에는 오래된 굴과 낮에 볕이 드는 벌목길이 있다.", "hintTags": ["terrain", "westwood", "route"], "leverageTag": "procedure" },
+    { "id": "hb-oldmine", "book": "region", "title": "북쪽 폐광", "body": "폐광의 물길은 북쪽 공동 우물 아래로 이어진다. 동쪽 샘은 별도 수맥이다.", "hintTags": ["oldmine", "water", "route"], "leverageTag": "face" },
+    { "id": "hb-market", "book": "region", "title": "장터 뒷골목", "body": "둘째 창고 뒤편은 파수가 돌지 않고 널판 통로가 오래 방치됐다.", "hintTags": ["market", "route"], "leverageTag": "profit" },
+    { "id": "hb-duty", "book": "order", "title": "기록과 고지 의무", "body": "관리가 접수한 위험은 장부에 남고 관할 누락은 나중에 책임이 된다.", "hintTags": ["procedure"], "leverageTag": "procedure" },
+    { "id": "hb-ledger", "book": "order", "title": "손실 장부", "body": "상인은 원인보다 반복되는 손실과 거래 중단을 더 두려워한다.", "hintTags": ["loss", "stores"], "leverageTag": "profit" },
+    { "id": "hb-rates", "book": "rates", "title": "통상 보수", "body": "조사 의뢰는 50G 안팎. 대형 위협·오염 확산·내부 공모가 겹치면 별도 위험 수당을 붙인다.", "hintTags": [], "leverageTag": null }
+  ]
+}

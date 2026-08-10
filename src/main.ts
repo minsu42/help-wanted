@@ -8,6 +8,8 @@
 import balance from './data/balance.json';
 import names from './data/names.json';
 import textBank from './data/text.json';
+import questTemplates from './data/quest-templates.json';
+import handbook from './data/handbook.json';
 import {
   advanceDay,
   createGameState,
@@ -17,7 +19,12 @@ import {
 import type { GuildConfig } from './domain/guild';
 import { canDisclose, type DisclosureReason } from './domain/negotiation';
 import type { RumorConfig } from './domain/rumor';
-import type { Contract } from './domain/types';
+import type { Contract, RiskGrade } from './domain/types';
+import {
+  buildSlotContentCatalog,
+  type IntakeGenerationConfig,
+} from './domain/occupation';
+import type { IntakeMaterial } from './domain/intake';
 import type { ScreenHandle } from './presentation/screen';
 import {
   mountCounterScreen,
@@ -29,12 +36,25 @@ import { mountDispatchScreen } from './presentation/ui/DispatchScreen';
 import { mountEndingScreen, type EndingTextBank } from './presentation/ui/EndingScreen';
 import { mountGuildHallScreen } from './presentation/ui/GuildHallScreen';
 import { mountOutcomeScreen, type HeardFact } from './presentation/ui/OutcomeScreen';
+import { mountIntakeScreen } from './presentation/ui/IntakeScreen';
 import './presentation/styles/base.css';
 import './presentation/styles/counter.css';
 import './presentation/styles/dispatch.css';
 import './presentation/styles/guildHall.css';
 import './presentation/styles/outcome.css';
 import './presentation/styles/ending.css';
+import './presentation/styles/intake.css';
+
+const intakeGeneration = {
+  occupations: balance.intake.occupations,
+  seatedOccupations: balance.intake.seatedOccupations,
+  questTypes: questTemplates.questTypes,
+  patience: balance.intake.patience,
+  openingStatementDepth: balance.intake.openingStatementDepth,
+} as unknown as IntakeGenerationConfig;
+
+const slotContent = buildSlotContentCatalog(intakeGeneration.questTypes);
+const handbookEntries = handbook.entries as unknown as readonly IntakeMaterial[];
 
 const config: GameConfig = {
   totalDays: balance.session.totalDays,
@@ -74,6 +94,7 @@ const config: GameConfig = {
     knownByMax: balance.rumor.knownByMax,
     tenureWeightExponent: balance.rumor.tenureWeightExponent,
     factsPerContract: balance.rumor.factsPerContract,
+    intake: intakeGeneration,
   },
   dispatch: {
     successRatio: balance.dispatch.successRatio,
@@ -304,6 +325,33 @@ function restart(): void {
 }
 
 function showCounter(): void {
+  const intakeContract = state.openContracts.find(
+    (contract) => contract.questKind !== 'legacy' && !state.commissionSheets[contract.id]?.sealed,
+  );
+  if (intakeContract !== undefined) {
+    swapTo((root) =>
+      mountIntakeScreen(root, {
+        state,
+        contract: intakeContract,
+        slotContent,
+        handbook: handbookEntries,
+        statedGrade: statedGradeOf(intakeContract.statedRisk),
+        onSealed: (contract) => {
+          const agreedReward = contract.baseReward;
+          state.settlements[contract.id] = { agreedReward, discloseRisk: false };
+          showDispatch({
+            contract,
+            offer: { rewardMultiplier: 1, discloseRisk: false },
+            agreedReward,
+          });
+        },
+        onVisitHall: showGuildHall,
+        onEndDay: endDay,
+      }),
+    );
+    return;
+  }
+
   swapTo((root) =>
     mountCounterScreen(root, {
       state,
@@ -324,6 +372,15 @@ function showCounter(): void {
       onEndDay: endDay,
     }),
   );
+}
+
+function statedGradeOf(risk: number): RiskGrade {
+  const thresholds = balance.commission.statedRiskThresholds;
+  if (risk >= thresholds.S) return 'S';
+  if (risk >= thresholds.A) return 'A';
+  if (risk >= thresholds.B) return 'B';
+  if (risk >= thresholds.C) return 'C';
+  return 'D';
 }
 
 /**

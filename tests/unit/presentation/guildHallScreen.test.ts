@@ -99,6 +99,8 @@ function makeClient(overrides: Partial<Client> = {}): Client {
     urgency: 0.5,
     hasAlternative: false,
     knownBy: [],
+    occupation: 'resident',
+    keyLeverage: null,
     ...overrides,
   };
 }
@@ -108,6 +110,7 @@ function makeContract(overrides: Partial<Contract> = {}): Contract {
     id: "ct-1",
     client: makeClient(),
     questKind: "legacy",
+    scenarioId: "legacy",
     slots: new Map(),
     statedRisk: 40,
     realRisk: 100,
@@ -146,6 +149,9 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     nextContractId: 0,
     offersMade: {},
     settlements: {},
+    intakeSessions: {},
+    commissionSheets: {},
+    ratesIntroduced: false,
     hallAttendance: { guildMemberIds: [], visitorIds: [] },
     talkedToday: new Set(),
     ...overrides,

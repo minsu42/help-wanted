@@ -38,6 +38,8 @@ function makeClient(overrides: Partial<Client> = {}): Client {
     urgency: 0.5,
     hasAlternative: false,
     knownBy: [],
+    occupation: 'resident',
+    keyLeverage: null,
     ...overrides,
   };
 }
@@ -47,6 +49,7 @@ function makeContract(client: Client, overrides: Partial<Contract> = {}): Contra
     id: "ct-outcome-test",
     client,
     questKind: "legacy",
+    scenarioId: "legacy",
     slots: new Map(),
     statedRisk: 40,
     realRisk: 90,
