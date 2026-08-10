@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>청취 프로토 4 — 의뢰서의 빈칸을 말로 채운다</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>청취 프로토 4 — 의뢰서를 채운다</h1>
+  <div class="hud">
+    <label>의뢰인
+      <select id="occ"><option>주민</option><option>상인</option>
+        <option selected>관리</option><option>귀족</option><option>갱단</option></select>
+    </label>
+    <label>시드 <input id="seed" type="number" value="7"></label>
+    <label title="Q1 — 하루 응대권 9 ÷ 의뢰인 3">응대권 <input id="tk" type="number" value="3" min="1" max="12"></label>
+    <label title="Q3 — 한 칸에 몇 번까지. 0이면 무제한">칸당 상한 <input id="cap" type="number" value="0" min="0" max="9"></label>
+    <button id="restart">새 의뢰인</button>
+    <label class="peek"><input type="checkbox" id="debug"> 정답 보기</label>
+    <span id="llm-state" class="llm-state">…</span>
+  </div>
+</header>
+
+<main>
+  <section class="chat">
+    <div class="win"><div class="face" id="face"></div><div class="who" id="who"></div></div>
+    <div id="log"></div>
+    <div id="actions" class="actions"></div>
+    <p class="hint">아래 <b>의뢰서의 칸을 누르면</b> 그 칸을 묻는다.
+      막히면 <b>일깨우거나</b> <b>들이대거나</b>, 그냥 <b>비워 두고 넘어간다.</b></p>
+  </section>
+
+  <aside class="panel">
+    <h2>응대권</h2>
+    <div id="tickets" class="tickets"></div>
+
+    <h2>의 뢰 서 <span class="cnt" id="done"></span></h2>
+    <div id="form"></div>
+    <button id="stamp" class="wide">도장을 찍는다</button>
+
+    <h2>수첩 <span class="cnt" id="nb-cnt"></span></h2>
+    <div id="notebook" class="notebook"></div>
+  </aside>
+</main>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-body">
+    <h3 id="modal-title"></h3>
+    <p class="modal-sub" id="modal-sub"></p>
+    <div id="modal-list"></div>
+    <button class="ghost" id="modal-cancel">그만둔다 (비용 없음)</button>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="llm.js?v=2"></script>
+<script src="app.js?v=3"></script>
+</body>
+</html>

@@ -39,6 +39,7 @@ Desktop.ini
 # LLM 프로토타입의 로컬 API 키 (config.example.js만 추적한다)
 prototypes/llm-intake-ab/config.js
 prototypes/flow-intake/config.js
+prototypes/form-intake/config.js
 # 프록시 Worker의 로컬 시크릿 (.dev.vars.example만 추적한다).
 # 배포본 키는 파일이 아니라 `wrangler secret put`으로만 들어간다 — ADR-003 D2.
 workers/intake-proxy/.dev.vars
