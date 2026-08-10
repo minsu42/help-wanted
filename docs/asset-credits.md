@@ -85,3 +85,19 @@ node tools/asset-pipeline/build-hall-assets.cjs "<압축 푼 Ninja Adventure 팩
 
 `src/assets/`의 PNG들과 `src/data/hall-layout.json`이 갱신된다. 자리 좌표는 가구를
 배치한 그 코드에서 나오므로, **방을 고치면 사람 자리도 자동으로 따라온다.**
+
+## 생성·파생 에셋
+
+### 창구 대표 의뢰인 표정 시트
+
+| | |
+|---|---|
+| 결과물 | `src/assets/client-portrait-expressions.png` |
+| 생성일 | 2026-08-10 |
+| 제작 | OpenAI 내장 이미지 생성 + Codex 로컬 정규화 |
+| 참조 | 승인된 `counter-visual-target-v2`, Ninja Adventure 형태·팔레트 |
+| 규격 | 64×64 4프레임, `평상 / 기색 / 무지 / 은폐`, 투명 배경, 47색 |
+| 상태 | 기술 검증 통과, 게임 내 검증 대기 |
+
+생성 원본과 크로마키 제거본은 `design/art/source/`에 보존한다. 게임용 아틀라스는
+프레임 정렬, 공통 팔레트 양자화, 하드 알파 처리를 거친 파생물이다.

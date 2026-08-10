@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "art_direction_brief": "design/art/art-bible.md",
+  "assets": [
+    {
+      "id": "counter-visual-target-v1",
+      "role": "counter screen composition and visual-system target",
+      "path": "design/art/targets/counter-visual-target-v1.png",
+      "status": "superseded",
+      "technical": {
+        "dimensions": "1280x720",
+        "logical_dimensions": "320x180",
+        "alpha": false,
+        "filtering": "nearest",
+        "runtime_asset": false
+      },
+      "visual_locks": [
+        "layout",
+        "palette-roles",
+        "material-hierarchy",
+        "camera",
+        "pixel-density"
+      ],
+      "source": {
+        "kind": "generated-concept",
+        "url_or_tool": "OpenAI built-in image generation",
+        "creator": "OpenAI / Codex-assisted direction",
+        "created_at": "2026-08-10",
+        "license": "generated media; references are CC0 1.0",
+        "attribution": "Ninja Adventure Asset Pack — Pixel-boy, AAA",
+        "prompt_or_source_record": "design/art/targets/counter-visual-target-v1.md"
+      },
+      "verification": {
+        "native_scale_reviewed": true,
+        "in_engine_reviewed": false,
+        "technical_checks_passed": true,
+        "approved_by": "rejected: dense stamp row"
+      }
+    },
+    {
+      "id": "counter-visual-target-v2",
+      "role": "restrained counter screen composition and interaction target",
+      "path": "design/art/targets/counter-visual-target-v2.png",
+      "status": "approved",
+      "technical": {
+        "dimensions": "1280x720",
+        "logical_dimensions": "320x180",
+        "alpha": false,
+        "filtering": "nearest",
+        "runtime_asset": false
+      },
+      "visual_locks": [
+        "narrow-booth-layout",
+        "single-active-document",
+        "compact-tool-affordance",
+        "palette-roles",
+        "material-hierarchy",
+        "camera",
+        "pixel-density"
+      ],
+      "source": {
+        "kind": "generated-concept-edit",
+        "url_or_tool": "OpenAI built-in image generation",
+        "creator": "OpenAI / Codex-assisted direction",
+        "created_at": "2026-08-10",
+        "license": "generated media; inherited references are CC0 1.0",
+        "attribution": "Ninja Adventure Asset Pack — Pixel-boy, AAA",
+        "prompt_or_source_record": "design/art/targets/counter-visual-target-v2.md"
+      },
+      "verification": {
+        "native_scale_reviewed": true,
+        "in_engine_reviewed": false,
+        "technical_checks_passed": true,
+        "approved_by": "user"
+      }
+    },
+    {
+      "id": "client-portrait-expressions-v1",
+      "role": "counter client portrait expression atlas",
+      "path": "src/assets/client-portrait-expressions.png",
+      "status": "candidate",
+      "technical": {
+        "dimensions": "256x64",
+        "frame_dimensions": "64x64",
+        "alpha": true,
+        "anchor": "bottom-center",
+        "frames": 4,
+        "frame_order": ["neutral", "tell", "ignorance", "concealment"],
+        "filtering": "nearest",
+        "max_colors": 48
+      },
+      "visual_locks": [
+        "identity",
+        "hair-silhouette",
+        "costume",
+        "shoulder-baseline",
+        "palette",
+        "light-direction"
+      ],
+      "source": {
+        "kind": "generated-and-normalized",
+        "url_or_tool": "OpenAI built-in image generation plus local Pillow normalization",
+        "creator": "OpenAI / Codex-assisted direction",
+        "created_at": "2026-08-10",
+        "license": "generated media; identity reference derives from approved visual target",
+        "attribution": "Ninja Adventure Asset Pack — Pixel-boy, AAA",
+        "prompt_or_source_record": "design/art/source/client-portrait-expression-v1.md"
+      },
+      "verification": {
+        "native_scale_reviewed": true,
+        "in_engine_reviewed": false,
+        "technical_checks_passed": true,
+        "approved_by": ""
+      }
+    }
+  ]
+}
