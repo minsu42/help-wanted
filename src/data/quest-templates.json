@@ -1,262 +1,174 @@
 {
   "_comment": [
-    "단서 그물 템플릿 — design/gdd/intake-system.md R3·F1이 소유한다.",
-    "노드는 '질문'이 아니라 '사실 조각'이다. 플레이어의 질문 표현은 LLM 분류가",
-    "흡수하므로 저작 대상이 아니고, 여기 적는 것은 '이 의뢰인이 알 수 있는 것의",
-    "구조'뿐이다. 플레이어는 대사의 단어(앵커)를 눌러 화제를 지목하며(R4), 대사 문안은",
-    "담지 않는다 (R11 — 본선은 LLM 연기, 폴백은 text.json).",
+    "의뢰 템플릿 v2 — design/gdd/intake-system.md (재작성 v6)가 소유한다.",
+    "v1의 12노드 DAG를 폐기하고 **칸(슬롯)별 짧은 사슬**로 바꿨다. 그물의 가치",
+    "(가지 간 의존)는 일깨우기·들이대기의 재료 관계가 대신 진다.",
     "",
-    "  id            고유. RNG 소비 순서가 id 사전순이므로 이름을 바꾸면 실현이 바뀐다 (F1)",
-    "  parents       [] 이면 표면 노드 — 착석 즉시 무료 개방 (R2)",
-    "  fact          사실 조각 한 줄. 연기 프롬프트의 입력이지 출력이 아니다",
-    "  slot          {name, level} 또는 없음(메모 노드). level: vague | certain",
-    "  gateCandidate true일 때만 tells가 낮아도 게이트가 될 수 있다 (F1 ②)",
-    "  leverageTag   이 노드를 게이트에 들이댈 때의 범주 (절차/손익/체면). null이면 지렛대로 못 쓴다 (R8·R9)",
-    "  anchors       ~~앵커 어휘~~ → 5차 개정에서 앵커 방식이 폐기됐다. 폴백 선택지 문안의",
-    "                재료로만 남는다. 판정에 쓰이지 않는다",
+    "칸(slot) 필드:",
+    "  weight     completeness 가중치 (F3). 최대:최소 3:1 이하",
+    "  hintTags   이 칸을 **일깨우려면** 재료가 가져야 하는 태그 (R5 — 내용이 맞아야 한다)",
+    "  steps      [어렴풋, 확실] 2단. RNG 소비는 이 파일의 칸 순서를 따른다 (F1)",
     "",
-    "  topic         물어볼 '거리'의 이름. 사실 내용을 담지 않는다 — 연기 프롬프트에",
-    "                후보를 넘길 때 fact 대신 이것을 준다 (ADR-003 D6: 공개 허가된 것만)",
-    "검증(빌드 게이트, R3·R4): 순환 없음 / 고아 없음 / 인트로 소재는 표면 노드 /",
-    "노드의 slot.name이 해당 종류의 openSlots에 속할 것 / 앵커 1개가 가리키는 노드는",
-    "최대 1개 / 앵커 수 > 미방문 노드 수 / 다른 가지의 노드만으로 열리는 게이트가",
-    "최소 1개 존재할 것 (AC-R8-04 — P1 자기완결)"
+    "step 필드:",
+    "  topic         물어볼 '거리의 이름'. **연기 프롬프트에는 이것만 간다** (ADR-003 D6)",
+    "  fact          밝혀진 뒤에만 쓰는 사실 조각. 미공개 상태로 프롬프트에 넣지 마라",
+    "  leverageTag   이 사실을 **무기로 쓸 때의 범주** (R6 — 사람에게 통해야 한다).",
+    "                null이면 무기가 되지 못한다",
+    "",
+    "handbook = 길드마스터북. **P1에서 일깨우기의 유일한 재료 공급원**이다 (#26).",
+    "  소문(P4)이 나중에 같은 모양의 항목을 추가한다.",
+    "  ⚠ 통하지 않는 항목도 섞여 있어야 한다 — 무엇이 통할지 아는 것이 곧 퍼즐이다."
   ],
-  "version": 1,
+
+  "version": 2,
+
   "questTypes": {
     "조사": {
-      "openSlots": [
-        "대상",
-        "규모",
-        "장소"
-      ],
-      "slotWeights": {
-        "대상": 3,
-        "규모": 2,
-        "장소": 1
-      },
       "baseFee": 50,
-      "nodes": [
-        {
-          "id": "a-footprint",
-          "parents": [],
-          "fact": "숲에서 커다란 발자국을 봤다",
-          "slot": {
-            "name": "대상",
-            "level": "vague"
-          },
-          "gateCandidate": false,
-          "anchors": [
-            "발자국",
-            "자국",
-            "흔적",
-            "발"
-          ],
-          "leverageTag": null,
-          "topic": "발자국"
+      "intro": "숲에 이상한 것이 있습니다. 밤마다 잠을 못 잡니다.",
+      "slots": {
+        "대상": {
+          "weight": 3,
+          "hintTags": ["짐승", "발자국"],
+          "steps": [
+            {
+              "level": "vague",
+              "topic": "무엇을 보았는지",
+              "fact": "숲에서 커다란 발자국을 봤다",
+              "leverageTag": null
+            },
+            {
+              "level": "certain",
+              "topic": "그 생김새",
+              "fact": "사람 발만 한데 발가락이 셋이었다",
+              "leverageTag": "절차"
+            }
+          ]
         },
-        {
-          "id": "b-mill",
-          "parents": [],
-          "fact": "서쪽 숲, 물레방아 근처였다",
-          "slot": {
-            "name": "장소",
-            "level": "vague"
-          },
-          "gateCandidate": false,
-          "anchors": [
-            "물레방아",
-            "방앗간",
-            "서쪽",
-            "어디",
-            "장소"
-          ],
-          "leverageTag": null,
-          "topic": "일이 있었던 자리"
+        "규모": {
+          "weight": 2,
+          "hintTags": ["무리", "개체수"],
+          "steps": [
+            {
+              "level": "vague",
+              "topic": "한 마리였는지 여럿이었는지",
+              "fact": "자국이 한 갈래가 아니라 여러 갈래였다",
+              "leverageTag": null
+            },
+            {
+              "level": "certain",
+              "topic": "정확한 수",
+              "fact": "큰 자국이 둘, 작은 자국이 예닐곱이었다",
+              "leverageTag": "손익"
+            }
+          ]
         },
-        {
-          "id": "c-night-sound",
-          "parents": [],
-          "fact": "밤마다 우는 소리 같은 것이 들렸다",
-          "gateCandidate": false,
-          "anchors": [
-            "소리",
-            "울음",
-            "밤",
-            "들렸"
-          ],
-          "leverageTag": null,
-          "topic": "밤에 났다는 소리"
-        },
-        {
-          "id": "d-toes",
-          "parents": [
-            "a-footprint"
-          ],
-          "fact": "사람 발만 한데 발가락이 셋이었다",
-          "slot": {
-            "name": "대상",
-            "level": "certain"
-          },
-          "gateCandidate": true,
-          "anchors": [
-            "발가락",
-            "모양",
-            "생김",
-            "크기"
-          ],
-          "leverageTag": null,
-          "topic": "발자국의 생김새"
-        },
-        {
-          "id": "e-many-tracks",
-          "parents": [
-            "a-footprint"
-          ],
-          "fact": "자국이 한 갈래가 아니라 여러 갈래였다",
-          "slot": {
-            "name": "규모",
-            "level": "vague"
-          },
-          "gateCandidate": false,
-          "anchors": [
-            "여러",
-            "갈래",
-            "몇",
-            "수효",
-            "혼자"
-          ],
-          "leverageTag": null,
-          "topic": "자국이 몇 갈래였는지"
-        },
-        {
-          "id": "f-cave",
-          "parents": [
-            "b-mill"
-          ],
-          "fact": "물레방아 위쪽 비탈에 사람이 안 다니는 동굴이 있다",
-          "slot": {
-            "name": "장소",
-            "level": "certain"
-          },
-          "gateCandidate": true,
-          "anchors": [
-            "동굴",
-            "위쪽",
-            "비탈",
-            "굴"
-          ],
-          "leverageTag": null,
-          "topic": "그 근처의 지형"
-        },
-        {
-          "id": "g-directions",
-          "parents": [
-            "c-night-sound"
-          ],
-          "fact": "소리가 한 곳이 아니라 여기저기서 났다",
-          "slot": {
-            "name": "규모",
-            "level": "vague"
-          },
-          "gateCandidate": false,
-          "anchors": [
-            "방향",
-            "여기저기",
-            "사방",
-            "어디서"
-          ],
-          "leverageTag": null,
-          "topic": "소리가 난 방향"
-        },
-        {
-          "id": "h-track-sizes",
-          "parents": [
-            "e-many-tracks"
-          ],
-          "fact": "큰 자국이 둘, 작은 자국이 예닐곱이었다",
-          "slot": {
-            "name": "규모",
-            "level": "certain"
-          },
-          "gateCandidate": false,
-          "anchors": [
-            "둘",
-            "예닐곱",
-            "몇 마리",
-            "새끼",
-            "크고"
-          ],
-          "leverageTag": null,
-          "topic": "자국의 크기"
-        },
-        {
-          "id": "i-bones",
-          "parents": [
-            "b-mill"
-          ],
-          "fact": "물레방아 뒤편에 짐승 뼈가 쌓여 있었다",
-          "gateCandidate": false,
-          "anchors": [
-            "뼈",
-            "입구",
-            "쌓여",
-            "사체"
-          ],
-          "leverageTag": "손익",
-          "topic": "주변에 남아 있던 것"
-        },
-        {
-          "id": "j-hide-scrap",
-          "parents": [
-            "a-footprint"
-          ],
-          "fact": "가시에 걸린 가죽 조각을 주워 왔다",
-          "gateCandidate": false,
-          "anchors": [
-            "가죽",
-            "조각",
-            "털",
-            "주웠"
-          ],
-          "leverageTag": "절차",
-          "topic": "가져왔다는 물건"
-        },
-        {
-          "id": "k-neighbor",
-          "parents": [
-            "c-night-sound"
-          ],
-          "fact": "이웃집도 같은 소리를 들었다고 한다",
-          "gateCandidate": false,
-          "anchors": [
-            "이웃",
-            "다른 사람",
-            "누구",
-            "들었다고"
-          ],
-          "leverageTag": "체면",
-          "topic": "다른 목격자"
-        },
-        {
-          "id": "l-land-dispute",
-          "parents": [
-            "f-cave"
-          ],
-          "fact": "그 비탈의 소유를 두고 방앗간 주인과 다툰 적이 있다",
-          "gateCandidate": true,
-          "anchors": [
-            "땅",
-            "소유",
-            "다툼",
-            "주인",
-            "싸움"
-          ],
-          "leverageTag": null,
-          "topic": "그 땅의 내력"
+        "장소": {
+          "weight": 1,
+          "hintTags": ["지형", "서쪽숲"],
+          "steps": [
+            {
+              "level": "vague",
+              "topic": "대략 어디쯤인지",
+              "fact": "서쪽 숲, 물레방아 근처였다",
+              "leverageTag": null
+            },
+            {
+              "level": "certain",
+              "topic": "정확한 자리",
+              "fact": "물레방아 위쪽 비탈에 사람이 안 다니는 동굴이 있다",
+              "leverageTag": "절차"
+            }
+          ]
         }
-      ],
-      "keyLeverageNote": "게이트를 여는 단서 범주는 balance.json의 occupation.keyLeverage가 정한다 (R9)"
+      }
     }
-  }
+  },
+
+  "handbook": [
+    {
+      "id": "hb-troll",
+      "book": "도감",
+      "text": "트롤은 발가락이 셋이고 사람 발만 한 자국을 남긴다",
+      "hintTags": ["짐승", "발자국"],
+      "leverageTag": null
+    },
+    {
+      "id": "hb-brood",
+      "book": "도감",
+      "text": "짐승이 뼈를 한곳에 쌓는 것은 새끼를 친 자리라는 뜻이다",
+      "hintTags": ["무리", "개체수"],
+      "leverageTag": null
+    },
+    {
+      "id": "hb-goblin",
+      "book": "도감",
+      "text": "고블린은 몸집이 작고 예닐곱씩 무리를 지어 다닌다",
+      "hintTags": ["무리", "짐승"],
+      "leverageTag": null
+    },
+    {
+      "id": "hb-oldmine",
+      "book": "지역",
+      "text": "서쪽 숲 물레방아 위쪽 비탈에는 버려진 굴이 하나 있다",
+      "hintTags": ["지형", "서쪽숲"],
+      "leverageTag": "절차"
+    },
+    {
+      "id": "hb-landtitle",
+      "book": "지역",
+      "text": "그 비탈은 등기가 정리되지 않아 소유가 불분명하다",
+      "hintTags": ["지형"],
+      "leverageTag": "절차"
+    },
+    {
+      "id": "hb-millguild",
+      "book": "조직",
+      "text": "방앗간 조합이 그 일대의 통행과 벌목을 관리한다",
+      "hintTags": ["지형"],
+      "leverageTag": "절차"
+    },
+    {
+      "id": "hb-lordlumber",
+      "book": "조직",
+      "text": "영주가 작년에 서쪽 숲 벌목권을 넘겼다는 말이 돈다",
+      "hintTags": [],
+      "leverageTag": "체면"
+    },
+    {
+      "id": "hb-rate",
+      "book": "시세",
+      "text": "조사 의뢰의 시세는 50은 안팎이다",
+      "hintTags": [],
+      "leverageTag": "손익"
+    },
+    {
+      "id": "hb-hazardpay",
+      "book": "시세",
+      "text": "대형 짐승이 끼면 위험 수당이 따로 붙는다",
+      "hintTags": ["짐승"],
+      "leverageTag": "손익"
+    },
+    {
+      "id": "hb-headcount",
+      "book": "시세",
+      "text": "머릿수가 늘면 파티를 키워야 해서 비용이 배로 뛴다",
+      "hintTags": ["개체수"],
+      "leverageTag": "손익"
+    },
+    {
+      "id": "hb-creek",
+      "book": "지역",
+      "text": "개울은 겨울이면 얼어서 사람이 건너다닌다",
+      "hintTags": [],
+      "leverageTag": null
+    },
+    {
+      "id": "hb-market",
+      "book": "지역",
+      "text": "장은 닷새마다 서고 그때는 길이 붐빈다",
+      "hintTags": [],
+      "leverageTag": null
+    }
+  ]
 }
