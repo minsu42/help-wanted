@@ -14,6 +14,8 @@
     "  leverageTag   이 노드를 게이트에 들이댈 때의 범주 (절차/손익/체면). null이면 지렛대로 못 쓴다 (R8·R9)",
     "  anchors       이 노드로 이어지는 앵커 어휘. 의뢰인의 대사에 실제로 등장해야 한다 (R4)",
     "",
+    "  topic         물어볼 '거리'의 이름. 사실 내용을 담지 않는다 — 연기 프롬프트에",
+    "                후보를 넘길 때 fact 대신 이것을 준다 (ADR-003 D6: 공개 허가된 것만)",
     "검증(빌드 게이트, R3·R4): 순환 없음 / 고아 없음 / 인트로 소재는 표면 노드 /",
     "노드의 slot.name이 해당 종류의 openSlots에 속할 것 / 앵커 1개가 가리키는 노드는",
     "최대 1개 / 앵커 수 > 미방문 노드 수 / 다른 가지의 노드만으로 열리는 게이트가",
@@ -49,7 +51,8 @@
             "흔적",
             "발"
           ],
-          "leverageTag": null
+          "leverageTag": null,
+          "topic": "발자국"
         },
         {
           "id": "b-mill",
@@ -67,7 +70,8 @@
             "어디",
             "장소"
           ],
-          "leverageTag": null
+          "leverageTag": null,
+          "topic": "일이 있었던 자리"
         },
         {
           "id": "c-night-sound",
@@ -80,7 +84,8 @@
             "밤",
             "들렸"
           ],
-          "leverageTag": null
+          "leverageTag": null,
+          "topic": "밤에 났다는 소리"
         },
         {
           "id": "d-toes",
@@ -99,7 +104,8 @@
             "생김",
             "크기"
           ],
-          "leverageTag": null
+          "leverageTag": null,
+          "topic": "발자국의 생김새"
         },
         {
           "id": "e-many-tracks",
@@ -119,7 +125,8 @@
             "수효",
             "혼자"
           ],
-          "leverageTag": null
+          "leverageTag": null,
+          "topic": "자국이 몇 갈래였는지"
         },
         {
           "id": "f-cave",
@@ -138,7 +145,8 @@
             "비탈",
             "굴"
           ],
-          "leverageTag": null
+          "leverageTag": null,
+          "topic": "그 근처의 지형"
         },
         {
           "id": "g-directions",
@@ -157,7 +165,8 @@
             "사방",
             "어디서"
           ],
-          "leverageTag": null
+          "leverageTag": null,
+          "topic": "소리가 난 방향"
         },
         {
           "id": "h-track-sizes",
@@ -177,7 +186,8 @@
             "새끼",
             "크고"
           ],
-          "leverageTag": null
+          "leverageTag": null,
+          "topic": "자국의 크기"
         },
         {
           "id": "i-bones",
@@ -192,7 +202,8 @@
             "쌓여",
             "사체"
           ],
-          "leverageTag": "손익"
+          "leverageTag": "손익",
+          "topic": "주변에 남아 있던 것"
         },
         {
           "id": "j-hide-scrap",
@@ -207,7 +218,8 @@
             "털",
             "주웠"
           ],
-          "leverageTag": "절차"
+          "leverageTag": "절차",
+          "topic": "가져왔다는 물건"
         },
         {
           "id": "k-neighbor",
@@ -222,7 +234,8 @@
             "누구",
             "들었다고"
           ],
-          "leverageTag": "체면"
+          "leverageTag": "체면",
+          "topic": "다른 목격자"
         },
         {
           "id": "l-land-dispute",
@@ -238,7 +251,8 @@
             "주인",
             "싸움"
           ],
-          "leverageTag": null
+          "leverageTag": null,
+          "topic": "그 땅의 내력"
         }
       ],
       "keyLeverageNote": "게이트를 여는 단서 범주는 balance.json의 occupation.keyLeverage가 정한다 (R9)"

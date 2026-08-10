@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>청취 프로토 3 — 흐르는 대화 + 생성 선택지</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>청취 프로토 3 — 흐르는 대화</h1>
+  <div class="hud">
+    <label>의뢰인
+      <select id="occ"><option>주민</option><option>상인</option>
+        <option selected>관리</option><option>귀족</option><option>갱단</option></select>
+    </label>
+    <label>시드 <input id="seed" type="number" value="7"></label>
+    <label>선택지 수명 <input id="life" type="number" value="9" min="3" max="30">초</label>
+    <button id="restart">새 의뢰인</button>
+    <label class="peek"><input type="checkbox" id="debug"> 정답 보기</label>
+    <span id="llm-state" class="llm-state">LLM 확인 중…</span>
+  </div>
+</header>
+
+<main>
+  <section class="chat">
+    <div class="win"><div class="face" id="face"></div><div class="who" id="who"></div></div>
+    <div id="log"></div>
+
+    <div id="offer" class="offer"></div>
+    <div class="flowbar"><div id="flowfill"></div></div>
+    <p class="hint" id="hint">의뢰인은 <b>계속 말한다.</b> 흐름 안에서 고르면 공짜고,
+      놓치면 청취록에서 되짚을 수 있지만 <b>응대권을 쓴다.</b></p>
+  </section>
+
+  <aside class="panel">
+    <h2>오늘의 응대권</h2>
+    <div id="tickets" class="tickets"></div>
+
+    <h2>의뢰서</h2>
+    <div id="slots"></div>
+
+    <h2>놓친 것 <span class="cnt" id="missed-cnt"></span></h2>
+    <div id="missed" class="missed"></div>
+
+    <h2>내가 아는 것 <span class="cnt" id="clue-cnt"></span></h2>
+    <div id="clues"></div>
+
+    <button id="finish" class="ghost wide">이만 됐습니다 — 의뢰서를 쓴다</button>
+  </aside>
+</main>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-body">
+    <h3>무엇을 들이대겠습니까?</h3>
+    <p class="modal-sub">아는 것 중 하나를 내놓는다. 무엇이 이 사람에게 아플까?</p>
+    <div id="modal-list"></div>
+    <button class="ghost" id="modal-cancel">그만둔다 (비용 없음)</button>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="llm.js?v=3"></script>
+<script src="app.js?v=3"></script>
+</body>
+</html>
