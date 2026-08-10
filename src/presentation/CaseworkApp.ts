@@ -1,6 +1,7 @@
 import portraitAtlas from '../assets/client-portrait-expressions.png';
 import handbookImage from '../assets/counter-handbook.png';
 import bestiaryPlate from '../assets/bestiary-creature-plate-v1.png';
+import { GameAudio, type GameAudioController, type GameSound } from '../audio/GameAudio';
 import { CASES, DIRECTIVES, KNOWLEDGE, PARTIES, PREPARATION_OPTIONS } from '../data/casework';
 import {
   CASES_PER_DAY, checkDirectives, dayOfCase, isLastCaseOfDay, knowledgeForDay, newDirectivesOn,
@@ -18,13 +19,14 @@ import { createClientAgent, type ClientAgent } from '../llm/clientAgent';
 type AppPhase = 'briefing' | 'morning' | 'intake' | 'commission' | 'applications' | 'filed' | 'summary';
 type Overlay = 'book' | 'ledger' | undefined;
 
-export interface CaseworkAppOptions { agent?: ClientAgent; }
+export interface CaseworkAppOptions { agent?: ClientAgent; audio?: GameAudioController; }
 
 export class CaseworkApp {
   private phase: AppPhase = 'briefing';
   private caseIndex = 0;
   private session: IntakeSession = createSession(CASES[0]!);
   private readonly agent: ClientAgent;
+  private readonly audio: GameAudioController;
   private busy = false;
   private draft = '';
   private error = '';
@@ -44,10 +46,11 @@ export class CaseworkApp {
   constructor(private readonly root: HTMLElement, options: CaseworkAppOptions = {}) {
     const endpoint = import.meta.env.VITE_AGENT_ENDPOINT as string | undefined;
     this.agent = options.agent ?? createClientAgent({ endpoint, development: import.meta.env.DEV && endpoint === undefined });
+    this.audio = options.audio ?? new GameAudio();
     this.render();
   }
 
-  destroy(): void { this.root.replaceChildren(); }
+  destroy(): void { this.audio.destroy(); this.root.replaceChildren(); }
 
   private get day(): number { return dayOfCase(this.caseIndex); }
 
@@ -70,20 +73,22 @@ export class CaseworkApp {
     else if (this.phase === 'morning') this.renderMorning();
     else if (this.phase === 'filed') this.renderFiled();
     else this.renderSummary();
+    this.bindAudioToggle();
   }
 
   private renderBriefing(): void {
     this.root.innerHTML = `<main class="briefing safe-frame"><section class="briefing__paper" aria-labelledby="game-title">
-      <p class="eyebrow">왕립 모험가 길드 · 신입 접수원 업무 시험</p><h1 id="game-title">HELP WANTED</h1>
+      ${this.audioButton()}<p class="eyebrow">왕립 모험가 길드 · 신입 접수원 업무 시험</p><h1 id="game-title">HELP WANTED</h1>
       <p class="briefing__hook">당신이 놓친 한 줄이 모험가의 유서가 됩니다.</p>
       <div class="briefing__rules"><p><b>1.</b> 진술 쪽지를 자료집과 대조하십시오.</p><p><b>2.</b> 모순을 찾았다면 자신의 말로 추궁하십시오.</p><p><b>3.</b> 의뢰서를 게시하고 지원 파티를 승인하십시오.</p></div>
       <p class="connection" data-connection>AI 의뢰인 연결을 확인하지 않았습니다.</p><button class="seal-button" type="button" data-action="start">업무 시작</button>
       <p class="briefing__mode">${this.agent.mode === 'development' ? '규칙 폴백 모드 — AI Worker 없이도 완주할 수 있습니다' : 'AI Worker 연결 모드'}</p>
     </section></main>`;
-    this.onClick('start', () => void this.start()); this.focus('[data-action="start"]');
+    this.onClick('start', () => void this.start(), 'day'); this.focus('[data-action="start"]');
   }
 
   private async start(): Promise<void> {
+    this.audio.startMusic();
     const button = this.root.querySelector<HTMLButtonElement>('[data-action="start"]');
     const status = this.root.querySelector<HTMLElement>('[data-connection]');
     if (button) button.disabled = true;
@@ -134,17 +139,17 @@ export class CaseworkApp {
     const count = this.root.querySelector<HTMLOutputElement>('[data-count]');
     textarea?.addEventListener('input', () => { this.draft = textarea.value; if (count) count.value = `${textarea.value.length}/240`; });
     textarea?.addEventListener('keydown', (event) => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); form?.requestSubmit(); } });
-    form?.addEventListener('submit', (event) => { event.preventDefault(); void this.submitUtterance(); });
-    this.onClick('book', () => { this.overlay = 'book'; this.render(); });
-    this.onClick('ledger', () => { this.overlay = 'ledger'; this.render(); });
-    this.onClick('close-overlay', () => { this.overlay = undefined; this.render(); });
-    this.onClick('book-prev', () => { this.bookPage = Math.max(0, this.bookPage - 2); this.render(); });
-    this.onClick('book-next', () => { this.bookPage = Math.min(Math.max(0, this.filteredKnowledge.length - 2), this.bookPage + 2); this.render(); });
-    this.root.querySelectorAll<HTMLButtonElement>('[data-book-tag]').forEach((button) => button.addEventListener('click', () => { this.bookTag = button.dataset.bookTag ?? '전체'; this.bookPage = 0; this.render(); }));
-    this.root.querySelectorAll<HTMLButtonElement>('[data-claim]').forEach((button) => button.addEventListener('click', () => { this.selectedClaimId = button.dataset.claim; this.comparison = undefined; this.error = ''; this.render(); }));
-    this.root.querySelectorAll<HTMLButtonElement>('[data-knowledge]').forEach((button) => button.addEventListener('click', () => { this.selectedKnowledgeId = button.dataset.knowledge; this.overlay = undefined; this.comparison = undefined; this.render(); }));
-    this.onClick('compare', () => this.applyComparison());
-    this.onClick('commission', () => { this.phase = 'commission'; this.error = ''; this.overlay = undefined; this.render(); });
+    form?.addEventListener('submit', (event) => { event.preventDefault(); this.audio.play('message'); void this.submitUtterance(); });
+    this.onClick('book', () => { this.overlay = 'book'; this.render(); }, 'book');
+    this.onClick('ledger', () => { this.overlay = 'ledger'; this.render(); }, 'paper');
+    this.onClick('close-overlay', () => { this.overlay = undefined; this.render(); }, 'paper');
+    this.onClick('book-prev', () => { this.bookPage = Math.max(0, this.bookPage - 2); this.render(); }, 'paper');
+    this.onClick('book-next', () => { this.bookPage = Math.min(Math.max(0, this.filteredKnowledge.length - 2), this.bookPage + 2); this.render(); }, 'paper');
+    this.root.querySelectorAll<HTMLButtonElement>('[data-book-tag]').forEach((button) => button.addEventListener('click', () => { this.audio.play('paper'); this.bookTag = button.dataset.bookTag ?? '전체'; this.bookPage = 0; this.render(); }));
+    this.root.querySelectorAll<HTMLButtonElement>('[data-claim]').forEach((button) => button.addEventListener('click', () => { this.audio.play('paper'); this.selectedClaimId = button.dataset.claim; this.comparison = undefined; this.error = ''; this.render(); }));
+    this.root.querySelectorAll<HTMLButtonElement>('[data-knowledge]').forEach((button) => button.addEventListener('click', () => { this.audio.play('paper'); this.selectedKnowledgeId = button.dataset.knowledge; this.overlay = undefined; this.comparison = undefined; this.render(); }));
+    this.onClick('compare', () => this.applyComparison(), 'stamp');
+    this.onClick('commission', () => { this.phase = 'commission'; this.error = ''; this.overlay = undefined; this.render(); }, 'paper');
     if (!this.busy && canTalk && this.overlay === undefined) this.focus('#utterance');
   }
 
@@ -211,8 +216,8 @@ export class CaseworkApp {
       ${this.rejections.length ? `<section class="rejection-stamp" role="alert"><p class="eyebrow">REJECTED</p><h3>게시 반려</h3><ul>${this.rejections.map((item) => `<li><b>${escapeHtml(item.title)}</b> — ${escapeHtml(item.reason)}</li>`).join('')}</ul></section>` : ''}
       <p class="form-note">도장을 찍으면 내용이 잠기며, 모험가들은 이 서류만 보고 지원합니다.</p><div class="document-actions"><button type="button" data-action="back">심문으로 돌아가기</button><button class="seal-button" type="submit">게시 도장 찍기</button></div>
     </form></main>`;
-    this.onClick('back', () => { this.phase = 'intake'; this.render(); });
-    this.root.querySelector<HTMLFormElement>('[data-form="commission"]')?.addEventListener('submit', (event) => { event.preventDefault(); this.submitCommission(new FormData(event.currentTarget as HTMLFormElement)); });
+    this.onClick('back', () => { this.phase = 'intake'; this.render(); }, 'paper');
+    this.root.querySelector<HTMLFormElement>('[data-form="commission"]')?.addEventListener('submit', (event) => { event.preventDefault(); this.audio.play('stamp'); this.submitCommission(new FormData(event.currentTarget as HTMLFormElement)); });
     this.focus('[name="fact-objective"]');
   }
 
@@ -242,9 +247,9 @@ export class CaseworkApp {
       <div class="document-actions">${applied.length
         ? '<button type="button" data-action="close-unassigned">인계 없이 마감</button>'
         : '<button type="button" data-action="revise">의뢰서 다시 작성</button>'}</div></section></section></main>`;
-    this.root.querySelectorAll<HTMLButtonElement>('[data-party]').forEach((button) => button.addEventListener('click', () => this.finishDispatch(button.dataset.party)));
-    this.onClick('close-unassigned', () => this.finishDispatch(undefined));
-    this.onClick('revise', () => { this.sealedSheet = undefined; this.applications = []; this.phase = 'commission'; this.render(); });
+    this.root.querySelectorAll<HTMLButtonElement>('[data-party]').forEach((button) => button.addEventListener('click', () => { this.audio.play('stamp'); this.finishDispatch(button.dataset.party); }));
+    this.onClick('close-unassigned', () => this.finishDispatch(undefined), 'stamp');
+    this.onClick('revise', () => { this.sealedSheet = undefined; this.applications = []; this.phase = 'commission'; this.render(); }, 'paper');
   }
 
   private finishDispatch(partyId?: string): void {
@@ -269,7 +274,7 @@ export class CaseworkApp {
       <p class="filed-lead">서류가 파발로 넘어갔습니다. ${filed?.result.outcome === 'rejected' ? '거절 처리된 의뢰는 게시판에 붙지 않습니다.' : '파견 결과는 내일 아침 보고서로 돌아옵니다.'}</p>
       <p class="filed-hint">지금은 무엇이 잘못됐는지 알 수 없습니다. 그것을 아는 사람은 이미 길 위에 있습니다.</p>
       <div class="document-actions"><button class="seal-button" type="button" data-action="continue">${dayClosed ? `${dayOfCase(this.caseIndex)}일차 근무 종료` : '다음 의뢰인 호출'}</button></div></section></main>`;
-    this.onClick('continue', () => this.advance()); this.focus('[data-action="continue"]');
+    this.onClick('continue', () => this.advance(), 'paper'); this.focus('[data-action="continue"]');
   }
 
   private advance(): void {
@@ -295,7 +300,7 @@ export class CaseworkApp {
       ${fresh.length ? `<section class="directives"><h2>오늘부터 적용되는 공문</h2>${fresh.map((directive) => `<article class="directive"><b>${escapeHtml(directive.title)}</b><p>${escapeHtml(directive.text)}</p></article>`).join('')}<p class="directive-note">어제 통하던 게시가 오늘은 반려될 수 있습니다. 백과사전 규정 항목에도 실렸습니다.</p></section>` : ''}
       <div class="document-actions"><button class="seal-button" type="button" data-action="open-counter">창구 열기</button></div>
     </section></main>`;
-    this.onClick('open-counter', () => { this.reported = [...this.reported, ...this.pending]; this.pending = []; this.phase = 'intake'; this.render(); });
+    this.onClick('open-counter', () => { this.reported = [...this.reported, ...this.pending]; this.pending = []; this.phase = 'intake'; this.render(); }, overnight.some((item) => item.result.outcome === 'death' || item.result.outcome === 'failed') ? 'warning' : 'day');
     this.focus('[data-action="open-counter"]');
   }
   private renderSummary(): void {
@@ -306,9 +311,11 @@ export class CaseworkApp {
   }
 
   private resetCase(): void { this.session = createSession(this.caseData); this.draft = ''; this.error = ''; this.overlay = undefined; this.bookPage = 0; this.bookTag = '전체'; this.selectedClaimId = undefined; this.selectedKnowledgeId = undefined; this.comparison = undefined; this.sealedSheet = undefined; this.applications = []; this.rejections = []; }
-  private header(stage: string): string { return `<header class="shift-header"><div><p class="eyebrow">HELP WANTED</p><h1>길드 접수 창구</h1></div><div class="shift-progress"><span>${escapeHtml(stage)} · <i class="agent-status agent-status--${this.agent.mode}">${this.agent.mode === 'remote' ? '실시간 AI' : '규칙 폴백'}</i></span><b>${this.day}일차 · 오늘 ${(this.caseIndex % CASES_PER_DAY) + 1} / ${CASES_PER_DAY}</b>${this.agent.mode === 'remote' ? '' : '<small class="agent-notice">AI 연결에 실패해 규칙 폴백으로 진행합니다.</small>'}</div></header>`; }
+  private header(stage: string): string { return `<header class="shift-header"><div><p class="eyebrow">HELP WANTED</p><h1>길드 접수 창구</h1></div><div class="shift-controls"><div class="shift-progress"><span>${escapeHtml(stage)} · <i class="agent-status agent-status--${this.agent.mode}">${this.agent.mode === 'remote' ? '실시간 AI' : '규칙 폴백'}</i></span><b>${this.day}일차 · 오늘 ${(this.caseIndex % CASES_PER_DAY) + 1} / ${CASES_PER_DAY}</b>${this.agent.mode === 'remote' ? '' : '<small class="agent-notice">AI 연결에 실패해 규칙 폴백으로 진행합니다.</small>'}</div>${this.audioButton()}</div></header>`; }
+  private audioButton(): string { return `<button class="audio-toggle" type="button" data-action="toggle-audio" aria-pressed="${this.audio.muted}" aria-label="${this.audio.muted ? '배경음과 효과음 켜기' : '배경음과 효과음 끄기'}"><span aria-hidden="true">${this.audio.muted ? '♪×' : '♪'}</span><small>${this.audio.muted ? '소리 끔' : '소리 켬'}</small></button>`; }
+  private bindAudioToggle(): void { this.root.querySelector<HTMLButtonElement>('[data-action="toggle-audio"]')?.addEventListener('click', (event) => { this.audio.toggleMuted(); const button = event.currentTarget as HTMLButtonElement; button.outerHTML = this.audioButton(); this.bindAudioToggle(); }); }
   private focus(selector: string): void { window.setTimeout(() => this.root.querySelector<HTMLElement>(selector)?.focus(), 0); }
-  private onClick(action: string, handler: () => void): void { this.root.querySelector<HTMLButtonElement>(`[data-action="${action}"]`)?.addEventListener('click', handler); }
+  private onClick(action: string, handler: () => void, sound: GameSound = 'click'): void { this.root.querySelector<HTMLButtonElement>(`[data-action="${action}"]`)?.addEventListener('click', () => { this.audio.play(sound); handler(); }); }
 }
 
 function dialogueHtml(turn: IntakeSession['turns'][number], clientName: string): string { return `<article class="dialogue dialogue--${turn.speaker}"><b>${turn.speaker === 'client' ? escapeHtml(clientName) : turn.speaker === 'player' ? '접수원' : '시스템'}</b><p>${escapeHtml(turn.text)}</p></article>`; }
