@@ -135,6 +135,8 @@ function makeContract(client: Client, id: string = CONTRACT_ID): Contract {
   return {
     id,
     client,
+    questKind: 'legacy',
+    slots: new Map(),
     statedRisk: STATED_RISK,
     realRisk: REAL_RISK,
     concealment: 0.7,

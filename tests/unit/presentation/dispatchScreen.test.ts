@@ -86,6 +86,8 @@ function makeContract(overrides: Partial<Contract> = {}): Contract {
   return {
     id: "ct-1",
     client: makeClient(),
+    questKind: "legacy",
+    slots: new Map(),
     statedRisk: 40,
     realRisk: 50,
     concealment: 0.2,
@@ -121,6 +123,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       discoveredContacts: new Set(),
       revealedFacts: new Set(),
       heardFacts: new Map(),
+      slotProgress: new Map(),
     },
     rng: createRng(1),
     usedNames: new Set(),

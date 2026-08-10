@@ -210,6 +210,44 @@ export interface Fact {
   readonly kind: FactKind;
 }
 
+/** 의뢰가 가질 수 있는 빈칸의 전체 목록. 배열 순서는 RNG 스키마가 소유한다. */
+export type SlotName =
+  | 'kind'
+  | 'target'
+  | 'scale'
+  | 'place'
+  | 'deadline'
+  | 'route'
+  | 'weakness';
+
+/** 의뢰인이 한 칸을 얼마나 깊이 알고 있거나 말해 줄 수 있는가. */
+export type Reach = 'none' | 'vague' | 'certain';
+
+/** 플레이어 쪽에 저장되는 칸 상태. `unknown`과 `blocked`는 책임 귀속이 다르다. */
+export type SlotState = 'unknown' | 'blocked' | 'vague' | 'certain';
+
+/** 물었지만 칸이 열리지 않은 이유. */
+export type Limiter = 'knowledge' | 'disclosure';
+
+/** 슬롯 하나의 숨은 진실. 의뢰 생성 뒤에는 바뀌지 않는다. */
+export interface SlotTruth {
+  readonly knows: Reach;
+  readonly tells: Reach;
+  readonly valueKey: string;
+  readonly weight: number;
+}
+
+/**
+ * 슬롯 하나에 대해 플레이어가 알아낸 것.
+ *
+ * 판별 유니온으로 `limiter`가 `blocked`에만, 그리고 반드시 존재하도록 강제한다.
+ */
+export type SlotProgress =
+  | { readonly state: 'unknown'; readonly limiter?: never }
+  | { readonly state: 'blocked'; readonly limiter: Limiter }
+  | { readonly state: 'vague'; readonly limiter?: never }
+  | { readonly state: 'certain'; readonly limiter?: never };
+
 /**
  * 하나의 의뢰. **숨은 진실 시스템의 실체가 이 타입이다.**
  *
@@ -219,6 +257,10 @@ export interface Fact {
 export interface Contract {
   readonly id: string;
   readonly client: Client;
+  /** 이 의뢰의 종류. 후속 템플릿 스키마의 키다. */
+  readonly questKind: string;
+  /** 열린 슬롯의 숨은 진실. 진행 상태는 {@link PlayerKnowledge}에만 둔다. */
+  readonly slots: ReadonlyMap<SlotName, SlotTruth>;
   /**
    * 의뢰인이 **주장하는** 위험도. 플레이어가 처음부터 보는 유일한 위험 표현이다.
    *
@@ -295,6 +337,8 @@ export interface PlayerKnowledge {
    * 조용히 어긋난다.
    */
   readonly heardFacts: ReadonlyMap<string, HeardRumor>;
+  /** 청취로 좁힌 슬롯 상태. 키는 `` `${contractId}:${slotName}` `` 형식이다. */
+  readonly slotProgress: ReadonlyMap<string, SlotProgress>;
 }
 
 /**
@@ -342,6 +386,8 @@ export interface MutableKnowledge {
   readonly revealedFacts: Set<string>;
   /** 들은 사실의 상세. `revealedFacts`와 **항상 같이** 채운다 */
   readonly heardFacts: Map<string, HeardRumor>;
+  /** 청취 판정만 쓰는 슬롯 진행 상태. */
+  readonly slotProgress: Map<string, SlotProgress>;
 }
 
 /**

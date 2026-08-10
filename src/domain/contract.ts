@@ -21,7 +21,16 @@
  */
 import { pickTwoTraits, pickUniqueName, type NamePool } from './person';
 import type { Rng } from './rng';
-import { FACT_KINDS, GOALS, type Adventurer, type Client, type Contract, type Fact } from './types';
+import {
+  FACT_KINDS,
+  GOALS,
+  type Adventurer,
+  type Client,
+  type Contract,
+  type Fact,
+  type SlotName,
+  type SlotTruth,
+} from './types';
 import { rollWeightedIndex } from './weighted';
 
 /** 의뢰 생성에 필요한 수치. 전부 `balance.json`에서 온다. */
@@ -65,6 +74,10 @@ export interface ContractContext {
   readonly names: NamePool;
   /** 이미 쓰인 이름. 모험가 명부와 공유해야 의뢰인이 동명이인이 되지 않는다 */
   readonly usedNames?: Set<string>;
+  /** P1-007의 템플릿 키. 그 전까지 생성되는 기존 의뢰는 `legacy`를 쓴다. */
+  readonly questKind?: string;
+  /** P1-002의 진실 실현 결과. 전달하지 않으면 아직 슬롯이 없는 기존 의뢰다. */
+  readonly slots?: ReadonlyMap<SlotName, SlotTruth>;
 }
 
 /**
@@ -130,6 +143,8 @@ export function createContract(
   return {
     id,
     client,
+    questKind: context.questKind ?? 'legacy',
+    slots: context.slots ?? new Map<SlotName, SlotTruth>(),
     statedRisk,
     realRisk,
     concealment,

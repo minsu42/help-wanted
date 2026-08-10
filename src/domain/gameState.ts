@@ -191,6 +191,7 @@ export function createGameState(seed: number, config: GameConfig): GameState {
       discoveredContacts: new Set(),
       revealedFacts: new Set(),
       heardFacts: new Map(),
+      slotProgress: new Map(),
     },
     rng,
     usedNames,

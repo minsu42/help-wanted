@@ -46,6 +46,8 @@ function makeContract(client: Client, overrides: Partial<Contract> = {}): Contra
   return {
     id: "ct-outcome-test",
     client,
+    questKind: "legacy",
+    slots: new Map(),
     statedRisk: 40,
     realRisk: 90,
     concealment: 0.5,

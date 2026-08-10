@@ -64,6 +64,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
       discoveredContacts: new Set(),
       revealedFacts: new Set(),
       heardFacts: new Map(),
+      slotProgress: new Map(),
     },
     rng: createRng(SEED),
     usedNames: new Set(),

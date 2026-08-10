@@ -4,7 +4,14 @@ import names from "../../../src/data/names.json";
 import { createContract, type ContractConfig } from "../../../src/domain/contract";
 import { createRng } from "../../../src/domain/rng";
 import { createWorldRoster, type RosterConfig } from "../../../src/domain/roster";
-import { FACT_KINDS, GOALS, TRAITS, type Adventurer } from "../../../src/domain/types";
+import {
+  FACT_KINDS,
+  GOALS,
+  TRAITS,
+  type Adventurer,
+  type SlotName,
+  type SlotTruth,
+} from "../../../src/domain/types";
 
 /** 설정은 balance.json에서 조립한다 — 테스트가 곧 "수치가 파일에서 온다"의 증거다. */
 const CONFIG: ContractConfig = {
@@ -62,6 +69,34 @@ function sampleContracts(count: number, reputation = STARTING_REPUTATION) {
 }
 
 describe("createContract", () => {
+  it("test_legacy_contract_has_the_new_schema_without_consuming_slot_rng", () => {
+    const contract = createContract(createRng(SEED), CONFIG, makeContext(makeRoster()));
+
+    expect(contract.questKind).toBe("legacy");
+    expect(contract.slots.size).toBe(0);
+  });
+
+  it("test_contract_keeps_injected_slot_truth_separate_from_progress", () => {
+    const kind: SlotTruth = {
+      knows: "certain",
+      tells: "vague",
+      valueKey: "quest.kind.investigation",
+      weight: 1,
+    };
+    const slots = new Map<SlotName, SlotTruth>([["kind", kind]]);
+
+    const contract = createContract(createRng(SEED), CONFIG, {
+      ...makeContext(makeRoster()),
+      questKind: "investigation",
+      slots,
+    });
+
+    expect(contract.questKind).toBe("investigation");
+    expect(contract.slots).toBe(slots);
+    expect(contract.slots.get("kind")).toEqual(kind);
+    expect(contract).not.toHaveProperty("slotProgress");
+  });
+
   it("test_same_seed_and_reputation_produces_identical_contract", () => {
     // Arrange
     const roster = makeRoster();
