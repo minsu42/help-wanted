@@ -1,5 +1,4 @@
 export type CommissionSlot = 'objective' | 'target' | 'scale' | 'location' | 'trait';
-export type FactConfidence = 'confirmed' | 'inferred' | 'unknown';
 export type RiskGrade = 'D' | 'C' | 'B' | 'A' | 'S';
 export type Emotion = 'calm' | 'uneasy' | 'guarded' | 'angry';
 export type Intent = 'ask' | 'challenge' | 'negotiate' | 'accuse' | 'reassure' | 'other';
@@ -8,6 +7,15 @@ export interface KnowledgeEntry {
   id: string;
   /** 이 조항이 게시판에 붙는 날. 없으면 첫날부터 유효하다. */
   activeFromDay?: number;
+  /**
+   * 이 항목을 자료집에 올린 파견 보고의 사건 id.
+   *
+   * 길드 자료집은 누가 앉아서 쓴 것이 아니라 **돌아온 파티의 보고로 채워진다.**
+   * 해당 사건의 보고가 도착하기 전에는 존재하지 않는다.
+   */
+  unlockedByCase?: string;
+  /** 책 하단에 찍히는 출처 각주. */
+  source?: string;
   book: 'bestiary' | 'rules';
   title: string;
   text: string;
@@ -132,13 +140,9 @@ export interface Directive {
   violation: (sheet: CommissionSheet) => string | undefined;
 }
 
-export interface CommissionEntry {
-  factId?: string;
-  confidence: FactConfidence;
-}
-
 export interface CommissionSheet {
-  entries: Record<CommissionSlot, CommissionEntry>;
+  /** 칸마다 확보한 사실 하나를 고르거나 비워 둔다. 확신도 등급은 두지 않는다. */
+  entries: Record<CommissionSlot, string | undefined>;
   risk: RiskGrade;
   preparations: string[];
   accepted: boolean;
@@ -199,13 +203,7 @@ export function createSession(caseData: ClientCase): IntakeSession {
 
 export function emptyCommission(): CommissionSheet {
   return {
-    entries: {
-      objective: { confidence: 'unknown' },
-      target: { confidence: 'unknown' },
-      scale: { confidence: 'unknown' },
-      location: { confidence: 'unknown' },
-      trait: { confidence: 'unknown' },
-    },
+    entries: { objective: undefined, target: undefined, scale: undefined, location: undefined, trait: undefined },
     risk: 'D',
     preparations: [],
     accepted: true,

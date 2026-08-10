@@ -25,7 +25,7 @@ describe('새 접수 수직 단면', () => {
 
   /** 업무 시작 → 아침 화면 → 창구 개점까지 밀어 놓는다. */
   async function openCounter(): Promise<void> {
-    root.querySelector<HTMLButtonElement>('[data-action="start"]')!.click();
+    root.querySelector<HTMLButtonElement>('[data-action="skip"]')!.click();
     await Promise.resolve();
     await Promise.resolve();
     root.querySelector<HTMLButtonElement>('[data-action="open-counter"]')!.click();
@@ -102,7 +102,6 @@ describe('새 접수 수직 단면', () => {
 
     // Act — 최소 요건만 채워 게시하고 지원 파티에 인계한다
     root.querySelector<HTMLSelectElement>('[name="fact-objective"]')!.value = 'f1-objective';
-    root.querySelector<HTMLSelectElement>('[name="confidence-objective"]')!.value = 'confirmed';
     root.querySelector<HTMLInputElement>('[name="preparation"][value="방패"]')!.checked = true;
     root.querySelector<HTMLFormElement>('[data-form="commission"]')!.requestSubmit();
     root.querySelector<HTMLButtonElement>('[data-party]')!.click();
@@ -125,6 +124,8 @@ describe('새 접수 수직 단면', () => {
       root.querySelector<HTMLFormElement>('[data-form="commission"]')!.requestSubmit();
       root.querySelector<HTMLButtonElement>('[data-action="continue"]')!.click();
     }
+    // 마지막 건을 넘기면 밤 급여 명세를 지나 다음 날 아침으로 간다.
+    root.querySelector<HTMLButtonElement>('[data-action="continue"]')!.click();
 
     // Assert
     expect(root.textContent).toContain('2일차 근무');
@@ -143,12 +144,13 @@ describe('새 접수 수직 단면', () => {
       root.querySelector<HTMLFormElement>('[data-form="commission"]')!.requestSubmit();
       root.querySelector<HTMLButtonElement>('[data-action="continue"]')!.click();
     }
+    // 마지막 건을 넘기면 밤 급여 명세를 지나 다음 날 아침으로 간다.
+    root.querySelector<HTMLButtonElement>('[data-action="continue"]')!.click();
     root.querySelector<HTMLButtonElement>('[data-action="open-counter"]')!.click();
     root.querySelector<HTMLButtonElement>('[data-action="commission"]')!.click();
 
     // Act — B급으로 기록하면서 응급 처치를 빠뜨린다
     root.querySelector<HTMLSelectElement>('[name="fact-objective"]')!.value = 'f4-objective';
-    root.querySelector<HTMLSelectElement>('[name="confidence-objective"]')!.value = 'confirmed';
     root.querySelector<HTMLInputElement>('[name="risk"][value="B"]')!.checked = true;
     root.querySelector<HTMLFormElement>('[data-form="commission"]')!.requestSubmit();
 

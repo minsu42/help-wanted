@@ -23,7 +23,7 @@ describe('의뢰서와 파견 판정', () => {
     full.preparations = [...caseData.requiredPreparations];
     for (const slot of COMMISSION_SLOTS) {
       const fact = caseData.facts.find((candidate) => candidate.slot === slot)!;
-      full.entries[slot] = { factId: fact.id, confidence: 'confirmed' };
+      full.entries[slot] = fact.id;
     }
     const disclosed = caseData.facts.map((fact) => fact.id);
     const emptyResult = resolveDispatch(caseData, empty, party, 30, disclosed);
@@ -35,7 +35,7 @@ describe('의뢰서와 파견 판정', () => {
   it('공개되지 않은 사실을 조작해 제출해도 충실도에 포함하지 않는다', () => {
     const caseData = CASES[0]!;
     const sheet = emptyCommission();
-    sheet.entries.trait = { factId: 'f1-trait', confidence: 'confirmed' };
+    sheet.entries.trait = 'f1-trait';
     const result = resolveDispatch(caseData, sheet, PARTIES[0], 18, ['f1-objective']);
     expect(result.completeness).toBe(0);
   });

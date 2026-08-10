@@ -11,9 +11,28 @@ export function isLastCaseOfDay(caseIndex: number, totalCases: number): boolean 
   return caseIndex + 1 >= totalCases || dayOfCase(caseIndex + 1) !== dayOfCase(caseIndex);
 }
 
-/** 그날까지 유효한 자료만 남긴다. 아직 붙지 않은 조항은 백과사전에도 보이지 않는다. */
-export function knowledgeForDay(knowledge: readonly KnowledgeEntry[], day: number): readonly KnowledgeEntry[] {
-  return knowledge.filter((entry) => (entry.activeFromDay ?? 1) <= day);
+/**
+ * 그날 펼칠 수 있는 자료.
+ *
+ * 두 가지로 늘어난다 — 날짜가 지나 붙는 **공문**과, 파견 보고가 돌아와 추가되는
+ * **현장 기록**이다. 후자는 자료집이 어디서 오는지에 대한 답이기도 하다:
+ * 아무도 앉아서 쓰지 않았고, 누군가 다녀왔기 때문에 그 페이지가 있다.
+ */
+export function knowledgeForDay(
+  knowledge: readonly KnowledgeEntry[],
+  day: number,
+  reportedCaseIds: readonly string[] = [],
+): readonly KnowledgeEntry[] {
+  return knowledge.filter((entry) => (entry.activeFromDay ?? 1) <= day
+    && (entry.unlockedByCase === undefined || reportedCaseIds.includes(entry.unlockedByCase)));
+}
+
+/** 이번에 새로 자료집에 오른 현장 기록. 아침 화면에서 알린다. */
+export function knowledgeUnlockedBy(
+  knowledge: readonly KnowledgeEntry[],
+  caseIds: readonly string[],
+): readonly KnowledgeEntry[] {
+  return knowledge.filter((entry) => entry.unlockedByCase !== undefined && caseIds.includes(entry.unlockedByCase));
 }
 
 export function directivesForDay(directives: readonly Directive[], day: number): readonly Directive[] {
@@ -46,6 +65,18 @@ export function checkDirectives(
     const reason = directive.violation(sheet);
     return reason ? [{ directiveId: directive.id, title: directive.title, reason }] : [];
   });
+}
+
+/**
+ * 실제로 사람이 다녀온 사건의 id만 고른다.
+ *
+ * 거절하거나 인계하지 못한 의뢰는 현장이 없다. 자료집에 새 쪽이 생기려면
+ * 누군가 그곳에 갔다 와야 한다.
+ */
+export function dispatchedCaseIds(items: readonly PendingDispatch[], caseIdOf: (index: number) => string): string[] {
+  return items
+    .filter((item) => item.result.outcome !== 'rejected' && item.result.outcome !== 'unassigned')
+    .map((item) => caseIdOf(item.caseIndex));
 }
 
 export interface PendingDispatch {

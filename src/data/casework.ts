@@ -12,8 +12,8 @@ export const DIRECTIVES: readonly Directive[] = [
     activeFromDay: 1,
     title: '백지 의뢰서 금지',
     text: '목표와 대상을 모두 미상으로 둔 의뢰서는 게시할 수 없다.',
-    violation: (sheet) => sheet.entries.objective.confidence === 'unknown' && sheet.entries.target.confidence === 'unknown'
-      ? '목표와 대상이 모두 미상입니다. 최소한 둘 중 하나는 확인해 기재하십시오.'
+    violation: (sheet) => !sheet.entries.objective && !sheet.entries.target
+      ? '목표와 대상이 모두 비어 있습니다. 최소한 둘 중 하나는 확인해 기재하십시오.'
       : undefined,
   },
   {
@@ -26,16 +26,13 @@ export const DIRECTIVES: readonly Directive[] = [
       : undefined,
   },
   {
-    id: 'd-no-unfounded-certainty',
+    id: 'd-route-required',
     activeFromDay: 2,
-    title: '확정 기재 증빙 강화',
-    text: '확정으로 기재한 항목이 셋을 넘으면 감사 대상이 되므로 게시를 보류한다.',
-    violation: (sheet) => {
-      const confirmed = Object.values(sheet.entries).filter((entry) => entry.confidence === 'confirmed').length;
-      return confirmed > 3
-        ? `확정 기재가 ${confirmed}건입니다. 직접 확인하지 않은 항목은 추정으로 낮추십시오.`
-        : undefined;
-    },
+    title: '파견 경로 기재 의무',
+    text: '장소·경로를 비운 의뢰서는 파티가 길을 찾을 수 없으므로 게시할 수 없다.',
+    violation: (sheet) => sheet.entries.location
+      ? undefined
+      : '장소·경로가 비어 있습니다. 의뢰인에게 위치를 확인하십시오.',
   },
 ];
 
@@ -68,8 +65,11 @@ export const KNOWLEDGE: readonly KnowledgeEntry[] = [
   { id: 'k-b-rate', book: 'rules', category: '표준 보수', tags: ['규정', '시세', 'B급'], title: 'B급 시세', text: 'B급 의뢰의 최소 보수는 은화 36닢이다.' },
   { id: 'k-magic-premium', book: 'rules', category: '위험수당', tags: ['규정', '시세', '마력'], title: '마력 위험수당', text: '마력성 위험에는 기본 보수의 20% 이상을 가산한다.', imageQuadrant: 'crystal' },
   { id: 'k-rescue-rule', book: 'rules', category: '목표 우선순위', tags: ['규정', '구조', '생존자'], title: '구조 우선 원칙', text: '생존자 가능성이 있는 의뢰는 회수보다 구조를 우선 기록한다.' },
+  { id: 'k-mimic-aftermath', unlockedByCase: 'case-rat-cellar', source: '양조장 저장고 파견 보고', book: 'bestiary', category: '위장종', tags: ['괴물', '위장종', '현장 기록'], title: '현장 기록 · 미믹의 위장', text: '미믹은 사람이 물러난 뒤에야 자리를 옮긴다. 밤새 위치가 바뀐 가구는 개체가 살아 있다는 뜻이다.', imageQuadrant: 'mimic', size: '보고된 개체 1.1~1.4m', habitat: '저장고, 창고', traces: '옮겨진 가구, 마른 점액', traits: '사람이 없을 때만 움직인다.', weakness: '화염', danger: 'C' },
+  { id: 'k-smuggler-route', unlockedByCase: 'case-sealed-cart', source: '북문 폐채석장 호위 처리 기록', book: 'rules', category: '접수 금지', tags: ['규정', '마력', '현장 기록'], title: '현장 기록 · 순찰 회피 경로', text: '북문 폐채석장 샛길을 지정하는 화물 의뢰는 봉인 확인 전까지 접수를 보류한다.', imageQuadrant: 'crystal' },
+  { id: 'k-wisp-rescue', unlockedByCase: 'case-marsh-lights', source: '갈대 늪 구조 파견 보고', book: 'bestiary', category: '정령종', tags: ['괴물', '정령종', '구조', '현장 기록'], title: '현장 기록 · 늪불 속 생존자', text: '늪불 도깨비의 냉기 속에서도 사람은 하루를 버틴다. 개체 수가 늘어나는 방향의 반대편을 먼저 수색한다.', imageQuadrant: 'wisp', size: '보고 시점 개체 3', habitat: '갈대 늪 북안', traces: '푸른 불빛의 이동 방향', traits: '생존자 주위로 모인다.', weakness: '은 가루', danger: 'C' },
   { id: 'k-medic-mandate', activeFromDay: 2, book: 'rules', category: '접수 금지', tags: ['규정', '공문', '구조'], title: '공문 · 고위험 응급 처치 의무', text: 'B급 이상으로 기록한 의뢰는 응급 처치 인원을 요구하지 않으면 게시할 수 없다.' },
-  { id: 'k-certainty-audit', activeFromDay: 2, book: 'rules', category: '증빙 기준', tags: ['규정', '공문', '증빙'], title: '공문 · 확정 기재 증빙 강화', text: '확정으로 기재한 항목이 셋을 넘으면 감사 대상이 되므로 게시를 보류한다.' },
+  { id: 'k-route-required', activeFromDay: 2, book: 'rules', category: '증빙 기준', tags: ['규정', '공문', '증빙'], title: '공문 · 파견 경로 기재 의무', text: '장소·경로를 비운 의뢰서는 파티가 길을 찾을 수 없으므로 게시할 수 없다.' },
 ];
 
 export const CASES: readonly ClientCase[] = [
@@ -153,7 +153,7 @@ export const CASES: readonly ClientCase[] = [
     ],
   },
   {
-    id: 'case-ranger-wisps', clientName: '세라드', occupation: '늪지 순찰자', portraitIndex: 0,
+    id: 'case-ranger-wisps', clientName: '세라드', occupation: '늪지 순찰자', portraitIndex: 4,
     premise: '늪불에 갇힌 약초꾼 구조',
     opening: '약초꾼 둘이 남쪽 습지의 돌무덤 지대에 고립됐습니다. 푸른 늪불 네 개가 길을 빙빙 돌리고 있고, 제가 뿌린 은 가루 표식만은 피하더군요. 두 사람의 횃불이 아직 보여 생존 가능성이 높습니다. 제거보다 구조를 먼저 기록해 주십시오. 은화 28닢을 준비했습니다.',
     motive: '확인한 사실을 정확히 전달해 구조대의 시간을 아끼려 한다.', demeanor: '괴물 지식이 풍부하고 접수원을 동료 전문가로 대하는 정직한 전문가형.',
@@ -173,7 +173,7 @@ export const CASES: readonly ClientCase[] = [
     ],
   },
   {
-    id: 'case-crystal-accident', clientName: '티아', occupation: '마법사 조합 견습생', portraitIndex: 1,
+    id: 'case-crystal-accident', clientName: '티아', occupation: '마법사 조합 견습생', portraitIndex: 5,
     premise: '파손된 마력석 상자 봉쇄',
     opening: '제가 운반하던 조합 마력석 상자 하나가 동문 검문소 앞에서 떨어져 금이 갔습니다. 청동 봉인과 운송장은 모두 여기 있고, 숨길 생각도 없습니다. 다만 틈에서 푸른빛과 냉기가 새어 경비병들이 접근하지 못하고 있어요. 운반이 아니라 현장 봉쇄와 회수를 의뢰합니다. 지금 가진 돈은 은화 30닢입니다.',
     motive: '자신의 실수를 인정하고 추가 피해가 나기 전에 합법적으로 수습하려 한다.', demeanor: '죄책감 때문에 서두르지만 증빙과 질문에 숨김없이 답하는 자진신고형.',

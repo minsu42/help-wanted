@@ -61,13 +61,10 @@ export function resolveDispatch(
   }
 
   const scores = COMMISSION_SLOTS.map((slot) => {
-    const entry = sheet.entries[slot];
-    const fact = caseData.facts.find((candidate) => candidate.id === entry.factId);
-    if (!fact || !disclosedFactIds.includes(fact.id)) return 0;
-    if (fact.slot !== slot) return 0;
-    if (entry.confidence === 'confirmed') return 1;
-    if (entry.confidence === 'inferred') return 0.5;
-    return 0;
+    const fact = caseData.facts.find((candidate) => candidate.id === sheet.entries[slot]);
+    // 확보하지 않았거나 다른 칸의 사실을 끼워 넣은 기재는 점수가 되지 않는다.
+    if (!fact || !disclosedFactIds.includes(fact.id) || fact.slot !== slot) return 0;
+    return 1;
   });
   const completeness = round1(4 * scores.reduce<number>((sum, value) => sum + value, 0) / COMMISSION_SLOTS.length);
   const matchedPreparation = caseData.requiredPreparations.filter((need) =>
