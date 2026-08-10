@@ -54,6 +54,7 @@ describe('청취 의뢰서 아트 인터랙션', () => {
       state, contract,
       slotContent: { 'test:kind': { topic: '종류', vague: '조사', certain: '현장 조사', weight: 0, hintTags: [] } },
       handbook: [], statedGrade: 'C', onSealed,
+      copy: { firstAction: '칸을 눌러 묻는다.' },
       onVisitHall: vi.fn(), onEndDay: vi.fn(),
     });
 
@@ -72,5 +73,33 @@ describe('청취 의뢰서 아트 인터랙션', () => {
     seal?.click();
     expect(state.commissionSheets[contract.id].sealed).toBe(true);
     expect(onSealed).toHaveBeenCalledOnce();
+    expect(root.querySelector('.intake__guide')).toBeNull();
+  });
+
+  it('첫 방문에만 핵심 행동 안내를 보여준다', () => {
+    const state = makeState();
+    state.ratesIntroduced = false;
+    mountIntakeScreen(root, {
+      state, contract,
+      slotContent: { 'test:kind': { topic: '종류', vague: '조사', certain: '현장 조사', weight: 0, hintTags: [] } },
+      handbook: [], statedGrade: 'C', copy: { firstAction: '칸을 눌러 묻는다.' },
+      onSealed: vi.fn(), onVisitHall: vi.fn(), onEndDay: vi.fn(),
+    });
+
+    expect(root.querySelector('.intake__guide')?.textContent).toContain('칸을 눌러');
+    expect(state.ratesIntroduced).toBe(true);
+  });
+
+  it('사용할 재료가 없으면 빈 재료 상자를 그리지 않는다', () => {
+    const state = makeState();
+    state.intakeSessions[contract.id].selectedSlot = 'kind';
+    state.intakeSessions[contract.id].materialMode = 'insight';
+    mountIntakeScreen(root, {
+      state, contract,
+      slotContent: { 'test:kind': { topic: '종류', vague: '조사', certain: '현장 조사', weight: 0, hintTags: [] } },
+      handbook: [], statedGrade: 'C', copy: { firstAction: '칸을 눌러 묻는다.' },
+      onSealed: vi.fn(), onVisitHall: vi.fn(), onEndDay: vi.fn(),
+    });
+    expect(root.querySelector('.intake__materials')).toBeNull();
   });
 });

@@ -276,6 +276,7 @@ function showOutcome(resolved: ResolvedDispatch): void {
       certaintyBand: balance.dispatch.certaintyBand,
       rng: state.rng,
       text: textBank,
+      copy: textBank.ui.outcome,
       // 남은 결과가 더 있으면 이어서 보여준다. 큐가 비면 창구(또는 결산)로.
       onContinue: () => showNextOutcomeOr(showCounter),
     }),
@@ -336,6 +337,7 @@ function showCounter(): void {
         slotContent,
         handbook: handbookEntries,
         statedGrade: statedGradeOf(intakeContract.statedRisk),
+        copy: textBank.ui.intake,
         onSealed: (contract) => {
           const agreedReward = contract.baseReward;
           state.settlements[contract.id] = { agreedReward, discloseRisk: false };

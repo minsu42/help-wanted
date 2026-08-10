@@ -132,6 +132,16 @@
   font-style: italic;
 }
 
+.outcome__reason {
+  margin: 1.5rem 0;
+  padding: 0.9rem 1.1rem;
+  border-left: 4px solid var(--focus);
+  background: rgb(0 0 0 / 22%);
+  color: var(--paper);
+}
+.outcome__reason h2 { margin: 0; font-size: 1rem; letter-spacing: 0.06em; }
+.outcome__reason p { margin: 0.4rem 0 0; line-height: 1.6; }
+
 /* --- 판정 근거 --- */
 
 .outcome__section-title {

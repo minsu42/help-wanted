@@ -119,6 +119,7 @@ function mount(outcome: ResolvedOutcome, overrides: Partial<OutcomeScreenDeps> =
     certaintyBand: CERTAINTY_BAND,
     rng: createRng(1),
     text: textBank,
+    copy: textBank.ui.outcome,
     onContinue: onContinue as unknown as () => void,
     ...overrides,
   });
@@ -213,6 +214,27 @@ describe("결과 대조 화면 — 마진 띠", () => {
     // 숫자가 그대로 렌더되지 않는다
     expect(comfortableHtml).not.toContain("1.5");
     expect(riskyHtml).not.toContain("0.9");
+  });
+});
+
+describe("결과 대조 화면 — 결과 원인", () => {
+  it.each([
+    ["success", 1.5, "충분히 감당"],
+    ["injured", 1, "부상자가"],
+    ["dead", 0.5, "전력이 부족"],
+  ] as const)("%s 결과에 전력과 위험의 관계를 설명한다", (outcomeKind, ratio, phrase) => {
+    const contract = makeContract(makeClient());
+    mount({
+      contract,
+      result: makeResult({ outcome: outcomeKind, ratio, effective: ratio }),
+      party: [makeAdventurer()],
+      concealedKnownRisk: false,
+      heardFacts: [],
+    });
+
+    const reason = root.querySelector('.outcome__reason')?.textContent ?? '';
+    expect(reason).toContain('왜 이런 결과가 났나');
+    expect(reason).toContain(phrase);
   });
 });
 

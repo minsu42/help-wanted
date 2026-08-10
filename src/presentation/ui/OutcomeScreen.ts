@@ -104,8 +104,14 @@ export interface OutcomeScreenDeps {
   /** 사망 서술(`resultDead`/`lostComrade`) 조립에 쓴다. `GameState.rng`를 넘긴다 */
   readonly rng: Rng;
   readonly text: TextBank;
+  readonly copy: OutcomeCopy;
   /** 대조를 확인하고 다음으로 넘어갈 때 호출된다. 화면 전환 자체는 main.ts가 한다 */
   readonly onContinue: () => void;
+}
+
+export interface OutcomeCopy {
+  readonly reasonTitle: string;
+  readonly reasons: Readonly<Record<DispatchOutcome, Readonly<Record<'comfortable' | 'risky' | 'reckless', string>>>>;
 }
 
 const OUTCOME_LABELS: Readonly<Record<DispatchOutcome, string>> = {
@@ -205,6 +211,7 @@ export function mountOutcomeScreen(root: HTMLElement, deps: OutcomeScreenDeps): 
           ${renderKnownSide(contract)}
           ${renderRealSide(contract)}
         </div>
+        ${renderOutcomeReason(result)}
         ${renderRationale(party, result)}
         ${renderPayment(result)}
         ${renderDeath(party, result)}
@@ -213,6 +220,14 @@ export function mountOutcomeScreen(root: HTMLElement, deps: OutcomeScreenDeps): 
         </footer>
       </section>
     `;
+  }
+
+  function renderOutcomeReason(result: DispatchResult): string {
+    const margin = marginBandOf(result.ratio, deps.certaintyBand);
+    return `<section class="outcome__reason">
+      <h2>${escapeHtml(deps.copy.reasonTitle)}</h2>
+      <p>${escapeHtml(deps.copy.reasons[result.outcome][margin])}</p>
+    </section>`;
   }
 
   function renderHeader(contract: Contract, result: DispatchResult): string {

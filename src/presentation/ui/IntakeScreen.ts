@@ -22,9 +22,14 @@ export interface IntakeScreenDeps {
   readonly slotContent: Readonly<Record<string, SlotContent>>;
   readonly handbook: readonly IntakeMaterial[];
   readonly statedGrade: RiskGrade;
+  readonly copy: IntakeCopy;
   readonly onSealed: (contract: Contract) => void;
   readonly onVisitHall: () => void;
   readonly onEndDay: () => void;
+}
+
+export interface IntakeCopy {
+  readonly firstAction: string;
 }
 
 const SLOT_LABELS: Readonly<Record<SlotName, string>> = {
@@ -51,7 +56,8 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
     throw new Error(`청취 상태가 없는 의뢰다 (${deps.contract.id})`);
   }
 
-  let handbookOpen = !deps.state.ratesIntroduced;
+  const firstVisit = !deps.state.ratesIntroduced;
+  let handbookOpen = firstVisit;
   let activeBook: IntakeMaterial['book'] = handbookOpen ? 'rates' : 'bestiary';
   let stampOpen = false;
   if (handbookOpen) deps.state.ratesIntroduced = true;
@@ -194,6 +200,7 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
           <h1>${deps.state.day}일차 · 의뢰 접수</h1>
           <p>자금 ${Math.round(deps.state.funds)}G · 명성 ${Math.round(deps.state.reputation)}</p>
         </header>
+        ${firstVisit ? `<p class="intake__guide">${escapeHtml(deps.copy.firstAction)}</p>` : ''}
         <div class="intake__booth">
           <div class="intake__window" data-expression="${session.expression}">
             <span class="intake__portrait" aria-hidden="true"></span>
@@ -268,6 +275,7 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
     const candidates = deps.handbook.filter((entry) =>
       entry.book !== 'rates' && (session.materialMode === 'insight' ? entry.hintTags.length > 0 : entry.leverageTag !== null),
     );
+    if (candidates.length === 0) return '';
     return `<section class="intake__materials" aria-label="수첩에서 사실 고르기">
       <header><strong>${session.materialMode === 'insight' ? '일깨울 사실' : '들이댈 사실'}</strong><button type="button" data-action="close-materials">닫기</button></header>
       <div>${candidates.map((entry) => `<button type="button" data-action="material" data-material="${entry.id}">${escapeHtml(entry.title)}</button>`).join('')}</div>
