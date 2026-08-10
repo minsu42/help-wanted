@@ -84,6 +84,25 @@ button.ghost { background: transparent; color: #7a6741; }
 button:disabled { opacity: .5; cursor: default; }
 .debug { font-size: 11px; color: #8a2f22; }
 
+/* ---- 주도권 3종 (3회차) ---- */
+.slot.askable { width: 100%; background: transparent; border: none;
+  border-bottom: 1px dashed #c4ad7e; cursor: pointer; font: inherit; color: inherit;
+  display: flex; justify-content: space-between; padding: 5px 3px; text-align: left; }
+.slot.askable:hover { background: #f3e7c9; }
+.slot.askable .v { text-decoration: underline dotted #a08b60; }
+
+.notebook { display: flex; flex-direction: column; gap: 4px; }
+.nb-item { text-align: left; font: inherit; font-size: 12px; line-height: 1.4;
+  padding: 6px 8px; background: transparent; color: #6b5a45;
+  border: 1px dashed #b09a6d; cursor: pointer; }
+.nb-item:hover { background: #f3e7c9; color: #2e2416; }
+.nb-item.clue { border-style: solid; }
+.nb-item.clue.dim { opacity: .55; }
+
+.offer.interruptible .opt { border-left: 3px solid #8a6a44; }
+.sys.cut { color: #8a2f22; font-weight: bold; }
+.bubble .line { display: inline; }
+
 /* ---- 프로토 3 추가 ---- */
 .hud input[type=number] { width: 52px; }
 .llm-state { font-size: 11px; padding: 2px 6px; border: 1px solid #6b5a45; }

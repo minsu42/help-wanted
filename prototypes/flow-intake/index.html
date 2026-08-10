@@ -28,8 +28,9 @@
 
     <div id="offer" class="offer"></div>
     <div class="flowbar"><div id="flowfill"></div></div>
-    <p class="hint" id="hint">의뢰인은 <b>계속 말한다.</b> 흐름 안에서 고르면 공짜고,
-      놓치면 청취록에서 되짚을 수 있지만 <b>응대권을 쓴다.</b></p>
+    <p class="hint" id="hint">의뢰인은 <b>계속 말한다.</b> 흐름 안에서 고르면 공짜다.<br>
+      <b>말하는 도중에 고르면 말을 끊는 것</b>이고, <b>의뢰서의 빈칸</b>과
+      <b>수첩</b>은 내가 먼저 꺼내는 것이라 응대권을 쓴다.</p>
   </section>
 
   <aside class="panel">
@@ -39,11 +40,8 @@
     <h2>의뢰서</h2>
     <div id="slots"></div>
 
-    <h2>놓친 것 <span class="cnt" id="missed-cnt"></span></h2>
-    <div id="missed" class="missed"></div>
-
-    <h2>내가 아는 것 <span class="cnt" id="clue-cnt"></span></h2>
-    <div id="clues"></div>
+    <h2>수첩 <span class="cnt" id="nb-cnt"></span></h2>
+    <div id="notebook" class="notebook"></div>
 
     <button id="finish" class="ghost wide">이만 됐습니다 — 의뢰서를 쓴다</button>
   </aside>
@@ -59,7 +57,7 @@
 </div>
 
 <script src="config.js"></script>
-<script src="llm.js?v=3"></script>
-<script src="app.js?v=5"></script>
+<script src="llm.js?v=4"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
