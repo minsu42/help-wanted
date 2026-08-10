@@ -1,5 +1,5 @@
 /**
- * 파견 화면 — 파티 배정 + 결과 (최소판, Day 1 종료 게이트).
+ * 파견 화면 — 파티 배정 + 결과 (최소판, Week 1 종료 게이트).
  *
  * 이 화면이 끝나면 "의뢰 받고 사람 보내서 결과 보기"가 완주된다. "알았던 것 vs
  * 실제였던 것" 대조는 Story 014, `trust`·`Memory` 갱신은 Story 013, 자금·명성 반영은
@@ -7,12 +7,10 @@
  *
  * ## 회차 진행은 여기서 소유하지 않는다
  *
- * `advanceDay(state, config)`를 이 화면이 직접 부르지 않는다. 하루가 지나면 **다른
+ * `advanceWeek(state, config)`를 이 화면이 직접 부르지 않는다. 한 주가 지나면 **다른
  * 파견도 조용히 판정되고 의뢰도 리필된다** — 그 전역 효과는 프레젠테이션 계층의
- * 소관이 아니다. 그래서 `onAdvanceDay`를 콜백으로 주입받는다. 실제 호출은 main.ts가
- * 하고, 이 화면은 반환된 `DayReport.resolved`에서 자기 계약 id만 찾는다. Story 010
- * (길드 홀)도 하루를 넘겨야 하므로, 진행의 주인을 하나로 유지하는 것이 이 경계의
- * 이유다.
+ * 소관이 아니다. 배정을 마치면 길드 홀로 돌아가며, 주 진행과 결과 큐 처리는 main.ts의
+ * 길드 홀 마감 경로가 전담한다.
  *
  * ## 배정 꺼림은 대가이지 게이트가 아니다
  *
@@ -47,15 +45,18 @@
  * 화면이 여러 개 생기는데 각자 라벨을 하드코딩하면 "수다스러움"과 "수다스럽다"처럼
  * 화면마다 어휘가 갈린다. 그런 어긋남은 버그로 걸리지 않고 그냥 조잡해 보인다.
  */
-import { dispatchParty, type DayReport, type GameState } from '../../domain/gameState';
-import type { DispatchOutcome, DispatchResult } from '../../domain/dispatch';
+import { dispatchParty, type GameState } from '../../domain/gameState';
 import { concealedKnownRisk } from '../../domain/negotiation';
-import { narrate, type TextBank } from '../../domain/text';
 import { gradeOf, type Adventurer, type Contract, type GradeThresholds } from '../../domain/types';
 import { castIndexOf, escapeHtml, GOAL_LABELS, GRADE_LABELS, TRAIT_LABELS, type ScreenHandle } from '../screen';
-import type { Settlement } from './CounterScreen';
 
 export type { ScreenHandle };
+
+export interface DispatchSettlement {
+  readonly contract: Contract;
+  readonly offer: { readonly rewardMultiplier: number; readonly discloseRisk: boolean };
+  readonly agreedReward: number;
+}
 
 /**
  * 배정 화면이 쓰는 두 임계값. `balance.json`의 `dispatch` 절에서 온다.
@@ -72,34 +73,21 @@ export interface AssignmentRules {
   readonly gloryVolunteerRisk: number;
   /** 꺼리는 사람을 강행 배정했을 때 그 사람의 신뢰 감소분(음수) */
   readonly forcedAssignmentTrustPenalty: number;
+  /** 동시에 진행할 수 있는 파견 수. 길드 등급이 소유한다. */
+  readonly maxConcurrentDispatches: number;
 }
 
 export interface DispatchScreenDeps {
   readonly state: GameState;
   /** 창구에서 막 타결된 의뢰 하나. 이 화면은 이 계약 하나의 배정~결과만 다룬다 */
-  readonly settlement: Settlement;
+  readonly settlement: DispatchSettlement;
   readonly gradeThresholds: GradeThresholds;
   readonly assignmentRules: AssignmentRules;
-  readonly text: TextBank;
-  /**
-   * 하루를 넘긴다. 실제 `advanceDay(state, config)` 호출은 main.ts가 한다.
-   *
-   * 이 화면은 `GameConfig`를 몰라도 되고, 다른 파견까지 조용히 판정되는 전역 효과를
-   * 소유하지 않는다.
-   */
-  readonly onAdvanceDay: () => DayReport;
-  /** 결과를 확인하고 창구로 돌아갈 때 호출된다. 화면 전환 자체는 main.ts가 한다 */
-  readonly onReturnToCounter: () => void;
+  /** 배정하거나 미룬 뒤 길드 홀 게시판으로 돌아간다. */
+  readonly onReturnToHall: () => void;
 }
 
-type Phase = 'assigning' | 'waiting' | 'result' | 'ended' | 'error';
-
-/** 파견 결과 판정을 어느 서술 상황으로 조립할지. `text.json`에 셋 다 이미 있다. */
-const RESULT_SITUATION: Readonly<Record<DispatchOutcome, string>> = {
-  success: 'resultSuccess',
-  injured: 'resultInjured',
-  dead: 'resultDead',
-};
+type Phase = 'assigning' | 'dispatched' | 'error';
 
 /**
  * 파견 화면을 그린다.
@@ -113,8 +101,6 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
   let phase: Phase = 'assigning';
   /** 확정 직후 `dispatchParty`가 돌려준 것. 결과가 나온 뒤에도 partyIds를 읽으려고 들고 있는다 */
   let confirmedPartyIds: readonly string[] = [];
-  let resolveOnDay = 0;
-  let resolvedResult: DispatchResult | undefined;
   let message = '';
   let destroyed = false;
 
@@ -137,15 +123,14 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
 
   function handleClick(event: Event): void {
     const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
+    if (!(target instanceof Element)) return;
 
     const button = target.closest<HTMLElement>('[data-action]');
     if (button === null) return;
 
     const action = button.dataset.action;
     if (action === 'confirm') confirmAssignment();
-    else if (action === 'advance-day') advanceOnce();
-    else if (action === 'return') deps.onReturnToCounter();
+    else if (action === 'return') deps.onReturnToHall();
   }
 
   /**
@@ -259,37 +244,13 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
         // 받아 대가만 적용한다 — `gameState.ts`가 배정 규칙을 갖지 않는 경계 그대로다.
         reluctantIds,
         forcedAssignmentTrustPenalty: deps.assignmentRules.forcedAssignmentTrustPenalty,
+        maxConcurrentDispatches: deps.assignmentRules.maxConcurrentDispatches,
       });
       confirmedPartyIds = dispatched.partyIds;
-      resolveOnDay = dispatched.resolveOnDay;
-      phase = 'waiting';
+      phase = 'dispatched';
     } catch (error) {
       phase = 'error';
       message = error instanceof Error ? error.message : String(error);
-    }
-    render();
-  }
-
-  /**
-   * 하루를 넘겨 달라고 바깥에 요청한다.
-   *
-   * `onAdvanceDay`가 무엇을 하는지 이 화면은 모른다 — 그저 `DayReport`를 받아서 자기
-   * 계약 id가 판정됐는지만 확인한다. 세션이 이미 끝났거나 하는 예외는 콜백이 던질 수
-   * 있고, 그때 화면이 죽지 않도록 잡아서 'ended'로 접는다.
-   */
-  function advanceOnce(): void {
-    if (phase !== 'waiting') return;
-
-    try {
-      const report = deps.onAdvanceDay();
-      const found = report.resolved.find((entry) => entry.dispatch.contract.id === contract.id);
-      if (found !== undefined) {
-        resolvedResult = found.result;
-        phase = 'result';
-      }
-    } catch (error) {
-      phase = 'ended';
-      message = error instanceof Error ? error.message : '회차가 끝나 더 이상 진행할 수 없다.';
     }
     render();
   }
@@ -301,8 +262,7 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
 
   function renderBody(): string {
     if (phase === 'assigning') return renderAssigning();
-    if (phase === 'waiting') return renderWaiting();
-    if (phase === 'result') return renderResult();
+    if (phase === 'dispatched') return renderDispatched();
     if (phase === 'error') return renderMessageScreen('배정 실패', message);
     return renderMessageScreen('진행할 수 없다', message);
   }
@@ -322,7 +282,7 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
         <div><dt>의뢰인</dt><dd>${escapeHtml(contract.client.name)}</dd></div>
         <div><dt>위험도</dt><dd>${round(contract.statedRisk)}</dd></div>
         <div><dt>보상</dt><dd>${round(deps.settlement.agreedReward)}G</dd></div>
-        <div><dt>소요</dt><dd>${contract.durationDays}일</dd></div>
+        <div><dt>소요</dt><dd>${contract.durationWeeks}주</dd></div>
         <div><dt>정원</dt><dd>${contract.maxPartySize}명</dd></div>
       </dl>
     `;
@@ -342,7 +302,8 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
   function renderAssigning(): string {
     const members = assignableMembers();
     const rows = members.map((member) => renderRosterRow(member)).join('');
-    const canConfirm = selected.size >= 1 && selected.size <= contract.maxPartySize;
+    const atMissionCapacity = deps.state.activeDispatches.length >= deps.assignmentRules.maxConcurrentDispatches;
+    const canConfirm = !atMissionCapacity && selected.size >= 1 && selected.size <= contract.maxPartySize;
     const forcing = reluctantSelection().length;
 
     return `
@@ -351,6 +312,7 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
         <ul class="roster-list">
           ${rows === '' ? '<li class="roster-list__empty">배정 가능한 길드원이 없다.</li>' : rows}
         </ul>
+        ${atMissionCapacity ? '<p class="dispatch__forcing">동시 파견 한도에 도달했다. 진행 중인 파견이 돌아온 뒤 배정할 수 있다.</p>' : ''}
         ${
           forcing === 0
             ? ''
@@ -406,62 +368,20 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
     `;
   }
 
-  function renderWaiting(): string {
-    const remaining = Math.max(0, resolveOnDay - deps.state.day);
-
+  function renderDispatched(): string {
+    const names = confirmedPartyIds.flatMap((id) => {
+      const member = memberById(id);
+      return member === undefined ? [] : [member.name];
+    }).join(', ');
     return `
       <section class="dispatch">
         ${renderHeader('파견 중')}
-        <p class="dispatch__waiting">돌아올 때까지 ${remaining}일 남았다.</p>
+        <p class="dispatch__waiting">${escapeHtml(names)} 파티가 출발했다. 결과는 주 마감 뒤 도착한다.</p>
         <footer class="dispatch__actions">
-          <!--
-            파견은 이미 나갔으므로 여기서 나가도 잃는 것이 없다 — 만기가 되면 main.ts의
-            endDay가 판정해 결과를 큐에 넣는다. 굳이 두는 이유는 "탈출구 없는 단계"를
-            이 화면에서 0개로 만들기 위해서다.
-          -->
           <button class="dispatch__return dispatch__return--aside" type="button"
-                  data-action="return">창구로 돌아간다</button>
-          <button class="dispatch__advance" type="button" data-action="advance-day">하루가 지난다</button>
+                  data-action="return">길드 홀로 돌아간다</button>
         </footer>
       </section>
-    `;
-  }
-
-  function renderResult(): string {
-    if (resolvedResult === undefined) return renderMessageScreen('결과 없음', '');
-
-    const result = resolvedResult;
-    const rows = confirmedPartyIds.map((id) => renderResultRow(id, result)).join('');
-
-    return `
-      <section class="dispatch">
-        ${renderHeader('파견 결과')}
-        <ul class="result-list">${rows}</ul>
-        <footer class="dispatch__actions">
-          <button class="dispatch__return" type="button" data-action="return">창구로 돌아간다</button>
-        </footer>
-      </section>
-    `;
-  }
-
-  function renderResultRow(memberId: string, result: DispatchResult): string {
-    const member = memberById(memberId);
-    if (member === undefined) return '';
-
-    const outcome: DispatchOutcome = member.id === result.casualtyId ? result.outcome : 'success';
-    const line = narrate(
-      deps.text,
-      RESULT_SITUATION[outcome],
-      member.traits,
-      { name: member.name },
-      deps.state.rng,
-    );
-
-    return `
-      <li class="result-row${outcome === 'dead' ? ' result-row--dead' : ''}">
-        <span class="result-row__name">${escapeHtml(member.name)}</span>
-        <p class="result-row__line">${escapeHtml(line)}</p>
-      </li>
     `;
   }
 
@@ -473,7 +393,7 @@ export function mountDispatchScreen(root: HTMLElement, deps: DispatchScreenDeps)
         </header>
         ${body === '' ? '' : `<p class="dispatch__message">${escapeHtml(body)}</p>`}
         <footer class="dispatch__actions">
-          <button class="dispatch__return" type="button" data-action="return">창구로 돌아간다</button>
+          <button class="dispatch__return" type="button" data-action="return">길드 홀로 돌아간다</button>
         </footer>
       </section>
     `;

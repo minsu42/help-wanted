@@ -27,8 +27,8 @@ const CONFIG: ContractConfig = {
   partySizeRiskDivisor: balance.scaling.partySizeRiskDivisor,
   maxPartySizeCap: balance.scaling.maxPartySizeCap,
   durationRiskDivisor: balance.scaling.durationRiskDivisor,
-  durationDaysMin: balance.scaling.durationDaysMin,
-  durationDaysMax: balance.scaling.durationDaysMax,
+  durationWeeksMin: balance.scaling.durationWeeksMin,
+  durationWeeksMax: balance.scaling.durationWeeksMax,
   alternativeChance: balance.client.alternativeChance,
   clientInitialTrust: balance.client.initialTrust,
   knownByMin: balance.rumor.knownByMin,
@@ -242,9 +242,9 @@ describe("createContract", () => {
       expect(contract.maxPartySize).toBeLessThanOrEqual(CONFIG.maxPartySizeCap);
       expect(Number.isInteger(contract.maxPartySize)).toBe(true);
 
-      expect(contract.durationDays).toBeGreaterThanOrEqual(CONFIG.durationDaysMin);
-      expect(contract.durationDays).toBeLessThanOrEqual(CONFIG.durationDaysMax);
-      expect(Number.isInteger(contract.durationDays)).toBe(true);
+      expect(contract.durationWeeks).toBeGreaterThanOrEqual(CONFIG.durationWeeksMin);
+      expect(contract.durationWeeks).toBeLessThanOrEqual(CONFIG.durationWeeksMax);
+      expect(Number.isInteger(contract.durationWeeks)).toBe(true);
     }
   });
 
@@ -255,15 +255,15 @@ describe("createContract", () => {
         Math.max(1, Math.ceil(contract.statedRisk / CONFIG.partySizeRiskDivisor)),
       );
       const expectedDuration = Math.min(
-        CONFIG.durationDaysMax,
+        CONFIG.durationWeeksMax,
         Math.max(
-          CONFIG.durationDaysMin,
+          CONFIG.durationWeeksMin,
           Math.round(contract.statedRisk / CONFIG.durationRiskDivisor),
         ),
       );
 
       expect(contract.maxPartySize).toBe(expectedParty);
-      expect(contract.durationDays).toBe(expectedDuration);
+      expect(contract.durationWeeks).toBe(expectedDuration);
     }
   });
 

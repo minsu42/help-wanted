@@ -52,7 +52,7 @@ function makeAdventurer(overrides: Partial<Adventurer> = {}): Adventurer {
 
 function makeState(overrides: Partial<GameState> = {}): GameState {
   return {
-    day: 16,
+    week: 16,
     reputation: 10,
     funds: 200,
     guildTier: 1,
@@ -75,7 +75,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     commissionSheets: {},
     ratesIntroduced: false,
     hallAttendance: { guildMemberIds: [], visitorIds: [] },
-    talkedToday: new Set(),
+    talkedThisWeek: new Set(),
     ...overrides,
   };
 }

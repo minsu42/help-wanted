@@ -56,7 +56,7 @@ function makeContract(client: Client, overrides: Partial<Contract> = {}): Contra
     concealment: 0.5,
     baseReward: 100,
     maxPartySize: 2,
-    durationDays: 2,
+    durationWeeks: 2,
     isTemptation: false,
     facts: [],
     ...overrides,

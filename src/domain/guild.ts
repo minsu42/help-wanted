@@ -123,7 +123,7 @@ export type RecruitCandidate = Pick<Adventurer, 'inGuild' | 'capability' | 'tenu
  *
  * 판정 순서: **이미 길드원인가 → 정원이 찼는가 → 자금이 모자란가.** 정원을 자금보다
  * 먼저 보는 이유는 정원 초과가 돈으로 해결되지 않는 더 단단한 벽이기 때문이다 — 자금은
- * 다음날 또 벌면 되지만 정원은 확장 없이는 절대 안 열린다.
+ * 다음 주에 또 벌면 되지만 정원은 확장 없이는 절대 안 열린다.
  */
 export function checkRecruit(
   candidate: RecruitCandidate,
@@ -234,10 +234,10 @@ export interface ExpandResult {
  * 모든 코드(`gameState.ts`의 `currentTier()`, 소문 판정의 홀 출석 상한 등)가 이미
  * 그렇게 짜여 있으므로 이 함수가 개별로 세 값을 계산할 이유가 없다.
  *
- * **효과는 다음 날부터 반영된다.** 이 함수는 `guildTier`와 `funds`만 바꾸고, 그날
+ * **효과는 다음 주부터 반영된다.** 이 함수는 `guildTier`와 `funds`만 바꾸고, 그 주
  * 안에는 그 외 아무것도 다시 계산되지 않는다 — 홀 출석 인원과 열린 의뢰 상한은
- * `advanceDay()`가 하루에 한 번 `currentTier()`로 등급을 새로 조회할 때에만 갱신된다.
- * 즉 "다음 날부터"는 이 함수가 스스로 보장하는 것이 아니라, `gameState.ts`의 하루
+ * `advanceWeek()`가 한 주에 한 번 `currentTier()`로 등급을 새로 조회할 때에만 갱신된다.
+ * 즉 "다음 주부터"는 이 함수가 스스로 보장하는 것이 아니라, `gameState.ts`의 한 주
  * 진행 순서(파견 판정 → 부상 회복 → 의뢰 리필)가 이미 등급 조회를 그 시점에 두고
  * 있기 때문에 자동으로 성립하는 사실이다.
  *

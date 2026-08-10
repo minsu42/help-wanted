@@ -41,10 +41,11 @@ const MOVES = balance.negotiation.moves;
 const TEXT = textBank as CounterTextBank;
 
 const GAME_CONFIG: GameConfig = {
-  totalDays: balance.session.totalDays,
+  totalWeeks: balance.session.totalWeeks,
+  clientsPerWeek: balance.session.clientsPerWeek,
   startingFunds: balance.economy.startingFunds,
   startingReputation: balance.economy.startingReputation,
-  injuredDays: balance.dispatch.injuredDays,
+  injuredWeeks: balance.dispatch.injuredWeeks,
   guildTiers: balance.guildTiers,
   names,
   roster: {
@@ -70,8 +71,8 @@ const GAME_CONFIG: GameConfig = {
     partySizeRiskDivisor: balance.scaling.partySizeRiskDivisor,
     maxPartySizeCap: balance.scaling.maxPartySizeCap,
     durationRiskDivisor: balance.scaling.durationRiskDivisor,
-    durationDaysMin: balance.scaling.durationDaysMin,
-    durationDaysMax: balance.scaling.durationDaysMax,
+    durationWeeksMin: balance.scaling.durationWeeksMin,
+    durationWeeksMax: balance.scaling.durationWeeksMax,
     alternativeChance: balance.client.alternativeChance,
     clientInitialTrust: balance.client.initialTrust,
     knownByMin: balance.rumor.knownByMin,
@@ -103,6 +104,7 @@ const GAME_CONFIG: GameConfig = {
     visitorMin: balance.rumor.visitorMin,
     visitorMax: balance.rumor.visitorMax,
   },
+  intakeWallet: balance.intake.wallet,
 };
 
 /** 공개 위험도와 실제 위험도가 확연히 다른 의뢰. 은폐 검증의 전제다. */
@@ -145,7 +147,7 @@ function makeContract(client: Client, id: string = CONTRACT_ID): Contract {
     concealment: 0.7,
     baseReward: 60,
     maxPartySize: 2,
-    durationDays: 2,
+    durationWeeks: 2,
     isTemptation: false,
     facts: [
       { id: `${id}:realRisk`, contractId: id, kind: "realRisk" },
@@ -240,7 +242,7 @@ describe("창구 화면 — 나가는 문", () => {
   it("test_counter_end_day_button_calls_the_callback_once", () => {
     mount();
 
-    root.querySelector<HTMLButtonElement>('[data-action="end-day"]')?.click();
+    root.querySelector<HTMLButtonElement>('[data-action="end-week"]')?.click();
 
     expect(onEndDay).toHaveBeenCalledTimes(1);
     expect(onVisitHall).not.toHaveBeenCalled();
@@ -262,7 +264,7 @@ describe("창구 화면 — 렌더", () => {
     const booth = root.querySelector(".booth")?.textContent ?? "";
     expect(booth).toContain(contract.client.name);
     expect(booth).toContain(String(STATED_RISK));
-    expect(booth).toContain(`${contract.durationDays}일`);
+    expect(booth).toContain(`${contract.durationWeeks}일`);
     expect(booth).toContain(`${contract.maxPartySize}명`);
   });
 

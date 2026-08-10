@@ -68,13 +68,28 @@
 .intake__window > span:last-child { align-self: start; color: var(--paper-dim); }
 
 .intake__dialogue {
-  min-height: 3rem;
+  min-height: 5rem;
+  max-height: 13rem;
+  overflow-y: auto;
   margin: 0;
   padding: 0.75rem 1.25rem;
   background: #2a1b11;
   border-bottom: 4px solid #1b120c;
   line-height: 1.55;
 }
+
+.intake__line {
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgb(243 234 214 / 10%);
+}
+.intake__line:last-child { border-bottom: 0; }
+.intake__line b { color: var(--focus); }
+.intake__line--player { color: #f3ead6; }
+.intake__line--client { color: var(--paper-dim); }
 
 .intake__desk {
   display: grid;
@@ -148,6 +163,27 @@
 .slot--disclosure { border-style: solid; background-image: linear-gradient(108deg, transparent 82%, rgb(91 66 43 / 45%) 83% 86%, transparent 87%); }
 
 .commission-form__stamp-area { position: relative; display: flex; justify-content: flex-end; margin-top: 0.75rem; }
+
+.intake__reward {
+  margin-top: 0.85rem;
+  padding: 0.7rem;
+  border: 1px solid #8a7155;
+  background: rgb(91 66 43 / 10%);
+}
+.intake__reward > strong { display: block; margin-bottom: 0.35rem; }
+.intake__reward p { margin: 0; font-size: 0.8rem; line-height: 1.45; }
+.intake__reward > div { display: grid; gap: 0.35rem; margin-top: 0.6rem; }
+.intake__reward button {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #6d4829;
+  background: #2a1b11;
+  color: #f3ead6;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.intake__reward button:hover, .intake__reward button:focus-visible { background: #56341f; }
+.intake__reward--agreed { border-left: 4px solid #6d4829; }
 .commission-form__grades {
   position: absolute;
   right: 0;
@@ -223,6 +259,7 @@
   .intake__desk { grid-template-columns: 1fr; }
   .commission-form { order: -1; min-height: 0; background-image: none; }
   .commission-form__slots { grid-template-columns: 1fr; }
+  .intake__line { grid-template-columns: 3.5rem 1fr; }
   .commission-form__grades { position: static; flex-wrap: wrap; margin-bottom: 0.5rem; }
   .intake__notebook, .intake__handbook-tool { min-height: 10rem; }
   .intake__handbook-tool > button { margin-top: 5rem; }

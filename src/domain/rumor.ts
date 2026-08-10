@@ -122,7 +122,7 @@ export function discoveredContactKey(talkerId: string, clientId: string): string
  * 대화 한 번을 판정한다.
  *
  * 같은 `rng` 시드 + 같은 인자면 언제나 같은 결과다. `openContracts`는 **호출자가
- * 이미 열려 있는 의뢰만 걸러 넘긴다고 가정한다** — 하루 1회 대화 제한, 홀 출석 여부,
+ * 이미 열려 있는 의뢰만 걸러 넘긴다고 가정한다** — 한 주 1회 대화 제한, 홀 출석 여부,
  * `greedy` 지불 확정 같은 그 앞 단계의 결정도 전부 호출자의 몫이다.
  *
  * ## 판정 순서

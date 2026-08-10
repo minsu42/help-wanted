@@ -51,8 +51,8 @@ export interface ContractConfig {
   readonly partySizeRiskDivisor: number;
   readonly maxPartySizeCap: number;
   readonly durationRiskDivisor: number;
-  readonly durationDaysMin: number;
-  readonly durationDaysMax: number;
+  readonly durationWeeksMin: number;
+  readonly durationWeeksMax: number;
   /** 의뢰인이 다른 길드라는 대안을 가질 확률 */
   readonly alternativeChance: number;
   readonly clientInitialTrust: number;
@@ -122,10 +122,10 @@ export function createContract(
     1,
     config.maxPartySizeCap,
   );
-  const durationDays = clamp(
+  const durationWeeks = clamp(
     Math.round(statedRisk / config.durationRiskDivisor),
-    config.durationDaysMin,
-    config.durationDaysMax,
+    config.durationWeeksMin,
+    config.durationWeeksMax,
   );
 
   const knownByCount = rng.int(config.knownByMin, config.knownByMax);
@@ -158,7 +158,7 @@ export function createContract(
     concealment,
     baseReward,
     maxPartySize,
-    durationDays,
+    durationWeeks,
     isTemptation,
     facts: buildFacts(id, config.factsPerContract),
   };

@@ -6,7 +6,7 @@
  * `GameState`는 필요한 필드만 손으로 채운 객체다 — `GameConfig`/`balance.json`을
  * 조립하지 않는다. `RumorConfig`/`GuildConfig`/`GradeThresholds`/`TextBank`도 이
  * 파일이 직접 스텁으로 몬다. 이 화면이 `resolveHallAttendance`를 직접 부르지 않고
- * `state.hallAttendance`만 읽는다는 경계, 그리고 재대화 차단이 `state.talkedToday`
+ * `state.hallAttendance`만 읽는다는 경계, 그리고 재대화 차단이 `state.talkedThisWeek`
  * (화면 로컬이 아니라 세션 상태)에서 온다는 것이 이 파일이 고정하는 핵심 회귀 조건이다.
  *
  * 홀이 목록에서 **방**으로 바뀌면서 상호작용이 두 단계가 됐다 — 방 안의 사람을 누르면
@@ -117,7 +117,7 @@ function makeContract(overrides: Partial<Contract> = {}): Contract {
     concealment: 0.2,
     baseReward: 100,
     maxPartySize: 2,
-    durationDays: 2,
+    durationWeeks: 2,
     isTemptation: false,
     facts: [],
     ...overrides,
@@ -130,7 +130,7 @@ function makeFact(contractId: string, kind: Fact["kind"] = "realRisk"): Fact {
 
 function makeState(overrides: Partial<GameState> = {}): GameState {
   return {
-    day: 3,
+    week: 3,
     reputation: 10,
     funds: 200,
     guildTier: 1,
@@ -153,15 +153,15 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     commissionSheets: {},
     ratesIntroduced: false,
     hallAttendance: { guildMemberIds: [], visitorIds: [] },
-    talkedToday: new Set(),
+    talkedThisWeek: new Set(),
     ...overrides,
   };
 }
 
 let root: HTMLElement;
 let state: GameState;
-let onAdvanceDay: ReturnType<typeof vi.fn<() => void>>;
-let onReturnToCounter: ReturnType<typeof vi.fn<() => void>>;
+let onEndWeek: ReturnType<typeof vi.fn<() => void>>;
+let onAssignContract: ReturnType<typeof vi.fn<(contract: Contract) => void>>;
 
 beforeEach(() => {
   document.body.innerHTML = "";
@@ -169,8 +169,8 @@ beforeEach(() => {
   document.body.appendChild(root);
 
   state = makeState();
-  onAdvanceDay = vi.fn<() => void>();
-  onReturnToCounter = vi.fn<() => void>();
+  onEndWeek = vi.fn<() => void>();
+  onAssignContract = vi.fn<(contract: Contract) => void>();
 });
 
 function setRoster(members: Adventurer[]): void {
@@ -193,8 +193,8 @@ function mount(overrides: Partial<GuildHallScreenDeps> = {}) {
     guild: GUILD,
     gradeThresholds: GRADES,
     text: TEXT,
-    onAdvanceDay,
-    onReturnToCounter,
+    onEndWeek,
+    onAssignContract,
     ...overrides,
   });
 }
@@ -443,12 +443,12 @@ describe("길드 홀 화면 — 대화", () => {
     const heard = state.knowledge.heardFacts.get("ct-1:realRisk");
     expect(heard).toBeDefined();
     expect(heard?.tellerId).toBe(talker.id);
-    expect(heard?.day).toBe(state.day);
+    expect(heard?.week).toBe(state.week);
     expect(heard?.statedValue).not.toBe(contract.realRisk);
     expect(heard?.statedValue).toBeCloseTo(100 * (1 + RUMOR.traitDistortion), 8);
   });
 
-  it("test_talked_person_button_is_removed_and_added_to_talkedToday", () => {
+  it("test_talked_person_button_is_removed_and_added_to_talkedThisWeek", () => {
     const talker = makeAdventurer({ trust: 0.9 });
     attend([talker]);
 
@@ -456,7 +456,7 @@ describe("길드 홀 화면 — 대화", () => {
     select(talker.id);
     talkButton(talker.id).click();
 
-    expect(state.talkedToday.has(talker.id)).toBe(true);
+    expect(state.talkedThisWeek.has(talker.id)).toBe(true);
     expect(root.querySelector(`[data-action="talk"][data-id="${talker.id}"]`)).toBeNull();
     expect(panel().querySelector(".hall-person__status")?.textContent).toContain("이미 대화했다");
   });
@@ -485,12 +485,12 @@ describe("길드 홀 화면 — 대화", () => {
     expect(token(talker.id)?.classList.contains("hall-person--talked")).toBe(true);
   });
 
-  it("test_reentry_does_not_bypass_talkedToday_block", () => {
-    // 재대화 차단이 화면 로컬이 아니라 state.talkedToday에서 온다는 것을 고정한다 —
+  it("test_reentry_does_not_bypass_talkedThisWeek_block", () => {
+    // 재대화 차단이 화면 로컬이 아니라 state.talkedThisWeek에서 온다는 것을 고정한다 —
     // 화면을 다시 mount해도(길드 홀을 나갔다 들어와도) 차단이 유지되어야 한다.
     const talker = makeAdventurer();
     attend([talker]);
-    state.talkedToday.add(talker.id);
+    state.talkedThisWeek.add(talker.id);
 
     const handle = mount();
     select(talker.id);
@@ -692,17 +692,24 @@ describe("길드 홀 화면 — 길드 확장", () => {
   });
 });
 
-describe("길드 홀 화면 — 하루 진행 콜백", () => {
-  it("test_return_button_invokes_the_injected_callback", () => {
+describe("길드 홀 게시판과 주 마감", () => {
+  it("날인과 보수 합의를 마친 의뢰를 게시하고 파견 화면으로 보낸다", () => {
+    const contract = makeContract();
+    state.openContracts = [contract];
+    state.commissionSheets[contract.id] = { contractId: contract.id, sealed: true, playerGrade: 'B' };
+    state.settlements[contract.id] = {
+      agreedReward: 100,
+      discloseRisk: false,
+    };
     mount();
-    root.querySelector<HTMLButtonElement>('[data-action="return"]')?.click();
-    expect(onReturnToCounter).toHaveBeenCalledTimes(1);
+    root.querySelector<HTMLButtonElement>('[data-action="assign-contract"]')?.click();
+    expect(onAssignContract).toHaveBeenCalledWith(contract);
   });
 
-  it("test_end_day_button_invokes_the_injected_callback_without_calling_advanceDay_itself", () => {
+  it("주 마감 버튼은 주 진행 콜백만 호출한다", () => {
     mount();
-    root.querySelector<HTMLButtonElement>('[data-action="end-day"]')?.click();
-    expect(onAdvanceDay).toHaveBeenCalledTimes(1);
+    root.querySelector<HTMLButtonElement>('[data-action="end-week"]')?.click();
+    expect(onEndWeek).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -713,7 +720,7 @@ describe("길드 홀 화면 — 수명", () => {
 
     expect(root.innerHTML).toBe("");
     root.dispatchEvent(new Event("click", { bubbles: true }));
-    expect(onReturnToCounter).not.toHaveBeenCalled();
+    expect(onAssignContract).not.toHaveBeenCalled();
   });
 
   it("test_destroy_is_idempotent", () => {

@@ -20,10 +20,11 @@ import { canDisclose } from "../../src/domain/negotiation";
  */
 
 const CONFIG: GameConfig = {
-  totalDays: balance.session.totalDays,
+  totalWeeks: balance.session.totalWeeks,
+  clientsPerWeek: balance.session.clientsPerWeek,
   startingFunds: balance.economy.startingFunds,
   startingReputation: balance.economy.startingReputation,
-  injuredDays: balance.dispatch.injuredDays,
+  injuredWeeks: balance.dispatch.injuredWeeks,
   guildTiers: balance.guildTiers,
   names,
   roster: {
@@ -49,8 +50,8 @@ const CONFIG: GameConfig = {
     partySizeRiskDivisor: balance.scaling.partySizeRiskDivisor,
     maxPartySizeCap: balance.scaling.maxPartySizeCap,
     durationRiskDivisor: balance.scaling.durationRiskDivisor,
-    durationDaysMin: balance.scaling.durationDaysMin,
-    durationDaysMax: balance.scaling.durationDaysMax,
+    durationWeeksMin: balance.scaling.durationWeeksMin,
+    durationWeeksMax: balance.scaling.durationWeeksMax,
     alternativeChance: balance.client.alternativeChance,
     clientInitialTrust: balance.client.initialTrust,
     knownByMin: balance.rumor.knownByMin,
@@ -82,6 +83,7 @@ const CONFIG: GameConfig = {
     visitorMin: balance.rumor.visitorMin,
     visitorMax: balance.rumor.visitorMax,
   },
+  intakeWallet: balance.intake.wallet,
 };
 
 const RUMOR: RumorConfig = {
@@ -122,7 +124,7 @@ function talkToEveryoneOnDayOne(seed: number) {
       state.knowledge.heardFacts.set(fact.factId, {
         statedValue: fact.statedValue,
         tellerId: fact.tellerId,
-        day: state.day,
+        week: state.week,
       });
     }
   }

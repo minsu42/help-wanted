@@ -216,7 +216,7 @@ export function mountOutcomeScreen(root: HTMLElement, deps: OutcomeScreenDeps): 
         ${renderPayment(result)}
         ${renderDeath(party, result)}
         <footer class="outcome__actions">
-          <button class="outcome__continue" type="button" data-action="continue">창구로 돌아간다</button>
+          <button class="outcome__continue" type="button" data-action="continue">계속</button>
         </footer>
       </section>
     `;

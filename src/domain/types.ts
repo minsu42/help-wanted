@@ -96,7 +96,7 @@ export type MemoryKind =
  * 결과 대조 화면과 서술 텍스트가 이것을 읽는다 — "당신은 사흘 전에도 그를 보냈다".
  */
 export interface Memory {
-  readonly day: number;
+  readonly week: number;
   readonly kind: MemoryKind;
   /** 관련 인물이 있는 기억이면 그 인물의 id (예: 잃은 동료) */
   readonly subjectId?: string;
@@ -136,12 +136,12 @@ export interface Adventurer extends Person {
    */
   inGuild: boolean;
   /**
-   * 부상에서 회복해 `available`로 돌아오는 날. `injured`일 때만 값이 있다.
+   * 부상에서 회복해 `available`로 돌아오는 주. `injured`일 때만 값이 있다.
    *
    * 부상의 실질 비용은 아픈 것이 아니라 **그동안 길드 홀에 나오지 않는 것**이다 —
    * 정보원이 며칠 비는 것이 진짜 대가다.
    */
-  recoversOnDay?: number;
+  recoversOnWeek?: number;
   /**
    * 근속 연수. 의뢰 생성 시 {@link Client.knownBy}에 뽑힐 가중치가 된다.
    *
@@ -305,7 +305,7 @@ export interface Contract {
   /** 흥정 전 기본 보상. {@link statedRisk} 기준이다 */
   readonly baseReward: number;
   readonly maxPartySize: number;
-  readonly durationDays: number;
+  readonly durationWeeks: number;
   /**
    * 명성 범위를 넘는 고보상·고위험 의뢰인가.
    *
@@ -333,8 +333,8 @@ export interface HeardRumor {
   /** 성격 필터를 거친, 플레이어가 실제로 들은 값 */
   readonly statedValue: number;
   readonly tellerId: string;
-  /** 들은 날. 나중에 "사흘 전에 들었다" 같은 서술에 쓸 수 있다 */
-  readonly day: number;
+  /** 들은 주. 나중에 "몇 주 전에 들었다" 같은 서술에 쓸 수 있다 */
+  readonly week: number;
 }
 
 /**
@@ -423,12 +423,30 @@ export interface CommissionSheet {
 
 export type ClientExpression = 'neutral' | 'tell' | 'ignorance' | 'concealment';
 
+export interface IntakeDialogueLine {
+  readonly speaker: 'player' | 'client';
+  readonly text: string;
+}
+
+export interface IntakeRewardState {
+  readonly proposed: number;
+  readonly market: number;
+  readonly premium: number;
+  readonly easy: number;
+  readonly counter: number;
+  readonly cap: number;
+  status: 'offered' | 'countered' | 'agreed';
+  agreedReward?: number;
+}
+
 /** 화면을 나갔다 돌아와도 유지되어야 하는 의뢰인별 청취 회계. */
 export interface IntakeSession {
   patience: number;
   clientPresent: boolean;
-  message: string;
+  dialogue: IntakeDialogueLine[];
   expression: ClientExpression;
+  askCounts: Partial<Record<SlotName, number>>;
+  reward: IntakeRewardState;
   selectedSlot?: SlotName;
   materialMode?: 'insight' | 'pressure';
 }

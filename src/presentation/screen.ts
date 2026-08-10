@@ -22,7 +22,7 @@ export interface ScreenHandle {
 /**
  * 생성된 문자열을 innerHTML에 넣기 전에 반드시 통과시킨다.
  *
- * 이름이 `names.json`에서 조합된 것이라 안전하다는 것은 **오늘의 사실**이지 구조적
+ * 이름이 `names.json`에서 조합된 것이라 안전하다는 것은 **이번 주의 사실**이지 구조적
  * 보장이 아니다. 표를 늘리는 사람이 이 함수의 존재를 모를 수 있다.
  */
 export function escapeHtml(value: string): string {

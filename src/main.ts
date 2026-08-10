@@ -11,15 +11,14 @@ import textBank from './data/text.json';
 import questTemplates from './data/quest-templates.json';
 import handbook from './data/handbook.json';
 import {
-  advanceDay,
+  advanceWeek,
   createGameState,
   type GameConfig,
   type ResolvedDispatch,
 } from './domain/gameState';
 import type { GuildConfig } from './domain/guild';
-import { canDisclose, type DisclosureReason } from './domain/negotiation';
 import type { RumorConfig } from './domain/rumor';
-import type { Contract, RiskGrade } from './domain/types';
+import type { RiskGrade } from './domain/types';
 import {
   buildSlotContentCatalog,
   type IntakeGenerationConfig,
@@ -27,18 +26,14 @@ import {
 import type { IntakeMaterial } from './domain/intake';
 import type { ScreenHandle } from './presentation/screen';
 import {
-  mountCounterScreen,
-  type CounterTextBank,
-  type DisclosureStatus,
-  type Settlement,
-} from './presentation/ui/CounterScreen';
-import { mountDispatchScreen } from './presentation/ui/DispatchScreen';
+  mountDispatchScreen,
+  type DispatchSettlement,
+} from './presentation/ui/DispatchScreen';
 import { mountEndingScreen, type EndingTextBank } from './presentation/ui/EndingScreen';
 import { mountGuildHallScreen } from './presentation/ui/GuildHallScreen';
 import { mountOutcomeScreen, type HeardFact } from './presentation/ui/OutcomeScreen';
 import { mountIntakeScreen } from './presentation/ui/IntakeScreen';
 import './presentation/styles/base.css';
-import './presentation/styles/counter.css';
 import './presentation/styles/dispatch.css';
 import './presentation/styles/guildHall.css';
 import './presentation/styles/outcome.css';
@@ -57,10 +52,11 @@ const slotContent = buildSlotContentCatalog(intakeGeneration.questTypes);
 const handbookEntries = handbook.entries as unknown as readonly IntakeMaterial[];
 
 const config: GameConfig = {
-  totalDays: balance.session.totalDays,
+  totalWeeks: balance.session.totalWeeks,
+  clientsPerWeek: balance.session.clientsPerWeek,
   startingFunds: balance.economy.startingFunds,
   startingReputation: balance.economy.startingReputation,
-  injuredDays: balance.dispatch.injuredDays,
+  injuredWeeks: balance.dispatch.injuredWeeks,
   guildTiers: balance.guildTiers,
   names,
   roster: {
@@ -86,8 +82,8 @@ const config: GameConfig = {
     partySizeRiskDivisor: balance.scaling.partySizeRiskDivisor,
     maxPartySizeCap: balance.scaling.maxPartySizeCap,
     durationRiskDivisor: balance.scaling.durationRiskDivisor,
-    durationDaysMin: balance.scaling.durationDaysMin,
-    durationDaysMax: balance.scaling.durationDaysMax,
+    durationWeeksMin: balance.scaling.durationWeeksMin,
+    durationWeeksMax: balance.scaling.durationWeeksMax,
     alternativeChance: balance.client.alternativeChance,
     clientInitialTrust: balance.client.initialTrust,
     knownByMin: balance.rumor.knownByMin,
@@ -120,6 +116,7 @@ const config: GameConfig = {
     visitorMin: balance.rumor.visitorMin,
     visitorMax: balance.rumor.visitorMax,
   },
+  intakeWallet: balance.intake.wallet,
 };
 
 const guildConfig: GuildConfig = {
@@ -148,17 +145,6 @@ const rumorConfig: RumorConfig = {
  * "들은 그대로다"라는 **정보**다. 후자를 "축을 쓸 수 없다"로 뭉개면 정직한 의뢰인이
  * 섞여 있다는 사실 자체를 플레이어가 배울 수 없다.
  */
-const DISCLOSURE_REASONS: Readonly<Record<DisclosureReason, string>> = {
-  unknownRisk: '이 의뢰의 실제 위험을 모른다. 홀에서 물어볼 것.',
-  noGap: '들은 그대로다. 더 요구할 근거가 없다.',
-};
-
-function disclosureStatus(contract: Contract): DisclosureStatus {
-  const gate = canDisclose(contract, state.knowledge);
-  if (gate.allowed) return { allowed: true };
-  return { allowed: false, reason: DISCLOSURE_REASONS[gate.reason] };
-}
-
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('#app 요소를 찾을 수 없다');
 
@@ -186,26 +172,26 @@ function swapTo(mount: (root: HTMLElement) => ScreenHandle): void {
 }
 
 /**
- * 하루를 넘기고, 회차가 끝났으면 결산으로 보낸다.
+ * 한 주를 넘기고, 회차가 끝났으면 결산으로 보낸다.
  *
- * **`advanceDay`를 부르는 곳이 이 함수 하나뿐인 것이 요점이다.** 화면이 직접 부르면
- * 하루가 지날 때의 전역 효과(다른 파견 판정, 신뢰·기억 반영, 의뢰 리필, 홀 출석
+ * **`advanceWeek`를 부르는 곳이 이 함수 하나뿐인 것이 요점이다.** 화면이 직접 부르면
+ * 한 주가 지날 때의 전역 효과(다른 파견 판정, 신뢰·기억 반영, 의뢰 리필, 홀 출석
  * 재추첨)를 프레젠테이션 계층이 소유하게 되고, 두 화면이 각자 부르기 시작하면 진행의
  * 주인이 사라진다.
  *
  * 넘긴 뒤 판정된 파견이 있으면 **결과 대조 화면을 먼저 보여준다.** 그것이 실력 성장의
  * 유일한 피드백 채널이므로 조용히 지나가게 두면 안 된다.
  */
-function endDay(): void {
-  const report = advanceDay(state, config);
+function endWeek(): void {
+  const report = advanceWeek(state, config);
   pendingOutcomes.push(...report.resolved);
-  showNextOutcomeOr(showCounter);
+  showNextOutcomeOr(showIntake);
 }
 
 /**
  * 아직 플레이어에게 보여주지 않은 판정 결과들.
  *
- * 큐인 이유: 하루에 파견 여러 건이 동시에 만기될 수 있고, 그때 하나만 보여주면
+ * 큐인 이유: 한 주에 파견 여러 건이 동시에 만기될 수 있고, 그때 하나만 보여주면
  * **나머지 사망이 조용히 지나간다.** 사람이 죽은 것을 통보 없이 넘기는 것은 이
  * 게임에서 가장 하면 안 되는 일이다 — 결과 대조 화면이 존재하는 이유 자체가 그것이다.
  */
@@ -214,8 +200,8 @@ const pendingOutcomes: ResolvedDispatch[] = [];
 /**
  * 남은 결과가 있으면 하나 보여주고, 없으면 `fallback`으로 간다.
  *
- * 회차 종료 판정이 결과 표시보다 **뒤에** 오는 것이 의도다. 15일차에 사람이 죽었으면
- * 그 대조를 보고 나서 결산으로 가야 한다. 순서를 뒤집으면 마지막 날의 죽음만 유일하게
+ * 회차 종료 판정이 결과 표시보다 **뒤에** 오는 것이 의도다. 8주차에 사람이 죽었으면
+ * 그 대조를 보고 나서 결산으로 가야 한다. 순서를 뒤집으면 마지막 주의 죽음만 유일하게
  * 설명 없이 사라진다.
  */
 function showNextOutcomeOr(fallback: () => void): void {
@@ -278,7 +264,7 @@ function showOutcome(resolved: ResolvedDispatch): void {
       text: textBank,
       copy: textBank.ui.outcome,
       // 남은 결과가 더 있으면 이어서 보여준다. 큐가 비면 창구(또는 결산)로.
-      onContinue: () => showNextOutcomeOr(showCounter),
+      onContinue: () => showNextOutcomeOr(showIntake),
     }),
   );
 }
@@ -291,8 +277,16 @@ function showGuildHall(): void {
       guild: guildConfig,
       gradeThresholds: balance.adventurer.gradeThresholds,
       text: textBank,
-      onAdvanceDay: endDay,
-      onReturnToCounter: showCounter,
+      onEndWeek: endWeek,
+      onAssignContract: (contract) => {
+        const terms = state.settlements[contract.id];
+        if (terms === undefined) return;
+        showDispatch({
+          contract,
+          offer: { rewardMultiplier: terms.agreedReward / contract.baseReward, discloseRisk: terms.discloseRisk },
+          agreedReward: terms.agreedReward,
+        });
+      },
     }),
   );
 }
@@ -322,10 +316,10 @@ function showEnding(): void {
 function restart(): void {
   seed = (seed * 1664525 + 1013904223) >>> 0;
   state = createGameState(seed, config);
-  showCounter();
+  showIntake();
 }
 
-function showCounter(): void {
+function showIntake(): void {
   const intakeContract = state.openContracts.find(
     (contract) => contract.questKind !== 'legacy' && !state.commissionSheets[contract.id]?.sealed,
   );
@@ -339,41 +333,17 @@ function showCounter(): void {
         statedGrade: statedGradeOf(intakeContract.statedRisk),
         copy: textBank.ui.intake,
         onSealed: (contract) => {
-          const agreedReward = contract.baseReward;
+          const agreedReward = state.intakeSessions[contract.id]?.reward.agreedReward;
+          if (agreedReward === undefined) throw new Error('보수 합의 없이 도장을 찍을 수 없다');
           state.settlements[contract.id] = { agreedReward, discloseRisk: false };
-          showDispatch({
-            contract,
-            offer: { rewardMultiplier: 1, discloseRisk: false },
-            agreedReward,
-          });
+          showIntake();
         },
-        onVisitHall: showGuildHall,
-        onEndDay: endDay,
       }),
     );
     return;
   }
 
-  swapTo((root) =>
-    mountCounterScreen(root, {
-      state,
-      negotiation: {
-        wReward: balance.negotiation.wReward,
-        toleranceBase: balance.negotiation.toleranceBase,
-        wealthWeight: balance.negotiation.wealthWeight,
-        urgencyWeight: balance.negotiation.urgencyWeight,
-        alternativePenalty: balance.negotiation.alternativePenalty,
-        disclosureBonus: balance.negotiation.disclosureBonus,
-        maxOffers: balance.negotiation.maxOffers,
-      },
-      moves: balance.negotiation.moves,
-      text: textBank as CounterTextBank,
-      disclosureStatus,
-      onSettled: showDispatch,
-      onVisitHall: showGuildHall,
-      onEndDay: endDay,
-    }),
-  );
+  showGuildHall();
 }
 
 function statedGradeOf(risk: number): RiskGrade {
@@ -388,11 +358,10 @@ function statedGradeOf(risk: number): RiskGrade {
 /**
  * 타결된 계약 하나를 배정 화면으로 넘긴다.
  *
- * **`advanceDay`를 부르는 곳이 여기 하나뿐인 것이 요점이다.** 화면이 직접 부르면
- * 하루가 지날 때의 전역 효과(다른 파견 판정, 의뢰 리필, 이후 홀 출석)를 프레젠테이션
- * 계층이 소유하게 되고, Story 010이 또 부르기 시작하면 진행의 주인이 사라진다.
+ * 이 경로는 인원 배정만 열고 주를 넘기지 않는다. 주 진행은 길드 홀의 `endWeek`만
+ * 소유한다.
  */
-function showDispatch(settlement: Settlement): void {
+function showDispatch(settlement: DispatchSettlement): void {
   swapTo((root) =>
     mountDispatchScreen(root, {
       state,
@@ -403,30 +372,16 @@ function showDispatch(settlement: Settlement): void {
         assignmentTrustThreshold: balance.dispatch.assignmentTrustThreshold,
         gloryVolunteerRisk: balance.dispatch.gloryVolunteerRisk,
         forcedAssignmentTrustPenalty: balance.dispatch.forcedAssignmentTrustPenalty,
-      },
-      text: textBank,
-      /**
-       * 배정 화면은 자기 파견의 결과를 그리려고 `DayReport`를 **즉시** 돌려받아야
-       * 하므로, 하루 넘기기가 `endDay`가 아니라 여기로 온다.
-       *
-       * 그래서 판정된 결과를 큐에 넣는 일을 여기서 직접 한다. 이걸 빠뜨리면
-       * **가장 흔한 경로(의뢰 수락 → 파견 → 결과)에서 결과 대조 화면이 통째로
-       * 건너뛰어진다** — 실력 성장의 유일한 피드백 채널이 정작 주 동선에서만
-       * 사라지는 셈이다.
-       */
-      onAdvanceDay: () => {
-        const report = advanceDay(state, config);
-        pendingOutcomes.push(...report.resolved);
-        return report;
+        maxConcurrentDispatches: config.guildTiers.find((tier) => tier.tier === state.guildTier)?.concurrentContracts ?? 1,
       },
       // 배정 화면이 이미 자기 계약의 서술을 보여줬어도, 대조는 따로 보여준다 —
       // "무슨 일이 일어났는가"와 "왜 그렇게 됐는가"는 다른 정보다.
       //
       // 배정 단계에서 눌린 경우(「나중에 배정한다」)에도 같은 곳으로 간다. 큐가 비어
       // 있으면 그냥 창구이고, 의뢰는 아직 `openContracts`에 있으므로 잃는 것이 없다.
-      onReturnToCounter: () => showNextOutcomeOr(showCounter),
+      onReturnToHall: showGuildHall,
     }),
   );
 }
 
-showCounter();
+showIntake();

@@ -334,7 +334,7 @@ describe("resolveForcedAssignment — 강행 배정", () => {
     const aftermath = resolveForcedAssignment(reluctant, DAY, PENALTY);
 
     // Assert
-    expect(memoriesOf(aftermath, "adv-1")).toEqual([{ day: DAY, kind: "forcedAssignment" }]);
+    expect(memoriesOf(aftermath, "adv-1")).toEqual([{ week: DAY, kind: "forcedAssignment" }]);
   });
 
   it("test_forced_assignment_penalty_is_lighter_than_a_death", () => {

@@ -114,7 +114,7 @@ export interface CounterScreenDeps {
    */
   readonly onVisitHall: () => void;
   /**
-   * 하루를 마감한다. 실제 `advanceDay` 호출과 이후 화면 전환은 main.ts가 한다 —
+   * 한 주를 마감한다. 실제 `advanceWeek` 호출과 이후 화면 전환은 main.ts가 한다 —
    * 이 화면은 회차 진행의 전역 효과를 소유하지 않는다.
    */
   readonly onEndDay: () => void;
@@ -240,7 +240,7 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
       deps.onVisitHall();
       return;
     }
-    if (action === 'end-day') {
+    if (action === 'end-week') {
       deps.onEndDay();
     }
   }
@@ -391,7 +391,7 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
     root.innerHTML = `
       <section class="counter">
         <header class="counter__header">
-          <h1 class="counter__day">${deps.state.day}일차</h1>
+          <h1 class="counter__day">${deps.state.week}주차</h1>
           <p class="counter__funds">자금 ${round(deps.state.funds)}G · 명성 ${round(deps.state.reputation)}</p>
         </header>
         ${broken}
@@ -399,14 +399,14 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
         ${contract === undefined ? renderEmpty() : renderBooth(contract)}
         <footer class="counter__actions">
           <button type="button" class="counter__nav" data-action="visit-hall">길드 홀에 가본다</button>
-          <button type="button" class="counter__nav" data-action="end-day">하루를 마감한다</button>
+          <button type="button" class="counter__nav" data-action="end-week">한 주를 마감한다</button>
         </footer>
       </section>
     `;
   }
 
   function renderEmpty(): string {
-    return '<p class="counter__empty">오늘은 더 이상 찾아온 사람이 없다.</p>';
+    return '<p class="counter__empty">이번 주은 더 이상 찾아온 사람이 없다.</p>';
   }
 
   /**
@@ -434,7 +434,7 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
       .join('');
 
     return `
-      <nav class="queue" aria-label="오늘 찾아온 의뢰인">
+      <nav class="queue" aria-label="이번 주 찾아온 의뢰인">
         <span class="queue__label">대기</span>
         ${tabs}
       </nav>
@@ -456,7 +456,7 @@ export function mountCounterScreen(root: HTMLElement, deps: CounterScreenDeps): 
           <dl class="booth__facts">
             <div><dt>위험도</dt><dd>${round(contract.statedRisk)}</dd></div>
             <div><dt>기본 보상</dt><dd>${round(contract.baseReward)}G</dd></div>
-            <div><dt>소요</dt><dd>${contract.durationDays}일</dd></div>
+            <div><dt>소요</dt><dd>${contract.durationWeeks}일</dd></div>
             <div><dt>정원</dt><dd>${contract.maxPartySize}명</dd></div>
           </dl>
 

@@ -5,6 +5,7 @@ import {
   type IntakeMaterial,
 } from '../../domain/intake';
 import type { SlotContent } from '../../domain/occupation';
+import { resolveIntakeOffer } from '../../domain/intakeOffer';
 import { sheetMark, SLOT_NAMES, slotProgressKey, slotProgressOf } from '../../domain/slots';
 import type { GameState } from '../../domain/gameState';
 import {
@@ -24,12 +25,34 @@ export interface IntakeScreenDeps {
   readonly statedGrade: RiskGrade;
   readonly copy: IntakeCopy;
   readonly onSealed: (contract: Contract) => void;
-  readonly onVisitHall: () => void;
-  readonly onEndDay: () => void;
 }
 
 export interface IntakeCopy {
   readonly firstAction: string;
+  readonly questions: Readonly<Record<SlotName, string>>;
+  readonly repeatQuestion: string;
+  readonly repeatAnswers: readonly string[];
+  readonly irrelevantAnswer: string;
+  readonly blockedIgnoranceHint: string;
+  readonly blockedDisclosureHint: string;
+  readonly insightLine: string;
+  readonly pressureLine: string;
+  readonly materialSuccess: string;
+  readonly materialFailure: string;
+  readonly materialDeparture: string;
+  readonly reward: {
+    readonly title: string;
+    readonly proposal: string;
+    readonly acceptProposal: string;
+    readonly askMarket: string;
+    readonly askPremium: string;
+    readonly comfortable: string;
+    readonly strained: string;
+    readonly countered: string;
+    readonly acceptCounter: string;
+    readonly backDown: string;
+    readonly agreed: string;
+  };
 }
 
 const SLOT_LABELS: Readonly<Record<SlotName, string>> = {
@@ -57,8 +80,10 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
   }
 
   const firstVisit = !deps.state.ratesIntroduced;
-  let handbookOpen = firstVisit;
-  let activeBook: IntakeMaterial['book'] = handbookOpen ? 'rates' : 'bestiary';
+  // 첫 방문 안내문은 남기되 책을 자동으로 펼치지는 않는다. 펼친 책이 의뢰서를
+  // 가려 첫 질문을 가로막는 문제가 있으므로, 플레이어가 필요할 때 직접 연다.
+  let handbookOpen = false;
+  let activeBook: IntakeMaterial['book'] = firstVisit ? 'rates' : 'bestiary';
   let stampOpen = false;
   if (handbookOpen) deps.state.ratesIntroduced = true;
   let destroyed = false;
@@ -92,7 +117,14 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
       const grade = control.dataset.grade as RiskGrade | undefined;
       if (grade !== undefined && RISK_GRADES.includes(grade)) sheet.playerGrade = grade;
       render();
-    } else if (action === 'toggle-stamp' && !sheet.sealed) {
+    } else if (action === 'offer') {
+      const amount = Number(control.dataset.amount);
+      if (Number.isFinite(amount)) makeOffer(amount, control.dataset.kind ?? 'market');
+    } else if (action === 'accept-counter') {
+      agreeReward(session.reward.counter, deps.copy.reward.acceptCounter);
+    } else if (action === 'back-down') {
+      agreeReward(session.reward.proposed, deps.copy.reward.backDown);
+    } else if (action === 'toggle-stamp' && !sheet.sealed && session.reward.status === 'agreed') {
       stampOpen = !stampOpen;
       render();
     } else if (action === 'seal' && !sheet.sealed) {
@@ -109,10 +141,6 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
     } else if (action === 'close-materials') {
       session.materialMode = undefined;
       render();
-    } else if (action === 'visit-hall') {
-      deps.onVisitHall();
-    } else if (action === 'end-day') {
-      deps.onEndDay();
     }
   }
 
@@ -120,7 +148,7 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
     if (!session.clientPresent || sheet.sealed) return;
     const truth = deps.contract.slots.get(slot);
     if (truth === undefined) {
-      session.message = '그 항목에 관해서는 적을 만한 말이 나오지 않았다.';
+      exchange(deps.copy.questions[slot], deps.copy.irrelevantAnswer);
       session.expression = 'neutral';
       render();
       return;
@@ -128,11 +156,23 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
 
     const current = progress(slot);
     session.selectedSlot = slot;
+    const count = (session.askCounts[slot] ?? 0) + 1;
+    session.askCounts[slot] = count;
     if (current.state === 'blocked') {
       session.materialMode = current.limiter === 'knowledge' ? 'insight' : 'pressure';
-      session.message = current.limiter === 'knowledge'
-        ? '아는 사실을 건네 기억을 일깨울 수 있다.'
-        : '기록이나 이해관계를 들이대 더 말하게 할 수 있다.';
+      exchange(
+        deps.copy.repeatQuestion,
+        current.limiter === 'knowledge'
+          ? deps.copy.blockedIgnoranceHint
+          : deps.copy.blockedDisclosureHint,
+      );
+      render();
+      return;
+    }
+
+    if (current.state === 'certain') {
+      const answer = deps.copy.repeatAnswers[Math.min(count - 1, deps.copy.repeatAnswers.length - 1)];
+      exchange(deps.copy.repeatQuestion, answer);
       render();
       return;
     }
@@ -143,16 +183,20 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
     const content = deps.slotContent[truth.valueKey];
     if (next.state === 'blocked') {
       const ignorance = next.limiter === 'knowledge';
+      session.materialMode = ignorance ? 'insight' : 'pressure';
       session.expression = ignorance ? 'ignorance' : 'concealment';
-      session.message = ignorance
+      exchange(deps.copy.questions[slot], ignorance
         ? '“그건… 저도 정확히는 모르겠습니다.”'
-        : '의뢰인의 시선이 비껴갔다. “그 이야기까지 해야 합니까?”';
+        : '의뢰인의 시선이 비껴갔다. “그 이야기까지 해야 합니까?”');
     } else if (next.state === 'vague' || next.state === 'certain') {
       session.expression = 'tell';
-      session.message = `“${next.state === 'certain' ? content?.certain : content?.vague}”`;
+      exchange(
+        deps.copy.questions[slot],
+        `“${next.state === 'certain' ? content?.certain : content?.vague}”`,
+      );
     } else {
       session.expression = 'neutral';
-      session.message = '더 들을 말은 없었다.';
+      exchange(deps.copy.questions[slot], deps.copy.repeatAnswers[0]);
     }
     render();
   }
@@ -166,26 +210,68 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
     const content = deps.slotContent[truth.valueKey];
     if (content === undefined) return;
 
-    const result = session.materialMode === 'insight'
+    const materialMode = session.materialMode;
+    const result = materialMode === 'insight'
       ? useInsight(current, truth, content, material, session.patience)
       : usePressure(current, truth, material, deps.contract.client.keyLeverage, session.patience);
     deps.state.knowledge.slotProgress.set(slotProgressKey(deps.contract.id, slot), result.progress);
     session.patience = result.patience;
     session.clientPresent = !result.departed;
     session.materialMode = undefined;
+    const playerLine = interpolate(
+      materialMode === 'pressure' ? deps.copy.pressureLine : deps.copy.insightLine,
+      { material: material.title },
+    );
     if (result.success) {
       session.expression = 'tell';
       const revealed = result.progress.state === 'certain' ? content.certain : content.vague;
-      session.message = `의뢰인이 책상 위 기록을 보고 고개를 끄덕였다. “${revealed}”`;
+      exchange(playerLine, `${deps.copy.materialSuccess} “${revealed}”`);
     } else {
       session.expression = current.state === 'blocked' && current.limiter === 'knowledge'
         ? 'ignorance'
         : 'concealment';
-      session.message = result.departed
-        ? '“그만하겠습니다.” 마지막 응답을 남기고 의뢰인이 자리를 떴다.'
-        : '“그게 이 일과 무슨 상관인지 모르겠군요.” 인내 눈금 하나가 지워졌다.';
+      exchange(
+        playerLine,
+        result.departed ? deps.copy.materialDeparture : deps.copy.materialFailure,
+      );
     }
     render();
+  }
+
+  function makeOffer(amount: number, kind: string): void {
+    if (session.reward.status === 'agreed') return;
+    const line = kind === 'proposal'
+      ? deps.copy.reward.acceptProposal
+      : kind === 'premium'
+        ? deps.copy.reward.askPremium
+        : deps.copy.reward.askMarket;
+    const result = resolveIntakeOffer(amount, session.reward);
+    if (result.outcome === 'countered') {
+      session.reward.status = 'countered';
+      exchange(
+        interpolate(line, { amount }),
+        interpolate(deps.copy.reward.countered, { amount: result.counter }),
+      );
+    } else {
+      session.reward.status = 'agreed';
+      session.reward.agreedReward = result.agreedReward;
+      exchange(
+        interpolate(line, { amount }),
+        result.outcome === 'comfortable' ? deps.copy.reward.comfortable : deps.copy.reward.strained,
+      );
+    }
+    render();
+  }
+
+  function agreeReward(amount: number, line: string): void {
+    session.reward.status = 'agreed';
+    session.reward.agreedReward = amount;
+    exchange(interpolate(line, { amount }), deps.copy.reward.comfortable);
+    render();
+  }
+
+  function exchange(player: string, client: string): void {
+    session.dialogue.push({ speaker: 'player', text: player }, { speaker: 'client', text: client });
   }
 
   function progress(slot: SlotName): SlotProgress {
@@ -197,7 +283,7 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
     root.innerHTML = `
       <section class="intake">
         <header class="intake__header">
-          <h1>${deps.state.day}일차 · 의뢰 접수</h1>
+          <h1>${deps.state.week}주차 · 의뢰 접수</h1>
           <p>자금 ${Math.round(deps.state.funds)}G · 명성 ${Math.round(deps.state.reputation)}</p>
         </header>
         ${firstVisit ? `<p class="intake__guide">${escapeHtml(deps.copy.firstAction)}</p>` : ''}
@@ -207,7 +293,9 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
             <strong>${escapeHtml(deps.contract.client.name)}</strong>
             <span>${occupationLabel(deps.contract.client.occupation)}</span>
           </div>
-          <p class="intake__dialogue">${escapeHtml(session.message)}</p>
+          <div class="intake__dialogue" aria-live="polite">
+            ${session.dialogue.slice(-6).map((line) => `<p class="intake__line intake__line--${line.speaker}"><b>${line.speaker === 'player' ? '나' : escapeHtml(deps.contract.client.name)}</b>${escapeHtml(line.text)}</p>`).join('')}
+          </div>
           <div class="intake__desk">
             <aside class="intake__notebook" aria-label="응대 기록">
               <h2>응대 기록</h2>
@@ -225,10 +313,6 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
             </aside>
           </div>
         </div>
-        <footer class="intake__nav">
-          <button type="button" data-action="visit-hall">길드 홀</button>
-          <button type="button" data-action="end-day">하루 마감</button>
-        </footer>
       </section>
     `;
   }
@@ -257,17 +341,36 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
         <header><span>의뢰인 진술: <b>${deps.statedGrade}</b></span><span>길드 판정: <b>${sheet.playerGrade ?? ''}</b></span></header>
         <div class="commission-form__slots">${slots}</div>
         ${renderMaterials()}
+        ${renderReward()}
         <div class="commission-form__stamp-area">
           ${stampOpen && !sheet.sealed ? `<fieldset class="commission-form__grades">
             <legend>도장 면을 고른다</legend>
             ${RISK_GRADES.map((grade) => `<button type="button" data-action="grade" data-grade="${grade}" class="${sheet.playerGrade === grade ? 'is-selected' : ''}">${grade}</button>`).join('')}
           </fieldset>` : ''}
           <button type="button" class="commission-form__stamp-tool" data-action="${stampOpen ? 'seal' : 'toggle-stamp'}"
-                  aria-expanded="${stampOpen}" ${sheet.sealed ? 'disabled' : ''}>
-            ${sheet.sealed ? '도장 완료' : stampOpen ? `${sheet.playerGrade ?? '등급 없이'} 날인` : '위험도 도장'}
+                  aria-expanded="${stampOpen}" ${sheet.sealed || session.reward.status !== 'agreed' ? 'disabled' : ''}>
+            ${sheet.sealed ? '도장 완료' : session.reward.status !== 'agreed' ? '보수 합의 후 날인' : stampOpen ? `${sheet.playerGrade ?? '등급 없이'} 날인` : '위험도 도장'}
           </button>
         </div>
       </article>`;
+  }
+
+  function renderReward(): string {
+    const reward = session.reward;
+    if (reward.status === 'agreed') {
+      return `<section class="intake__reward intake__reward--agreed"><strong>${escapeHtml(deps.copy.reward.title)}</strong><p>${escapeHtml(interpolate(deps.copy.reward.agreed, { amount: reward.agreedReward ?? reward.proposed }))}</p></section>`;
+    }
+    if (reward.status === 'countered') {
+      return `<section class="intake__reward"><strong>${escapeHtml(deps.copy.reward.title)}</strong><p>${escapeHtml(interpolate(deps.copy.reward.countered, { amount: reward.counter }))}</p><div>
+        <button type="button" data-action="accept-counter">${escapeHtml(interpolate(deps.copy.reward.acceptCounter, { amount: reward.counter }))}</button>
+        <button type="button" data-action="back-down">${escapeHtml(interpolate(deps.copy.reward.backDown, { amount: reward.proposed }))}</button>
+      </div></section>`;
+    }
+    return `<section class="intake__reward"><strong>${escapeHtml(deps.copy.reward.title)}</strong><p>${escapeHtml(interpolate(deps.copy.reward.proposal, { amount: reward.proposed }))}</p><div>
+      <button type="button" data-action="offer" data-kind="proposal" data-amount="${reward.proposed}">${escapeHtml(interpolate(deps.copy.reward.acceptProposal, { amount: reward.proposed }))}</button>
+      <button type="button" data-action="offer" data-kind="market" data-amount="${reward.market}">${escapeHtml(interpolate(deps.copy.reward.askMarket, { amount: reward.market }))}</button>
+      <button type="button" data-action="offer" data-kind="premium" data-amount="${reward.premium}">${escapeHtml(interpolate(deps.copy.reward.askPremium, { amount: reward.premium }))}</button>
+    </div></section>`;
   }
 
   function renderMaterials(): string {
@@ -291,6 +394,10 @@ export function mountIntakeScreen(root: HTMLElement, deps: IntakeScreenDeps): Sc
         ${entry.criteria?.map((criterion) => `<small>${escapeHtml(criterion.when)} → ${criterion.grade}${criterion.open ? ' 이상' : ''}</small>`).join('') ?? ''}</article>`).join('')}</div>
     </section>`;
   }
+}
+
+function interpolate(template: string, values: Readonly<Record<string, string | number>>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? `{${key}}`));
 }
 
 function occupationLabel(occupation: Contract['client']['occupation']): string {

@@ -16,7 +16,7 @@
  * ## 판정은 순수 함수로, 적용은 호출자가
  *
  * `gameState.ts`의 관례를 그대로 따른다 — 이 파일은 "이만큼 변한다"만 계산해 돌려주고
- * `GameState`를 직접 바꾸지 않는다. `advanceDay`가 `DayReport.resolved`를 읽어 이
+ * `GameState`를 직접 바꾸지 않는다. `advanceWeek`가 `WeekReport.resolved`를 읽어 이
  * 모듈을 부르고 결과를 제자리에 반영하는 쪽이 호출자의 몫이다.
  *
  * ## dead의 미지급과 success/injured의 미지급은 다르다
@@ -47,7 +47,7 @@ export interface EconomyDispatch {
   readonly agreedReward: number;
 }
 
-/** {@link EconomyDispatch}와 판정 결과를 묶은 것. `DayReport.resolved` 한 원소의 모양과 같다. */
+/** {@link EconomyDispatch}와 판정 결과를 묶은 것. `WeekReport.resolved` 한 원소의 모양과 같다. */
 export interface EconomyResolvedDispatch {
   readonly dispatch: EconomyDispatch;
   readonly result: Pick<DispatchResult, 'outcome'>;
@@ -69,8 +69,8 @@ export interface DispatchSettlementResult {
   readonly reputation: number;
 }
 
-/** 하루치 판정을 접은 결과. */
-export interface DailyEconomyResult {
+/** 한 주치 판정을 접은 결과. */
+export interface WeeklyEconomyResult {
   readonly funds: number;
   readonly reputation: number;
 }
@@ -114,17 +114,17 @@ export function resolveDispatchSettlement(
 }
 
 /**
- * 하루치 `DayReport.resolved`를 접어서 자금·명성을 한 번에 계산한다.
+ * 한 주치 `WeekReport.resolved`를 접어서 자금·명성을 한 번에 계산한다.
  *
  * `resolveDispatchSettlement`를 배열 순서대로 반복 적용한다 — 한 건의 결과가 다음
  * 건의 입력(누적된 자금·명성)이 된다.
  */
-export function resolveDailyEconomy(
+export function resolveWeeklyEconomy(
   resolved: readonly EconomyResolvedDispatch[],
   funds: number,
   reputation: number,
   config: EconomyConfig,
-): DailyEconomyResult {
+): WeeklyEconomyResult {
   let currentFunds = funds;
   let currentReputation = reputation;
 

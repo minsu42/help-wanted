@@ -148,7 +148,7 @@ export function applyTrust(trust: number, delta: number): number {
  * @param statedRisk 이 의뢰의 공개 위험도. `Memory`의 `sentToDanger`/`sentSafe`를 가른다
  * @param concealedKnownRisk 실제 위험을 알고도 고지하지 않았는가
  *   (`ActiveDispatch.concealedKnownRisk`)
- * @param day 기억에 찍힐 날짜
+ * @param week 기억에 찍힐 날짜
  */
 export function resolveDispatchAftermath(
   party: readonly ReputationTarget[],
@@ -156,7 +156,7 @@ export function resolveDispatchAftermath(
   result: AftermathOutcome,
   statedRisk: number,
   concealedKnownRisk: boolean,
-  day: number,
+  week: number,
   config: ReputationConfig,
 ): DispatchAftermath {
   const dangerKind: MemoryKind =
@@ -183,17 +183,17 @@ export function resolveDispatchAftermath(
 
     trustUpdates.push({ personId: member.id, trust: applyTrust(member.trust, delta) });
 
-    memoryUpdates.push({ personId: member.id, memory: { day, kind: dangerKind } });
-    memoryUpdates.push({ personId: member.id, memory: { day, kind: personalOutcome } });
+    memoryUpdates.push({ personId: member.id, memory: { week, kind: dangerKind } });
+    memoryUpdates.push({ personId: member.id, memory: { week, kind: personalOutcome } });
 
     if (concealedKnownRisk) {
-      memoryUpdates.push({ personId: member.id, memory: { day, kind: 'wasDeceived' } });
+      memoryUpdates.push({ personId: member.id, memory: { week, kind: 'wasDeceived' } });
     }
 
     if (casualtyDied) {
       memoryUpdates.push({
         personId: member.id,
-        memory: { day, kind: 'lostComrade', subjectId: result.casualtyId },
+        memory: { week, kind: 'lostComrade', subjectId: result.casualtyId },
       });
     }
   }
@@ -235,13 +235,13 @@ export function resolveDispatchAftermath(
  * 바닥에서도 작동하는 대가이며, 그것은 로드맵 P4의 「길드 탈퇴」가 맡는다.
  *
  * @param reluctant 꺼리는데도 배정된 사람들의 id·현재 trust. 순순히 간 사람은 넣지 않는다
- * @param day 기억에 찍힐 날짜
+ * @param week 기억에 찍힐 날짜
  * @param trustPenalty 한 사람당 신뢰 감소분(음수). `balance.json`의
  *   `dispatch.forcedAssignmentTrustPenalty`
  */
 export function resolveForcedAssignment(
   reluctant: readonly ReputationTarget[],
-  day: number,
+  week: number,
   trustPenalty: number,
 ): DispatchAftermath {
   return {
@@ -251,7 +251,7 @@ export function resolveForcedAssignment(
     })),
     memoryUpdates: reluctant.map((member) => ({
       personId: member.id,
-      memory: { day, kind: 'forcedAssignment' as const },
+      memory: { week, kind: 'forcedAssignment' as const },
     })),
   };
 }

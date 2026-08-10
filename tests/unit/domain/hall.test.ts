@@ -95,13 +95,13 @@ describe("resolveHallAttendance", () => {
     const roster = [
       ...makeRoster(5, 5, "available"),
       ...Array.from({ length: 5 }, (_, i) =>
-        makeAdventurer(`injured-guild-${i}`, { inGuild: true, status: "injured", recoversOnDay: 3 }),
+        makeAdventurer(`injured-guild-${i}`, { inGuild: true, status: "injured", recoversOnWeek: 3 }),
       ),
       ...Array.from({ length: 5 }, (_, i) =>
         makeAdventurer(`injured-visitor-${i}`, {
           inGuild: false,
           status: "injured",
-          recoversOnDay: 3,
+          recoversOnWeek: 3,
         }),
       ),
     ];

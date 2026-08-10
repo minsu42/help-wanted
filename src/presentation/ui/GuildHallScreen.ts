@@ -3,7 +3,7 @@
  *
  * Story 010(홀 출석·대화)과 Story 015(영입·확장)가 한 화면에 있다. 도메인 판정은
  * 전부 다른 파일이 소유한다 — 이 화면은 `resolveHallAttendance`를 **절대 부르지
- * 않는다.** 오늘의 출석자는 `gameState.ts`가 하루에 한 번 뽑아 `state.hallAttendance`에
+ * 않는다.** 이번 주의 출석자는 `gameState.ts`가 한 주에 한 번 뽑아 `state.hallAttendance`에
  * 고정해 두고, 이 화면은 그 결과와 `state.roster`를 대조해서 그릴 뿐이다. 화면이 직접
  * 뽑으면 재렌더될 때마다 출석자가 바뀌는 모순이 생긴다 (`hall.ts` 상단 주석 참고).
  *
@@ -27,7 +27,7 @@
  *
  * 자리 좌표는 `hall-layout.json`에서 오고 **가구를 배치한 도구가 그 유일한 출처다** —
  * 의자를 놓은 코드와 사람을 앉히는 코드가 다르면 반드시 어긋난다. 출석 배열의
- * 인덱스로 배정하므로 같은 날 다시 그려도 사람이 순간이동하지 않는다.
+ * 인덱스로 배정하므로 같은 주 다시 그려도 사람이 순간이동하지 않는다.
  *
  * **자리 순서가 곧 채워지는 순서다.** 홀 출석은 많아야 6명인데 방은 31칸으로 넓으므로,
  * 흩뿌리면 텅 빈 것처럼 보인다. 화덕 아래 주 탁자부터 채워 무리가 먼저 생기게 했다.
@@ -39,7 +39,7 @@
  *
  * ## 출석 배열이 아니라 `inGuild`로 소속을 가른다
  *
- * `HallAttendance`는 `guildMemberIds`/`visitorIds`로 그날 아침 시점의 소속을 고정해
+ * `HallAttendance`는 `guildMemberIds`/`visitorIds`로 그 주 아침 시점의 소속을 고정해
  * 담아 두지만, 이 화면은 **매 렌더마다 `Adventurer.inGuild`를 다시 읽어서** 배지와
  * 영입 가능 여부를 계산한다. 그래야 홀에서 외부인을 영입한 순간 그 사람이 즉시
  * "길드원"으로 바뀌고 영입 버튼이 사라진다 — 표시가 실시간 진실을 따라가지 않으면
@@ -85,14 +85,14 @@ export interface GuildHallScreenDeps {
   readonly gradeThresholds: GradeThresholds;
   readonly text: TextBank;
   /**
-   * 오늘 하루를 마감한다. 실제 `advanceDay(state, config)` 호출과 그 이후 화면 전환은
+   * 이번 주 한 주를 마감한다. 실제 `advanceWeek(state, config)` 호출과 그 이후 화면 전환은
    * main.ts가 한다 — 이 화면은 회차 진행의 전역 효과(다른 파견 판정, 의뢰 리필, 다음
    * 날 홀 출석 재추첨)를 몰라도 되고 소유하지도 않는다. `DispatchScreen`이 같은
-   * 이유로 `advanceDay`를 직접 부르지 않는 것과 같은 경계다.
+   * 이유로 `advanceWeek`를 직접 부르지 않는 것과 같은 경계다.
    */
-  readonly onAdvanceDay: () => void;
-  /** 하루를 마감하지 않고 창구로 돌아간다. 화면 전환 자체는 main.ts가 한다 */
-  readonly onReturnToCounter: () => void;
+  readonly onEndWeek: () => void;
+  /** 길드 홀 게시판의 의뢰 하나를 파견 배정 화면으로 연다. */
+  readonly onAssignContract: (contract: Contract) => void;
 }
 
 /**
@@ -108,8 +108,8 @@ export interface GuildHallScreenDeps {
  * @param root 그려 넣을 요소. 기존 내용은 지워진다
  */
 export function mountGuildHallScreen(root: HTMLElement, deps: GuildHallScreenDeps): ScreenHandle {
-  /** 이번 대화의 서술 결과. 세션 상태(`talkedToday`)와 달리 재마운트하면 사라진다 —
-   *  재대화 차단 자체는 `state.talkedToday`가 지키므로 이 캐시는 순수 표시용이다. */
+  /** 이번 대화의 서술 결과. 세션 상태(`talkedThisWeek`)와 달리 재마운트하면 사라진다 —
+   *  재대화 차단 자체는 `state.talkedThisWeek`가 지키므로 이 캐시는 순수 표시용이다. */
   const talkMessages = new Map<string, string>();
   /** 영입 직후의 환영 인사. `talkMessages`와 같은 이유로 화면 로컬이다. */
   const recruitMessages = new Map<string, string>();
@@ -162,10 +162,13 @@ export function mountGuildHallScreen(root: HTMLElement, deps: GuildHallScreenDep
       handleRecruit(id);
     } else if (action === 'expand') {
       handleExpand();
-    } else if (action === 'return') {
-      deps.onReturnToCounter();
-    } else if (action === 'end-day') {
-      deps.onAdvanceDay();
+    } else if (action === 'assign-contract' && id !== undefined) {
+      const contract = findOpenContract(id);
+      if (contract !== undefined && deps.state.settlements[id] !== undefined) {
+        deps.onAssignContract(contract);
+      }
+    } else if (action === 'end-week') {
+      deps.onEndWeek();
     }
   }
 
@@ -177,7 +180,7 @@ export function mountGuildHallScreen(root: HTMLElement, deps: GuildHallScreenDep
     return deps.state.openContracts.find((contract) => contract.id === contractId);
   }
 
-  /** 오늘 홀에 온 사람들. 출석 배열 순서가 곧 자리 배정 순서다. */
+  /** 이번 주 홀에 온 사람들. 출석 배열 순서가 곧 자리 배정 순서다. */
   function attendees(): Adventurer[] {
     const ids = [...deps.state.hallAttendance.guildMemberIds, ...deps.state.hallAttendance.visitorIds];
     return ids
@@ -195,7 +198,7 @@ export function mountGuildHallScreen(root: HTMLElement, deps: GuildHallScreenDep
    * `statedValue`(왜곡된 값)를 저장해야 "알았던 것 vs 실제였던 것" 대조가 성립한다.
    */
   function handleTalk(id: string, payGreedyPrice: boolean): void {
-    if (deps.state.talkedToday.has(id)) return;
+    if (deps.state.talkedThisWeek.has(id)) return;
     const member = memberById(id);
     if (member === undefined) return;
 
@@ -211,14 +214,14 @@ export function mountGuildHallScreen(root: HTMLElement, deps: GuildHallScreenDep
       deps.state.knowledge.heardFacts.set(fact.factId, {
         statedValue: fact.statedValue,
         tellerId: fact.tellerId,
-        day: deps.state.day,
+        week: deps.state.week,
       });
     }
     if (result.greedyPriceCharged !== undefined) {
       deps.state.funds -= result.greedyPriceCharged;
     }
 
-    deps.state.talkedToday.add(id);
+    deps.state.talkedThisWeek.add(id);
     talkMessages.set(id, describeTalk(member, result));
     // 말을 건 사람을 계속 보여준다 — 방금 들은 말이 대화창에 남아야 한다
     selectedId = id;
@@ -330,20 +333,39 @@ export function mountGuildHallScreen(root: HTMLElement, deps: GuildHallScreenDep
     return `
       <section class="hall">
         <header class="hall__header">
-          <h1 class="hall__day">${deps.state.day}일차 — 길드 홀</h1>
+          <h1 class="hall__day">${deps.state.week}주차 — 길드 홀</h1>
           <p class="hall__funds">자금 ${round(deps.state.funds)}G · 명성 ${round(deps.state.reputation)}</p>
         </header>
 
         ${renderRoom(people)}
         ${renderDialogue(selected)}
+        ${renderNoticeBoard()}
         ${renderExpandSection()}
 
         <footer class="hall__actions">
-          <button class="hall__return" type="button" data-action="return">창구로 돌아간다</button>
-          <button class="hall__end-day" type="button" data-action="end-day">하루를 마감한다</button>
+          <button class="hall__end-week" type="button" data-action="end-week">이번 주를 마감한다</button>
         </footer>
       </section>
     `;
+  }
+
+  function renderNoticeBoard(): string {
+    const posted = deps.state.openContracts.filter((contract) =>
+      deps.state.commissionSheets[contract.id]?.sealed && deps.state.settlements[contract.id] !== undefined,
+    );
+    const cards = posted.map((contract) => {
+      const terms = deps.state.settlements[contract.id];
+      const grade = deps.state.commissionSheets[contract.id]?.playerGrade ?? '미기재';
+      return `<article class="hall-board__card">
+        <div><strong>${escapeHtml(contract.client.name)}</strong><span>위험도 ${grade}</span></div>
+        <p>${Math.round(terms?.agreedReward ?? contract.baseReward)}G · ${contract.durationWeeks}주 · 정원 ${contract.maxPartySize}명</p>
+        <button type="button" data-action="assign-contract" data-id="${contract.id}">파견 인원 고르기</button>
+      </article>`;
+    }).join('');
+    return `<section class="hall-board" aria-label="의뢰 게시판">
+      <header><h2>의뢰 게시판</h2><p>미배정 의뢰는 다음 주에도 남는다.</p></header>
+      ${cards === '' ? '<p class="hall-board__empty">현재 배정할 의뢰가 없다.</p>' : `<div class="hall-board__list">${cards}</div>`}
+    </section>`;
   }
 
   /**
@@ -368,13 +390,13 @@ export function mountGuildHallScreen(root: HTMLElement, deps: GuildHallScreenDep
     return `
       <div class="hall-room" style="--cols: ${layout.cols}; --rows: ${layout.rows}">
         ${tokens}
-        ${tokens === '' ? '<p class="hall-room__empty">오늘은 아무도 오지 않았다.</p>' : ''}
+        ${tokens === '' ? '<p class="hall-room__empty">이번 주은 아무도 오지 않았다.</p>' : ''}
       </div>
     `;
   }
 
   function renderToken(member: Adventurer, seat: readonly number[]): string {
-    const talked = deps.state.talkedToday.has(member.id);
+    const talked = deps.state.talkedThisWeek.has(member.id);
     const affiliationClass = member.inGuild ? 'hall-person--guild' : 'hall-person--visitor';
     const selected = member.id === selectedId;
 
@@ -400,7 +422,7 @@ export function mountGuildHallScreen(root: HTMLElement, deps: GuildHallScreenDep
       `;
     }
 
-    const talked = deps.state.talkedToday.has(member.id);
+    const talked = deps.state.talkedThisWeek.has(member.id);
     const grade = GRADE_LABELS[gradeOf(member.capability, deps.gradeThresholds)];
     const traits = member.traits.map((trait) => TRAIT_LABELS[trait]).join(' · ');
     const contacts = contactsFor(member.id);
@@ -438,7 +460,7 @@ export function mountGuildHallScreen(root: HTMLElement, deps: GuildHallScreenDep
       const message = talkMessages.get(member.id);
       return `
         ${message === undefined ? '' : `<p class="hall-person__reply">${escapeHtml(message)}</p>`}
-        <p class="hall-person__status">오늘은 이미 대화했다.</p>
+        <p class="hall-person__status">이번 주은 이미 대화했다.</p>
       `;
     }
 
@@ -517,7 +539,7 @@ export function mountGuildHallScreen(root: HTMLElement, deps: GuildHallScreenDep
         ${info}
         <button class="hall-expand__button" type="button" data-action="expand"
                 ${check.canExpand ? '' : 'disabled'}>확장한다 (${round(cost)}G)</button>
-        <p class="hall-expand__hint">효과는 다음 날부터 적용된다.</p>
+        <p class="hall-expand__hint">확장된 정원과 파견 한도는 다음 주부터 적용된다.</p>
         ${reason === '' ? '' : `<p class="hall-expand__reason">${escapeHtml(reason)}</p>`}
       </section>
     `;

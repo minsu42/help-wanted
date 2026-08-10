@@ -3,7 +3,7 @@ import balance from "../../../src/data/balance.json";
 import {
   applyFunds,
   applyReputation,
-  resolveDailyEconomy,
+  resolveWeeklyEconomy,
   resolveDispatchSettlement,
   type EconomyConfig,
   type EconomyDispatch,
@@ -151,7 +151,7 @@ describe("resolveDispatchSettlement — dead (AC: 실패 시 무지급)", () => 
   });
 });
 
-describe("resolveDailyEconomy", () => {
+describe("resolveWeeklyEconomy", () => {
   it("test_folds_multiple_dispatches_in_order", () => {
     // Arrange — 두 건: 하나는 성공, 하나는 사망
     const resolved: EconomyResolvedDispatch[] = [
@@ -160,7 +160,7 @@ describe("resolveDailyEconomy", () => {
     ];
 
     // Act
-    const result = resolveDailyEconomy(resolved, 100, 10, CONFIG);
+    const result = resolveWeeklyEconomy(resolved, 100, 10, CONFIG);
 
     // Assert — 성공분(+50G, +repOnSuccess) 그리고 사망은 무지급(-repOnDeath)
     expect(result.funds).toBe(150);
@@ -175,7 +175,7 @@ describe("resolveDailyEconomy", () => {
     ];
 
     // Act
-    const result = resolveDailyEconomy(resolved, 0, 98, CONFIG);
+    const result = resolveWeeklyEconomy(resolved, 0, 98, CONFIG);
 
     // Assert
     expect(result.reputation).toBe(100);
@@ -183,7 +183,7 @@ describe("resolveDailyEconomy", () => {
 
   it("test_empty_day_leaves_funds_and_reputation_unchanged", () => {
     // Act
-    const result = resolveDailyEconomy([], 120, 20, CONFIG);
+    const result = resolveWeeklyEconomy([], 120, 20, CONFIG);
 
     // Assert
     expect(result).toEqual({ funds: 120, reputation: 20 });
@@ -197,8 +197,8 @@ describe("resolveDailyEconomy", () => {
     ];
 
     // Act
-    const first = resolveDailyEconomy(resolved, 100, 10, CONFIG);
-    const second = resolveDailyEconomy(resolved, 100, 10, CONFIG);
+    const first = resolveWeeklyEconomy(resolved, 100, 10, CONFIG);
+    const second = resolveWeeklyEconomy(resolved, 100, 10, CONFIG);
 
     // Assert
     expect(second).toEqual(first);

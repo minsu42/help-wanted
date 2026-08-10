@@ -1,5 +1,5 @@
 /**
- * 게임 상태와 일일 진행 — 15일 회차를 담는 그릇.
+ * 게임 상태와 주간 진행 — 8주 캠페인을 담는 그릇.
  *
  * ## 두 세계를 나눠서 보관한다
  *
@@ -23,7 +23,7 @@
  */
 import { createContract, type ContractConfig } from './contract';
 import { resolveDispatch, type DispatchConfig, type DispatchResult } from './dispatch';
-import { resolveDailyEconomy, type EconomyConfig } from './economy';
+import { resolveWeeklyEconomy, type EconomyConfig } from './economy';
 import { resolveHallAttendance, type HallAttendance } from './hall';
 import {
   resolveDispatchAftermath,
@@ -34,6 +34,7 @@ import type { NamePool } from './person';
 import { createWorldRoster, type RosterConfig } from './roster';
 import { createRng, type Rng } from './rng';
 import { openingProgress } from './intake';
+import { intakeOfferTerms, type IntakeWalletConfig } from './intakeOffer';
 import { scenarioIntro } from './occupation';
 import { slotProgressKey } from './slots';
 import type { CommissionSheet, IntakeSession } from './types';
@@ -42,13 +43,13 @@ import type { Adventurer, Contract, GuildTier, MutableKnowledge, SettledTerms } 
 /** 회차가 끝났는지. 끝난 회차는 더 진행할 수 없다. */
 export type SessionPhase = 'playing' | 'ended';
 
-/** 파견 나가 있는 계약 하나. `durationDays`가 지나면 판정한다. */
+/** 파견 나가 있는 계약 하나. `durationWeeks`가 지나면 판정한다. */
 export interface ActiveDispatch {
   readonly contract: Contract;
   /** 배정된 모험가들. 참조가 아니라 id다 — 명부가 유일한 사람 저장소여야 한다 */
   readonly partyIds: readonly string[];
-  /** 이 날 아침에 판정한다 */
-  readonly resolveOnDay: number;
+  /** 이 주를 마감할 때 판정한다 */
+  readonly resolveOnWeek: number;
   /**
    * 타결액. 완수(success/injured)하면 전액 들어오고, 사망이면 무조건 못 받는다.
    *
@@ -68,7 +69,7 @@ export interface ActiveDispatch {
 
 /** 세션 전체. 이 객체 하나가 회차의 전부다. */
 export interface GameState {
-  day: number;
+  week: number;
   reputation: number;
   funds: number;
   guildTier: number;
@@ -111,30 +112,31 @@ export interface GameState {
   /** 첫 계약 전에 시세권을 자동으로 펼친 적이 있는가. */
   ratesIntroduced: boolean;
   /**
-   * 오늘 길드 홀에 있는 사람들. **하루에 한 번만 뽑아 여기 고정한다.**
+   * 이번 주 길드 홀에 있는 사람들. **한 주에 한 번만 뽑아 여기 고정한다.**
    *
-   * 화면이 재렌더될 때마다 `resolveHallAttendance`를 다시 부르면 같은 날인데 출석자가
-   * 바뀐다. 결과를 {@link DayReport}가 아니라 여기 두는 이유도 같다 — `DayReport`는
-   * `advanceDay` 한 번의 반환값이라 홀을 나갔다 다시 들어오면 다시 읽을 방법이 없고,
+   * 화면이 재렌더될 때마다 `resolveHallAttendance`를 다시 부르면 같은 주인데 출석자가
+   * 바뀐다. 결과를 {@link WeekReport}가 아니라 여기 두는 이유도 같다 — `WeekReport`는
+   * `advanceWeek` 한 번의 반환값이라 홀을 나갔다 다시 들어오면 다시 읽을 방법이 없고,
    * 화면은 `roster`나 `openContracts`처럼 매 렌더마다 상태를 읽어야 한다.
    */
   hallAttendance: HallAttendance;
   /**
-   * 오늘 이미 대화한 사람의 id.
+   * 이번 주 이미 대화한 사람의 id.
    *
    * {@link GameState.offersMade}와 정확히 같은 이유로 화면이 아니라 여기 있다 — 화면에
-   * 두면 **길드 홀을 나갔다 들어오는 것만으로 재대화 금지를 우회할 수 있다.** 하루의
+   * 두면 **길드 홀을 나갔다 들어오는 것만으로 재대화 금지를 우회할 수 있다.** 한 주의
    * 정보 획득량 상한이 이 게임의 희소성 자체이므로 세션 상태로 둔다.
    */
-  talkedToday: Set<string>;
+  talkedThisWeek: Set<string>;
 }
 
 /** 회차 하나를 굴리는 데 필요한 모든 수치. `balance.json`과 `names.json`에서 온다. */
 export interface GameConfig {
-  readonly totalDays: number;
+  readonly totalWeeks: number;
+  readonly clientsPerWeek: number;
   readonly startingFunds: number;
   readonly startingReputation: number;
-  readonly injuredDays: number;
+  readonly injuredWeeks: number;
   readonly guildTiers: readonly GuildTier[];
   readonly roster: RosterConfig;
   readonly contract: ContractConfig;
@@ -153,6 +155,7 @@ export interface GameConfig {
     readonly visitorMin: number;
     readonly visitorMax: number;
   };
+  readonly intakeWallet: IntakeWalletConfig;
   readonly names: NamePool;
 }
 
@@ -163,17 +166,17 @@ export interface ResolvedDispatch {
 }
 
 /**
- * 하루를 넘긴 결과 요약.
+ * 한 주를 넘긴 결과 요약.
  *
  * 자금·명성 반영(Story 012)과 `trust`·`Memory` 기록(Story 013)이 이것을 읽는다.
  * 그 둘을 여기서 하지 않는 이유는 각자의 규칙이 따로 있고, 섞으면 이 함수가 회차의
  * 모든 규칙을 아는 신 함수가 되기 때문이다.
  */
-export interface DayReport {
-  /** 넘어간 뒤의 날짜 */
-  readonly day: number;
+export interface WeekReport {
+  /** 넘어간 뒤의 주차 */
+  readonly week: number;
   readonly resolved: readonly ResolvedDispatch[];
-  /** 오늘 부상에서 회복한 모험가 id */
+  /** 이번 주 부상에서 회복한 모험가 id */
   readonly recovered: readonly string[];
   readonly newContracts: readonly Contract[];
   readonly phase: SessionPhase;
@@ -182,14 +185,14 @@ export interface DayReport {
 /**
  * 새 회차를 시작한다.
  *
- * 같은 `seed`와 같은 `config`면 언제나 같은 회차가 나온다 — 첫날 의뢰까지 동일하다.
+ * 같은 `seed`와 같은 `config`면 언제나 같은 회차가 나온다 — 첫 주 의뢰까지 동일하다.
  */
 export function createGameState(seed: number, config: GameConfig): GameState {
   const rng = createRng(seed);
   const usedNames = new Set<string>();
 
   const state: GameState = {
-    day: 1,
+    week: 1,
     reputation: config.startingReputation,
     funds: config.startingFunds,
     guildTier: 1,
@@ -211,11 +214,11 @@ export function createGameState(seed: number, config: GameConfig): GameState {
     intakeSessions: {},
     commissionSheets: {},
     ratesIntroduced: false,
-    // 1일차 홀은 여기서 채운다. `advanceDay`는 2일차부터 도는 함수이므로 거기에만
-    // 출석 판정을 두면 첫날 홀이 비어 있고, 플레이어가 정보를 캘 창이 없는 상태로
+    // 1주차 홀은 여기서 채운다. `advanceWeek`는 2주차부터 도는 함수이므로 거기에만
+    // 출석 판정을 두면 첫 주 홀이 비어 있고, 플레이어가 정보를 캘 창이 없는 상태로
     // 첫 흥정을 하게 된다.
     hallAttendance: { guildMemberIds: [], visitorIds: [] },
-    talkedToday: new Set(),
+    talkedThisWeek: new Set(),
   };
 
   refillContracts(state, config);
@@ -252,6 +255,7 @@ export function dispatchParty(
     readonly reluctantIds?: readonly string[];
     /** 강행 한 명당 신뢰 감소분(음수). `balance.json`의 `dispatch.forcedAssignmentTrustPenalty` */
     readonly forcedAssignmentTrustPenalty?: number;
+    readonly maxConcurrentDispatches?: number;
   } = {},
 ): ActiveDispatch {
   const contractIndex = state.openContracts.findIndex((contract) => contract.id === contractId);
@@ -259,6 +263,10 @@ export function dispatchParty(
     throw new Error(`열려 있지 않은 의뢰에는 배정할 수 없다 (${contractId})`);
   }
   const contract = state.openContracts[contractIndex];
+
+  if (options.maxConcurrentDispatches !== undefined && state.activeDispatches.length >= options.maxConcurrentDispatches) {
+    throw new Error(`동시 파견 한도에 도달했다 (${options.maxConcurrentDispatches}건)`);
+  }
 
   if (partyIds.length === 0) {
     throw new Error('빈 파티는 배정할 수 없다');
@@ -286,7 +294,7 @@ export function dispatchParty(
   if (reluctantIds.size > 0) {
     const forced = resolveForcedAssignment(
       party.filter((member) => reluctantIds.has(member.id)),
-      state.day,
+      state.week,
       options.forcedAssignmentTrustPenalty ?? 0,
     );
     for (const update of forced.trustUpdates) {
@@ -310,7 +318,7 @@ export function dispatchParty(
   const dispatch: ActiveDispatch = {
     contract,
     partyIds: [...partyIds],
-    resolveOnDay: state.day + contract.durationDays,
+    resolveOnWeek: state.week + contract.durationWeeks,
     agreedReward: options.agreedReward ?? 0,
     concealedKnownRisk: options.concealedKnownRisk ?? false,
   };
@@ -320,49 +328,50 @@ export function dispatchParty(
 }
 
 /**
- * 하루를 넘긴다.
+ * 한 주를 넘긴다.
  *
  * 순서가 중요하다 — **① 파견 만료 판정 → ② 부상 회복 → ③ 새 의뢰 생성**. 판정을
- * 먼저 해야 그날 돌아온 사람이 그날의 홀 출석 후보가 된다. 홀 출석 결정 자체는
+ * 먼저 해야 그 주 돌아온 사람이 그 주의 홀 출석 후보가 된다. 홀 출석 결정 자체는
  * Story 010의 몫이며 이 함수는 그 앞까지만 한다.
  *
  * @throws 이미 끝난 회차일 때
  */
-export function advanceDay(state: GameState, config: GameConfig): DayReport {
+export function advanceWeek(state: GameState, config: GameConfig): WeekReport {
   if (state.phase === 'ended') {
-    throw new Error(`이미 끝난 회차다 (${config.totalDays}일 종료)`);
+    throw new Error(`이미 끝난 회차다 (${config.totalWeeks}주 종료)`);
   }
 
-  state.day += 1;
+  state.week += 1;
 
   const resolved = resolveDueDispatches(state, config);
   applyReputationEffects(state, resolved, config);
   const recovered = recoverInjured(state);
 
-  // 파견 판정과 부상 회복 **뒤**에 뽑는다. 오늘 돌아온 사람과 오늘 회복한 사람이
-  // 오늘의 홀 출석 후보가 되어야 하기 때문이다. 등급 상한을 이 시점에 읽는 것이
-  // "확장은 다음 날부터 반영된다"를 공짜로 만든다 — 등급을 올린 날의 advanceDay는
+  // 파견 판정과 부상 회복 **뒤**에 뽑는다. 이번 주 돌아온 사람과 이번 주 회복한 사람이
+  // 이번 주의 홀 출석 후보가 되어야 하기 때문이다. 등급 상한을 이 시점에 읽는 것이
+  // "확장은 다음 주부터 반영된다"를 공짜로 만든다 — 등급을 올린 주의 advanceWeek는
   // 이미 지나갔으므로 다음 호출에서야 새 상한이 적용된다.
   rollHallAttendance(state, config);
 
-  // 의뢰 생성보다 **먼저** 정산한다. 의뢰 난이도가 명성에서 나오므로, 오늘의 성과가
-  // 오늘 도착하는 의뢰에 반영되어야 "성공이 곧 위험 상승"이 하루 단위로 성립한다.
+  // 의뢰 생성보다 **먼저** 정산한다. 의뢰 난이도가 명성에서 나오므로, 이번 주의 성과가
+  // 이번 주 도착하는 의뢰에 반영되어야 "성공이 곧 위험 상승"이 한 주 단위로 성립한다.
   applyEconomy(state, resolved, config);
 
-  const newContracts = refillContracts(state, config);
-
-  if (state.day > config.totalDays) {
+  let newContracts: Contract[] = [];
+  if (state.week > config.totalWeeks) {
     state.phase = 'ended';
+  } else {
+    newContracts = refillContracts(state, config);
   }
 
-  return { day: state.day, resolved, recovered, newContracts, phase: state.phase };
+  return { week: state.week, resolved, recovered, newContracts, phase: state.phase };
 }
 
 /**
- * 오늘의 홀 출석자를 뽑아 상태에 고정하고, "오늘 대화한 사람"을 비운다.
+ * 이번 주의 홀 출석자를 뽑아 상태에 고정하고, "이번 주 대화한 사람"을 비운다.
  *
  * 두 일이 한 함수에 있는 이유: 새 출석자 명단과 빈 대화 기록은 **같은 사건**이다.
- * 따로 두면 한쪽만 부르는 실수가 나고, 그러면 어제 대화한 사람과 오늘 온 사람이
+ * 따로 두면 한쪽만 부르는 실수가 나고, 그러면 어제 대화한 사람과 이번 주 온 사람이
  * 어긋난 상태로 화면에 나간다.
  *
  * `hallAttendanceMax`만 등급표에서 오고 나머지는 `balance.json`에서 온다 — 두 출처를
@@ -376,7 +385,7 @@ function rollHallAttendance(state: GameState, config: GameConfig): void {
     visitorMin: config.hall.visitorMin,
     visitorMax: config.hall.visitorMax,
   });
-  state.talkedToday = new Set();
+  state.talkedThisWeek = new Set();
 }
 
 /** 현재 등급의 룩업 테이블 행. */
@@ -398,17 +407,17 @@ function requireMember(state: GameState, id: string): Adventurer {
 }
 
 /**
- * 오늘 만기가 된 파견을 판정하고 상태를 적용한다.
+ * 이번 주 만기가 된 파견을 판정하고 상태를 적용한다.
  *
  * 판정 자체는 `resolveDispatch`(순수 함수)가 하고, 여기서는 그 결과를 명부에 반영만
- * 한다. 자금·명성은 건드리지 않는다 — Story 012가 {@link DayReport}를 읽어서 한다.
+ * 한다. 자금·명성은 건드리지 않는다 — Story 012가 {@link WeekReport}를 읽어서 한다.
  */
 function resolveDueDispatches(state: GameState, config: GameConfig): ResolvedDispatch[] {
   const resolved: ResolvedDispatch[] = [];
   const stillRunning: ActiveDispatch[] = [];
 
   for (const dispatch of state.activeDispatches) {
-    if (dispatch.resolveOnDay > state.day) {
+    if (dispatch.resolveOnWeek > state.week) {
       stillRunning.push(dispatch);
       continue;
     }
@@ -449,16 +458,16 @@ function applyOutcome(
   }
 
   casualty.status = 'injured';
-  casualty.recoversOnDay = state.day + config.injuredDays;
+  casualty.recoversOnWeek = state.week + config.injuredWeeks;
 }
 
 /**
- * 오늘 판정된 파견들의 자금·명성을 반영한다.
+ * 이번 주 판정된 파견들의 자금·명성을 반영한다.
  *
  * 계산은 `economy.ts`(순수 함수)가 하고 여기서는 제자리에 적기만 한다 — 이 파일의
  * "판정은 순수하게, 적용은 제자리에서" 경계를 그대로 따른다.
  *
- * > 2026-08-09 개정 — 잔금 미지급 제거로 `resolveDailyEconomy`가 더 이상 rng를
+ * > 2026-08-09 개정 — 잔금 미지급 제거로 `resolveWeeklyEconomy`가 더 이상 rng를
  * > 받지 않는다. 떼인 의뢰인의 지불 여력을 영구 기록하던 절차(`knownWealth`)도
  * > 함께 사라졌다.
  */
@@ -467,14 +476,14 @@ function applyEconomy(
   resolved: readonly ResolvedDispatch[],
   config: GameConfig,
 ): void {
-  const settled = resolveDailyEconomy(resolved, state.funds, state.reputation, config.economy);
+  const settled = resolveWeeklyEconomy(resolved, state.funds, state.reputation, config.economy);
 
   state.funds = settled.funds;
   state.reputation = settled.reputation;
 }
 
 /**
- * 오늘 판정된 파견들의 `trust`·`Memory`를 명부에 적는다.
+ * 이번 주 판정된 파견들의 `trust`·`Memory`를 명부에 적는다.
  *
  * `applyEconomy`와 나란히 두는 것이 이 파일의 관례다 — 계산은 `reputation.ts`(순수
  * 함수)가 하고 여기서는 제자리에 적기만 한다. `resolveDueDispatches` 안에 넣지 않은
@@ -504,7 +513,7 @@ function applyReputationEffects(
       result,
       dispatch.contract.statedRisk,
       dispatch.concealedKnownRisk,
-      state.day,
+      state.week,
       config.reputation,
     );
 
@@ -523,10 +532,10 @@ function recoverInjured(state: GameState): string[] {
 
   for (const member of state.roster) {
     if (member.status !== 'injured') continue;
-    if (member.recoversOnDay === undefined || member.recoversOnDay > state.day) continue;
+    if (member.recoversOnWeek === undefined || member.recoversOnWeek > state.week) continue;
 
     member.status = 'available';
-    member.recoversOnDay = undefined;
+    member.recoversOnWeek = undefined;
     recovered.push(member.id);
   }
 
@@ -541,9 +550,7 @@ function recoverInjured(state: GameState): string[] {
  */
 function refillContracts(state: GameState, config: GameConfig): Contract[] {
   const created: Contract[] = [];
-  const capacity = currentTier(state, config).concurrentContracts;
-
-  while (state.openContracts.length < capacity) {
+  for (let index = 0; index < config.clientsPerWeek; index += 1) {
     const contract = createContract(state.rng, config.contract, {
       id: `ct-${state.nextContractId}`,
       reputation: state.reputation,
@@ -567,8 +574,16 @@ function initializeIntake(state: GameState, contract: Contract, config: GameConf
   state.intakeSessions[contract.id] = {
     patience: intake.patience,
     clientPresent: true,
-    message: scenarioIntro(intake.questTypes, contract.questKind, contract.scenarioId),
+    dialogue: [{
+      speaker: 'client',
+      text: scenarioIntro(intake.questTypes, contract.questKind, contract.scenarioId),
+    }],
     expression: 'neutral',
+    askCounts: {},
+    reward: {
+      ...intakeOfferTerms(contract.client, contract.baseReward, intake.occupations, config.intakeWallet),
+      status: 'offered',
+    },
   };
   state.commissionSheets[contract.id] = { contractId: contract.id, sealed: false };
   for (const [slot, truth] of contract.slots) {

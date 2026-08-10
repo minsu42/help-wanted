@@ -164,7 +164,7 @@
   color: #1d1408;
 }
 
-/* 오늘 이미 대화한 사람은 물러난다 — 남은 기회가 어디 있는지 한눈에 보여야 한다 */
+/* 이번 주 이미 대화한 사람은 물러난다 — 남은 기회가 어디 있는지 한눈에 보여야 한다 */
 .hall-person--talked .hall-token__sprite {
   opacity: 0.45;
 }
@@ -349,6 +349,33 @@
   font-size: 0.8125rem;
 }
 
+/* --- 의뢰 게시판 --- */
+
+.hall-board {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 3px solid #6d4829;
+  background: #2a1b11;
+  color: var(--paper);
+}
+.hall-board > header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.hall-board h2, .hall-board header p { margin: 0; }
+.hall-board header p, .hall-board__empty { color: var(--paper-dim); font-size: 0.82rem; }
+.hall-board__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-top: 0.85rem; }
+.hall-board__card { padding: 0.75rem; background: #d5bd88; border: 2px solid #6d4829; color: #21160e; }
+.hall-board__card > div { display: flex; justify-content: space-between; gap: 0.5rem; }
+.hall-board__card p { margin: 0.4rem 0 0.65rem; font-size: 0.8rem; }
+.hall-board__card button {
+  width: 100%;
+  padding: 0.45rem;
+  border: 1px solid #6d4829;
+  background: #3b2517;
+  color: #f3ead6;
+  font: inherit;
+  cursor: pointer;
+}
+.hall-board__card button:hover, .hall-board__card button:focus-visible { background: #6d4829; }
+
 /* --- 나가는 문 --- */
 
 .hall__actions {
@@ -358,7 +385,7 @@
 }
 
 .hall__return,
-.hall__end-day {
+.hall__end-week {
   padding: 0.5rem 1.5rem;
   background: none;
   border-style: solid;
@@ -373,7 +400,7 @@
 }
 
 .hall__return:hover,
-.hall__end-day:hover {
+.hall__end-week:hover {
   border-image-source: url("../../assets/ui-button-hover.png");
 }
 
@@ -381,6 +408,8 @@
   .hall { padding: 1rem 0.75rem 3rem; }
   .hall__header { align-items: flex-start; flex-direction: column; }
   .hall-dialogue { grid-template-columns: 4rem minmax(0, 1fr); padding: 8px; border-width: 10px; }
+  .hall-board > header { align-items: flex-start; flex-direction: column; }
+  .hall-board__list { grid-template-columns: 1fr; }
   .hall__actions { flex-wrap: wrap; }
 }
 
