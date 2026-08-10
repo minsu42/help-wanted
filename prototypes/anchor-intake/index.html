@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>청취 프로토 — 앵커 + 지렛대 (4차 개정)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>청취 프로토 — 앵커 전용 + 정보 지렛대</h1>
+  <div class="hud">
+    <label>의뢰인
+      <select id="occ">
+        <option>주민</option><option>상인</option><option selected>관리</option>
+        <option>귀족</option><option>갱단</option>
+      </select>
+    </label>
+    <label>시드 <input id="seed" type="number" value="7" style="width:60px"></label>
+    <button id="restart">새 의뢰인</button>
+    <label class="peek"><input type="checkbox" id="debug"> 정답 보기</label>
+  </div>
+</header>
+
+<main>
+  <section class="chat">
+    <div class="win">
+      <div class="face" id="face"></div>
+      <div class="who" id="who">관리 · 열쇠 ?</div>
+    </div>
+    <div id="log"></div>
+    <p class="hint">의뢰인의 말에서 <b>밑줄 친 단어</b>를 누르면 그 이야기를 파고듭니다.
+      전부 파고들 수는 없습니다 — 티켓이 모자랍니다.</p>
+  </section>
+
+  <aside class="panel">
+    <h2>오늘의 응대권</h2>
+    <div id="tickets" class="tickets"></div>
+
+    <h2>의뢰서</h2>
+    <div id="slots"></div>
+
+    <h2>내가 아는 것 <span class="cnt" id="clue-cnt"></span></h2>
+    <div id="clues"></div>
+  </aside>
+</main>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-body">
+    <h3 id="modal-title">무엇을 들이대겠습니까?</h3>
+    <p class="modal-sub" id="modal-sub"></p>
+    <div id="modal-list"></div>
+    <button class="ghost" id="modal-cancel">그만둔다 (비용 없음)</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

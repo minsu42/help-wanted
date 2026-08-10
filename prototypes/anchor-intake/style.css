@@ -1,0 +1,82 @@
+/* 버리는 프로토타입 — 양피지 흉내만 최소한으로. 아트 바이블 준수 대상 아님 */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Malgun Gothic", system-ui, sans-serif;
+  background: #2b2119; color: #2e2416; min-height: 100vh; padding: 16px; }
+header { max-width: 1000px; margin: 0 auto 12px; display: flex;
+  justify-content: space-between; align-items: baseline; color: #e8d9b8; flex-wrap: wrap; gap: 8px; }
+header h1 { font-size: 17px; }
+.hud { font-size: 13px; display: flex; gap: 10px; align-items: center; }
+.hud select, .hud input[type=number] { font: inherit; padding: 2px 4px; }
+.peek { opacity: .6; }
+main { max-width: 1000px; margin: 0 auto; display: flex; gap: 12px; align-items: flex-start; }
+
+.chat { flex: 1 1 660px; background: #f3e7c9; border: 1px solid #b09a6d; padding: 12px; }
+.panel { flex: 0 0 300px; background: #ead9b0; border: 1px solid #b09a6d; padding: 12px; }
+.panel h2 { font-size: 13px; margin: 12px 0 6px; border-bottom: 1px solid #b09a6d;
+  padding-bottom: 3px; letter-spacing: .05em; }
+.panel h2:first-child { margin-top: 0; }
+.cnt { float: right; font-weight: normal; opacity: .6; }
+
+/* 창 — 아트 바이블 §5.9 흉내 (임시) */
+.win { background: linear-gradient(#241c14, #171009); border: 10px solid #6b4f30;
+  height: 132px; display: flex; align-items: flex-end; justify-content: center;
+  position: relative; margin-bottom: 10px; }
+.face { width: 96px; height: 96px; background: #5b4a35;
+  border-radius: 48px 48px 8px 8px; position: relative; }
+.face::before, .face::after { content: ""; position: absolute; top: 38px;
+  width: 8px; height: 8px; background: #1b140d; border-radius: 2px; transition: transform .2s; }
+.face::before { left: 26px; } .face::after { right: 26px; }
+.face.tell::before { transform: translateX(5px) translateY(-2px); }
+.face.tell::after  { transform: translateX(5px) translateY(-2px); }
+.face.mute::before, .face.mute::after { transform: translateY(3px) scaleY(.5); }
+.face.hide::before, .face.hide::after { transform: scaleY(.35); }
+.who { position: absolute; left: 8px; top: 6px; color: #c9b285; font-size: 12px; }
+
+#log { min-height: 300px; max-height: 52vh; overflow-y: auto; margin-bottom: 8px; }
+.bubble { margin: 8px 0; padding: 8px 10px; line-height: 1.75; background: #fbf3dd;
+  border: 1px solid #d8c69a; }
+.bubble.me { background: #dfd2ad; margin-left: 60px; border-color: #c4ad7e; }
+.bubble b { display: block; font-size: 11px; opacity: .55; margin-bottom: 3px; }
+.sys { font-size: 12px; color: #7a6741; margin: 3px 0 3px 6px; font-style: italic; }
+.sys.free { color: #4a7a41; }
+.sys.gate { color: #8a2f22; }
+.hint { font-size: 12px; color: #7a6741; border-top: 1px dashed #c4ad7e; padding-top: 8px; }
+
+/* 앵커 — 유효/무효가 겉으로 구별되면 안 된다 (U3) */
+.anchor { font: inherit; background: none; border: none; padding: 0 1px; cursor: pointer;
+  border-bottom: 1px solid #9a835a; color: inherit; }
+.anchor:hover { background: #efe0b8; }
+.anchor:disabled { cursor: default; opacity: 1; }
+.anchor.used { border-bottom-style: dotted; opacity: .55; }
+
+.tickets { font-size: 22px; letter-spacing: 3px; color: #7a5a1e; min-height: 28px; }
+.tickets .spent { opacity: .22; }
+
+.slot { display: flex; justify-content: space-between; padding: 5px 3px;
+  border-bottom: 1px dashed #c4ad7e; font-size: 13px; }
+.slot .k { opacity: .7; }
+.slot .v { font-family: "Gungsuh", serif; }
+.slot.unknown .v { border-bottom: 1px dotted #a08b60; color: #a08b60; padding: 0 14px; }
+.slot.blocked .v { color: #6b5a45; background: #ddcda6; padding: 0 4px; }
+.slot.vague .v { letter-spacing: .1em; }
+.slot.certain .v { font-weight: 700; }
+
+.clue { font-size: 12px; padding: 5px 4px; border-bottom: 1px dashed #c4ad7e; line-height: 1.45; }
+.clue.dim { opacity: .5; }
+.tag { font-size: 10px; opacity: .55; margin-left: 4px; }
+
+.modal { position: fixed; inset: 0; background: #0008; display: flex;
+  align-items: center; justify-content: center; }
+.modal-body { background: #f3e7c9; border: 2px solid #7a6741; padding: 16px;
+  width: min(560px, 92vw); max-height: 80vh; overflow-y: auto; }
+.modal-body h3 { font-size: 15px; margin-bottom: 4px; }
+.modal-sub { font-size: 12px; color: #7a6741; margin-bottom: 10px; }
+#modal-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.lev { text-align: left; font: inherit; font-size: 13px; padding: 8px 10px;
+  background: #fbf3dd; border: 1px solid #d8c69a; cursor: pointer; }
+.lev:hover { background: #fff8e4; }
+button { font: inherit; padding: 6px 12px; border: 1px solid #7a6741;
+  background: #8a2f22; color: #f3e7c9; cursor: pointer; }
+button.ghost { background: transparent; color: #7a6741; }
+button:disabled { opacity: .5; cursor: default; }
+.debug { font-size: 11px; color: #8a2f22; }
