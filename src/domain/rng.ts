@@ -9,6 +9,13 @@
  * 아니므로 품질보다 재현성과 크기가 중요하다.
  */
 export interface Rng {
+  /**
+   * 현재 32비트 내부 상태.
+   *
+   * 저장 계층만 사용한다. `createRng(rng.snapshot())`은 다음 추첨부터 원본과 같은
+   * 수열을 이어 간다.
+   */
+  snapshot(): number;
   /** 0 이상 1 미만의 실수 */
   next(): number;
   /** min 이상 max 이하의 정수 */
@@ -38,6 +45,7 @@ export function createRng(seed: number): Rng {
   };
 
   return {
+    snapshot: () => state,
     next,
     int(min: number, max: number): number {
       if (max < min) throw new Error(`int(${min}, ${max}): max가 min보다 작다`);

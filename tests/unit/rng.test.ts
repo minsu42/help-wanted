@@ -21,6 +21,27 @@ describe("createRng", () => {
     expect(seqA).not.toEqual(seqB);
   });
 
+  it("test_snapshot_resumes_from_the_next_draw", () => {
+    const original = createRng(SEED);
+    Array.from({ length: 37 }, () => original.next());
+
+    const resumed = createRng(original.snapshot());
+    const originalTail = Array.from({ length: 100 }, () => original.next());
+    const resumedTail = Array.from({ length: 100 }, () => resumed.next());
+
+    expect(resumedTail).toEqual(originalTail);
+  });
+
+  it("test_snapshot_does_not_advance_the_generator", () => {
+    const withSnapshot = createRng(SEED);
+    const withoutSnapshot = createRng(SEED);
+
+    withSnapshot.snapshot();
+    withSnapshot.snapshot();
+
+    expect(withSnapshot.next()).toBe(withoutSnapshot.next());
+  });
+
   it("test_next_stays_within_unit_interval", () => {
     const rng = createRng(SEED);
     for (let i = 0; i < 1000; i += 1) {
