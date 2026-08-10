@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "installedAt": "2026-08-10",
+  "sources": [
+    {
+      "repository": "https://github.com/gamedev-skills/awesome-gamedev-agent-skills",
+      "commit": "858c3e58e1f35ea3a5746c4df6003ffbd1c4dad0",
+      "license": "Apache-2.0",
+      "skills": [
+        "skills/disciplines/create-game-assets",
+        "skills/disciplines/game-ui-ux",
+        "skills/disciplines/game-feel"
+      ]
+    }
+  ]
+}

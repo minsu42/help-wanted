@@ -1,0 +1,4 @@
+interface:
+  display_name: "Playtest Report"
+  short_description: "Create or analyze structured game playtest reports"
+  default_prompt: "Use $playtest-report to structure and analyze playtest evidence."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quick Design"
+  short_description: "Write a lightweight spec for a small game change"
+  default_prompt: "Use $quick-design for a focused game design change."

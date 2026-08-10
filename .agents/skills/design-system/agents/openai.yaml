@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design System"
+  short_description: "Author or retrofit one game-system GDD"
+  default_prompt: "Use $design-system to design a game system collaboratively."

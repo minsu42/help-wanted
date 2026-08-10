@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prototype"
+  short_description: "Validate one game hypothesis with a focused prototype"
+  default_prompt: "Use $prototype to define and validate one falsifiable game hypothesis."

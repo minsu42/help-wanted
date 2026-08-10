@@ -27,7 +27,7 @@
 | **Test** | Vitest **4.1.10** + happy-dom **20.11.2** |
 | **Runtime Deps** | 없음 |
 | **Project Pinned** | 2026-08-09 (정확한 핀. `^`/`~` 범위 사용 금지) |
-| **Last Docs Verified** | 2026-08-09 |
+| **Last Docs Verified** | 2026-08-10 |
 | **LLM Knowledge Cutoff** | 2026년 5월 |
 | **Risk Level** | **LOW** — Vite 7·TS 5.5 모두 LLM 학습 범위 안이다 |
 
@@ -95,6 +95,35 @@ GATE까지 가는 동안 **툴체인 관련 막힘이 0건**이면 고정이 옳
   프록시(예: Cloudflare Worker)가 필요하며, 그것은 설계 변경이다.
   → **그 설계 변경이 2026-08-10에 일어났다** — ADR-003이 런타임 LLM용 전용 Worker
   프록시를 도입했다. 게임 본체의 Pages 배포와 이 문서의 나머지 고정 사항은 불변이다.
+
+## 프록시 Worker의 핀 — **컷오프를 넘는 유일한 것** *(2026-08-10 신설, ADR-003)*
+
+`workers/intake-proxy/wrangler.toml`:
+
+```toml
+compatibility_date = "2026-08-10"
+```
+
+**이것이 이 저장소에서 LLM 학습 컷오프(2026년 5월)를 넘는 유일한 핀이다.** 위 표의
+Risk Level LOW는 게임 본체의 툴체인에 대한 것이고, 이 한 줄은 그 밖에 있다.
+
+**그런데도 Risk Level을 올리지 않는 근거**: Worker 코드가 쓰는 것이 **`fetch`·
+`Response`·`URL` 셋뿐이고 의존성이 0개**다 (ADR-003 D8 — "LLM 호출은 `fetch` 하나다").
+이 셋은 컷오프 훨씬 이전부터 안정된 웹 표준이며 compatibility date가 바꾸는 대상이
+아니다. **즉 날짜가 앞서 있어도 그 날짜가 관장하는 표면을 우리가 건드리지 않는다** —
+VERSION.md의 살아남은 고정 근거("LLM이 API를 지어내지 않는다")가 걸릴 API가 없다.
+
+> ⚠ **이 면제는 조건부다. Workers 고유 API를 도입하면 즉시 끝난다** — KV · Durable
+> Object · Cache API · Queues 중 하나라도 들이는 순간 컷오프 이후 표면에 의존하게 되고,
+> 그때는 이 절을 다시 쓰고 `wrangler` 버전을 정확히 핀해야 한다.
+>
+> **이 문이 열릴 지점이 이미 코드에 적혀 있다** — `worker.js`의 `checkRateLimit`
+> 주석이 *"정확한 상한이 필요해지면 KV나 Durable Object를 붙여야 하고, 그것은 상태를
+> 가진 인프라를 들이는 **결정**"* 이라고 적어 두었다. 그 결정이 내려지는 날이 이 면제가
+> 끝나는 날이다.
+
+`wrangler` 자체는 **아직 설치되지도 핀되지도 않았다** (`package.json`
+devDependencies에 없다). `docs/tech-debt-register.md` 참조.
 
 ## 참고 링크
 

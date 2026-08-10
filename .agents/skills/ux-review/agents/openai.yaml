@@ -1,0 +1,4 @@
+interface:
+  display_name: "UX Review"
+  short_description: "Review game UX specifications for readiness and accessibility"
+  default_prompt: "Use $ux-review to evaluate a game UX specification."

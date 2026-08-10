@@ -1,0 +1,4 @@
+interface:
+  display_name: "UX Design"
+  short_description: "Author UX specifications for game screens and flows"
+  default_prompt: "Use $ux-design to design a game screen, flow, or HUD."
